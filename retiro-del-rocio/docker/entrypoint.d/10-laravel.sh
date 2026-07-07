@@ -10,7 +10,7 @@
 #     a broken app.
 set -e
 
-cd /var/www/html
+cd /var/www/apps
 
 echo "[entrypoint] Retiro Del Rocio — running Laravel boot tasks…"
 
