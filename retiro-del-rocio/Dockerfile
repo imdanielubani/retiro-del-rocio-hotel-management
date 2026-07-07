@@ -22,11 +22,11 @@ RUN npm run build
 # PHP 8.4 — required by the locked deps (Symfony 8.x, spatie/laravel-activitylog 5).
 FROM serversideup/php:8.4-fpm-nginx AS app
 
-# The serversideup image serves /var/www/html/public on port 8080 as www-data,
+# The serversideup image serves /var/www/apps/public on port 8080 as www-data,
 # with Nginx + PHP-FPM managed by s6.
 
 USER root
-WORKDIR /var/www/html
+WORKDIR /var/www/apps
 
 # Add PHP extensions:
 #  - exif: required by spatie/image + medialibrary
@@ -60,7 +60,7 @@ RUN chmod +x /etc/entrypoint.d/10-laravel.sh
 
 # The app is copied in as root; hand ownership to the web user so the runtime
 # (entrypoint + terminal) can create the storage symlink and write to storage/cache.
-RUN chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/apps
 
 # Drop back to the unprivileged runtime user.
 USER www-data
