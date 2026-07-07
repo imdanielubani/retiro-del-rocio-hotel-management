@@ -1,4 +1,3 @@
-check my docker file if it is correct below 
 # syntax=docker/dockerfile:1
 #
 # Production image for Retiro Del Rocio (Laravel 13 + Livewire 4 + Tailwind v4).
