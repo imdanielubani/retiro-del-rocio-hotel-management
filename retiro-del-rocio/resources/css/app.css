@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Website fonts (match Figma design)
+       Primary UI font is SF Pro Text (per Figma). SF Pro is Apple-licensed and
+       cannot be self-hosted for the web, so the stack renders the real SF on
+       Apple devices (-apple-system / BlinkMacSystemFont) and falls back to the
+       loaded Inter — the closest free match — everywhere else. */
+    --font-sf: 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-inter: var(--font-sf);
+    --font-poppins: 'Poppins', 'Inter', ui-sans-serif, sans-serif;
+    --font-script: 'Italianno', cursive;
+
+    /* ----------------------------------------------------------------------
+       Desktop type scale — one standardized set (replaces ~34 ad-hoc sizes).
+       Use these tokens (text-display … text-caption) instead of text-[NNpx].
+       Decorative/script + main-hero sizes (58/72/92px) intentionally stay
+       as one-off arbitrary values.
+       ---------------------------------------------------------------------- */
+    /* Fluid scale: shrinks on smaller laptops, caps at the full design size at
+       ~1440px+, never smaller than the mobile floor. Keeps the site professional
+       on 13"/14" laptops instead of rendering the 1440 sizes everywhere. */
+    --text-display: clamp(36px, 4.16vw, 60px);  /* big section / hero-secondary headings */
+    --text-h1: clamp(30px, 3.33vw, 48px);       /* page titles                          */
+    --text-h2: clamp(26px, 2.5vw, 36px);        /* major section headings               */
+    --text-h3: clamp(22px, 1.95vw, 28px);       /* sub-section headings                 */
+    --text-title: clamp(19px, 1.67vw, 24px);    /* card titles / emphasis               */
+    --text-body-lg: clamp(17px, 1.39vw, 20px);  /* lead body / list text                */
+    --text-body: clamp(16px, 1.25vw, 18px);     /* base body                            */
+    --text-body-sm: clamp(14px, 1.11vw, 16px);  /* secondary body                       */
+    --text-label: 14px;     /* field labels / chips                 */
+    --text-caption: 12px;   /* fine print                           */
+}
+
+/* ----------------------------------------------------------------------
+   Desktop icon scale — one standardized set (replaces ~13 ad-hoc sizes).
+   Use icon-xs … icon-xl on <svg>/<img> icons instead of size-[NNpx].
+   Large decorative graphics (gallery arrows, success badge) stay as-is.
+   ---------------------------------------------------------------------- */
+@utility icon-xs { width: 16px; height: 16px; }
+@utility icon-sm { width: 20px; height: 20px; }
+@utility icon-md { width: 24px; height: 24px; }
+@utility icon-lg { width: 32px; height: 32px; }
+@utility icon-xl { width: 40px; height: 40px; }
+
+/* Keep Alpine x-cloak elements hidden until Alpine initializes (prevents modal/drawer flash). */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Logo marquee — continuous horizontal scroll. The track holds two identical
+   copies of the logos, so translating it by -50% loops seamlessly. */
+@keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+.marquee-track {
+    animation: marquee 55s linear infinite;
+    will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+        animation: none;
+    }
+}
+
+/* Hide scrollbar while keeping the element scrollable. */
+@utility no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
