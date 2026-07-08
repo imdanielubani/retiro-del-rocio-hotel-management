@@ -27,7 +27,25 @@
         {{-- Search panel (#d9d9d9) overlapping the hero bottom, inset to the container — Figma node 92:112 --}}
         <x-layouts.container>
             <div class="relative z-10 mx-auto -mt-[100px] w-full rounded-[19px] bg-[#d9d9d9] px-4 py-5 shadow-2xl sm:-mt-[120px] sm:px-6 lg:-mt-[130px] lg:px-[26px] lg:py-[20px]"
-                 x-data="{ today: new Date().toISOString().split('T')[0], checkIn: '', checkOut: '', roomSlug: '', roomsBase: '{{ url('rooms-apartment') }}', listUrl: '{{ route('rooms') }}' }">
+                 x-data="{
+                    today: new Date().toISOString().split('T')[0], checkIn: '', checkOut: '', roomSlug: '',
+                    roomsBase: '{{ url('rooms-apartment') }}', listUrl: '{{ route('rooms') }}',
+                    {{-- A native <select> popup is drawn by the browser: it flips UPWARD whenever the
+                         list is too tall to fit below the control, and no CSS/JS can override the
+                         direction. The search panel overlaps the hero, so tall lists (10 guests, the
+                         date calendar) had no room beneath them. Scrolling the page down a little
+                         BEFORE the popup opens gives the browser the space it needs to drop down.
+                         Runs on mousedown/keydown, i.e. before the popup is positioned. --}}
+                    dropDown(el, rows) {
+                        const box = el.getBoundingClientRect();
+                        const needed = (rows * 26) + 24;               {{-- approx popup height --}}
+                        const below = window.innerHeight - box.bottom;
+                        if (below >= needed) return;                   {{-- already fits: leave it alone --}}
+                        {{-- never scroll so far that the control leaves the top of the screen --}}
+                        const shift = Math.min(needed - below, Math.max(0, box.top - 16));
+                        if (shift > 0) window.scrollBy({ top: shift, behavior: 'instant' });
+                    },
+                 }">
                     {{-- Category tabs --}}
                     <div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-1 sm:gap-x-10 lg:gap-x-12">
                         <div class="flex flex-col items-start gap-2">
@@ -60,7 +78,10 @@
                             {{-- Arrow is overlaid on the select (not a sibling) so clicking it
                                  falls through to the select and opens the dropdown. --}}
                             <div class="relative flex items-center">
-                                <select x-model="roomSlug" class="w-full min-w-0 cursor-pointer truncate appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
+                                <select x-model="roomSlug"
+                                        @mousedown="dropDown($el, $el.options.length)"
+                                        @keydown.enter="dropDown($el, $el.options.length)"
+                                        class="w-full min-w-0 cursor-pointer truncate appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
                                     <option value="">Browse all rooms</option>
                                     @foreach ($rooms as $r)
                                         <option value="{{ $r->slug }}">{{ $r->name }}</option>
@@ -73,7 +94,10 @@
                         <div class="flex min-w-0 flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-white px-4 py-[14px] xl:min-w-0 xl:flex-1">
                             <p class="text-body-sm font-medium tracking-tight text-[#3c3c3c]">Number of Guest</p>
                             <div class="relative flex items-center">
-                                <select name="guests" class="w-full min-w-0 cursor-pointer appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
+                                <select name="guests"
+                                        @mousedown="dropDown($el, $el.options.length)"
+                                        @keydown.enter="dropDown($el, $el.options.length)"
+                                        class="w-full min-w-0 cursor-pointer appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
                                     @for ($n = 1; $n <= 10; $n++)
                                         <option value="{{ $n }}" @selected($n === 2)>{{ $n }}</option>
                                     @endfor
@@ -87,7 +111,7 @@
                             <div class="relative flex items-center">
                                 <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                                 <input type="date" name="check_in" x-model="checkIn" :min="today"
-                                       @click="$event.target.showPicker && $event.target.showPicker()"
+                                       @click="dropDown($el, 12); $event.target.showPicker && $event.target.showPicker()"
                                        class="w-full min-w-0 cursor-pointer bg-transparent pl-[26px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                             </div>
                         </div>
@@ -97,7 +121,7 @@
                             <div class="relative flex items-center">
                                 <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                                 <input type="date" name="check_out" x-model="checkOut" :min="checkIn || today"
-                                       @click="$event.target.showPicker && $event.target.showPicker()"
+                                       @click="dropDown($el, 12); $event.target.showPicker && $event.target.showPicker()"
                                        class="w-full min-w-0 cursor-pointer bg-transparent pl-[26px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                             </div>
                         </div>

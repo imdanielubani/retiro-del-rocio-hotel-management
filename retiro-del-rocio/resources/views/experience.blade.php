@@ -22,7 +22,21 @@
         {{-- Search panel overlapping the hero bottom (same as homepage) --}}
         <x-layouts.container>
             <div class="relative z-10 mx-auto -mt-[100px] w-full rounded-[19px] bg-[#d9d9d9] px-4 py-5 shadow-2xl sm:-mt-[120px] sm:px-6 lg:-mt-[130px] lg:px-[26px] lg:py-[20px]"
-                 x-data="{ today: new Date().toISOString().split('T')[0], checkIn: '', checkOut: '', roomSlug: '', roomsBase: '{{ url('rooms-apartment') }}', listUrl: '{{ route('rooms') }}' }">
+                 x-data="{
+                    today: new Date().toISOString().split('T')[0], checkIn: '', checkOut: '', roomSlug: '',
+                    roomsBase: '{{ url('rooms-apartment') }}', listUrl: '{{ route('rooms') }}',
+                    {{-- See welcome.blade.php: a native <select>/date popup flips upward when it
+                         doesn't fit below, and the direction can't be set from CSS/JS. Scroll first
+                         so the browser has room to open downward. --}}
+                    dropDown(el, rows) {
+                        const box = el.getBoundingClientRect();
+                        const needed = (rows * 26) + 24;
+                        const below = window.innerHeight - box.bottom;
+                        if (below >= needed) return;
+                        const shift = Math.min(needed - below, Math.max(0, box.top - 16));
+                        if (shift > 0) window.scrollBy({ top: shift, behavior: 'instant' });
+                    },
+                 }">
                 {{-- Category tabs — Experience active; Rooms & Apartment goes home --}}
                 <div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-1 sm:gap-x-10 lg:gap-x-12">
                     <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 text-body font-semibold tracking-tight text-[#6c6c6c] transition hover:text-[#ba6d04] sm:text-body-lg">
@@ -52,7 +66,10 @@
                         {{-- Arrow is overlaid on the select (not a sibling) so clicking it
                              falls through to the select and opens the dropdown. --}}
                         <div class="relative flex items-center">
-                            <select x-model="roomSlug" class="w-full min-w-0 cursor-pointer truncate appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
+                            <select x-model="roomSlug"
+                                    @mousedown="dropDown($el, $el.options.length)"
+                                    @keydown.enter="dropDown($el, $el.options.length)"
+                                    class="w-full min-w-0 cursor-pointer truncate appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
                                 <option value="">Browse all rooms</option>
                                 @foreach ($rooms as $r)
                                     <option value="{{ $r->slug }}">{{ $r->name }}</option>
@@ -65,7 +82,10 @@
                     <div class="flex min-w-0 flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-white px-4 py-[14px] xl:min-w-0 xl:flex-1">
                         <p class="text-body-sm font-medium tracking-tight text-[#3c3c3c]">Number of Guest</p>
                         <div class="relative flex items-center">
-                            <select name="guests" class="w-full min-w-0 cursor-pointer appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
+                            <select name="guests"
+                                    @mousedown="dropDown($el, $el.options.length)"
+                                    @keydown.enter="dropDown($el, $el.options.length)"
+                                    class="w-full min-w-0 cursor-pointer appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
                                 @for ($n = 1; $n <= 10; $n++)
                                     <option value="{{ $n }}" @selected($n === 2)>{{ $n }}</option>
                                 @endfor
@@ -79,7 +99,7 @@
                         <div class="relative flex items-center">
                             <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                             <input type="date" name="check_in" x-model="checkIn" :min="today"
-                                   @click="$event.target.showPicker && $event.target.showPicker()"
+                                   @click="dropDown($el, 12); $event.target.showPicker && $event.target.showPicker()"
                                    class="w-full min-w-0 cursor-pointer bg-transparent pl-[26px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                         </div>
                     </div>
@@ -89,7 +109,7 @@
                         <div class="relative flex items-center">
                             <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                             <input type="date" name="check_out" x-model="checkOut" :min="checkIn || today"
-                                   @click="$event.target.showPicker && $event.target.showPicker()"
+                                   @click="dropDown($el, 12); $event.target.showPicker && $event.target.showPicker()"
                                    class="w-full min-w-0 cursor-pointer bg-transparent pl-[26px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                         </div>
                     </div>
