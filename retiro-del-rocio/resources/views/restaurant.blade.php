@@ -1,4 +1,4 @@
-<x-layouts.web title="Restaurant — Retiro Del Rocio"
+<x-layouts.web title="Restaurant/Bar — Retiro Del Rocio"
     description="Experience fine dining at Retiro Del Rocio. Reserve a table or lounge — exceptional cuisine, elegant ambiance and attentive service in Jos.">
 
     @php
@@ -40,7 +40,7 @@
 
         {{-- ============================ HERO ============================ --}}
         <section class="relative w-full">
-            <x-img src="{{ cms_image('restaurant.hero_image') }}" alt="Restaurant" sizes="100vw"
+            <x-img src="{{ cms_image('restaurant.hero_image') }}" alt="Restaurant/Bar" sizes="100vw"
                    loading="eager" fetchpriority="high"
                    class="h-[460px] w-full object-cover sm:h-[560px] lg:h-[660px]" />
             <div class="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/15"></div>

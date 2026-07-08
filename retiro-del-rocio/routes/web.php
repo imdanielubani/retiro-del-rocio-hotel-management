@@ -612,10 +612,14 @@ Route::post('gym/subscribe', function () {
 | Restaurant reservation flow (Paystack)
 |--------------------------------------------------------------------------
 */
-Route::view('restaurant', 'restaurant')->name('restaurant');
+// Renamed from /restaurant. The old path is kept as a permanent redirect so
+// existing links, bookmarks and indexed pages keep working.
+Route::permanentRedirect('restaurant', 'restaurant-bar');
+
+Route::view('restaurant-bar', 'restaurant')->name('restaurant');
 
 // Reserve — called via a hidden POST after a successful Paystack charge.
-Route::post('restaurant/reserve', function () {
+Route::post('restaurant-bar/reserve', function () {
     $data = request()->validate([
         'reference' => ['required', 'string', 'max:190'],
         'area' => ['required', 'in:dining,lounge'],
