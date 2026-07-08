@@ -49,46 +49,48 @@
                     {{-- Room --}}
                     <div class="flex min-w-0 flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-white px-4 py-[13px] xl:min-w-0 xl:flex-[1.4]">
                         <p class="text-body-sm font-medium tracking-tight text-[#3c3c3c]">Room</p>
-                        <div class="flex items-center gap-1.5">
-                            <select x-model="roomSlug" class="w-full min-w-0 cursor-pointer truncate appearance-none bg-transparent text-body font-semibold text-black focus:outline-none">
+                        {{-- Arrow is overlaid on the select (not a sibling) so clicking it
+                             falls through to the select and opens the dropdown. --}}
+                        <div class="relative flex items-center">
+                            <select x-model="roomSlug" class="w-full min-w-0 cursor-pointer truncate appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
                                 <option value="">Browse all rooms</option>
                                 @foreach ($rooms as $r)
                                     <option value="{{ $r->slug }}">{{ $r->name }}</option>
                                 @endforeach
                             </select>
-                            <img loading="lazy" src="{{ asset('images/keyboard_arrow_down.png') }}" alt="" class="pointer-events-none icon-sm shrink-0 object-contain">
+                            <img loading="lazy" src="{{ asset('images/keyboard_arrow_down.png') }}" alt="" class="pointer-events-none absolute right-0 icon-sm shrink-0 object-contain">
                         </div>
                     </div>
                     {{-- Number of Guest --}}
                     <div class="flex min-w-0 flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-white px-4 py-[14px] xl:min-w-0 xl:flex-1">
                         <p class="text-body-sm font-medium tracking-tight text-[#3c3c3c]">Number of Guest</p>
-                        <div class="flex items-center gap-1.5">
-                            <select name="guests" class="w-full min-w-0 cursor-pointer appearance-none bg-transparent text-body font-semibold text-black focus:outline-none">
+                        <div class="relative flex items-center">
+                            <select name="guests" class="w-full min-w-0 cursor-pointer appearance-none bg-transparent pr-6 text-body font-semibold text-black focus:outline-none">
                                 @for ($n = 1; $n <= 10; $n++)
                                     <option value="{{ $n }}" @selected($n === 2)>{{ $n }}</option>
                                 @endfor
                             </select>
-                            <img loading="lazy" src="{{ asset('images/keyboard_arrow_down.png') }}" alt="" class="pointer-events-none icon-sm shrink-0 object-contain">
+                            <img loading="lazy" src="{{ asset('images/keyboard_arrow_down.png') }}" alt="" class="pointer-events-none absolute right-0 icon-sm shrink-0 object-contain">
                         </div>
                     </div>
                     {{-- Check-in Date --}}
                     <div class="flex min-w-0 flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-white px-4 py-[11px] xl:min-w-0 xl:flex-1">
                         <p class="text-body-sm font-medium tracking-tight text-[#3c3c3c]">Check-in Date</p>
-                        <div class="flex items-center gap-1.5">
-                            <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="icon-sm shrink-0 object-contain">
+                        <div class="relative flex items-center">
+                            <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                             <input type="date" name="check_in" x-model="checkIn" :min="today"
                                    @click="$event.target.showPicker && $event.target.showPicker()"
-                                   class="w-full min-w-0 cursor-pointer bg-transparent text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
+                                   class="w-full min-w-0 cursor-pointer bg-transparent pl-[26px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                         </div>
                     </div>
                     {{-- Check-out Date --}}
                     <div class="flex min-w-0 flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-white px-4 py-[11px] xl:min-w-0 xl:flex-1">
                         <p class="text-body-sm font-medium tracking-tight text-[#3c3c3c]">Check-out Date</p>
-                        <div class="flex items-center gap-1.5">
-                            <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="icon-sm shrink-0 object-contain">
+                        <div class="relative flex items-center">
+                            <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                             <input type="date" name="check_out" x-model="checkOut" :min="checkIn || today"
                                    @click="$event.target.showPicker && $event.target.showPicker()"
-                                   class="w-full min-w-0 cursor-pointer bg-transparent text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
+                                   class="w-full min-w-0 cursor-pointer bg-transparent pl-[26px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                         </div>
                     </div>
                     {{-- Search --}}

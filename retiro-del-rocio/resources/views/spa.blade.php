@@ -374,7 +374,7 @@
                                         <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Last Name</span><input type="text" x-model="lastName" placeholder="Philips" class="bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></label>
                                     </div>
                                     <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Email Address</span><input type="email" x-model="email" placeholder="micheal.philips@gmail.com" class="bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></label>
-                                    <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Phone Number</span><div class="flex items-center gap-2"><span class="shrink-0 text-body-lg text-white">🇳🇬 +234</span><input type="tel" x-model="phone" placeholder="8143432903" inputmode="numeric" class="w-full bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></div></label>
+                                    <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Phone Number (Preferably WhatsApp)</span><div class="flex items-center gap-2"><span class="shrink-0 text-body-lg text-white">🇳🇬 +234</span><input type="tel" x-model="phone" placeholder="8143432903" inputmode="numeric" class="w-full bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></div></label>
                                 </div>
                             </div>
 
