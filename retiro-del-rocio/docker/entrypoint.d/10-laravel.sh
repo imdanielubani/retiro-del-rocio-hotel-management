@@ -31,7 +31,9 @@ fi
 # --- Storage symlink (public/storage -> storage/app/public) ---
 # Ensure the upload dirs exist (the volume mounts at storage/app/public) and the
 # public/storage symlink is (re)created so uploaded CMS/room/vehicle images serve.
-mkdir -p storage/app/public/cms storage/app/public/rooms storage/app/public/vehicles
+mkdir -p storage/app/public/cms storage/app/public/rooms storage/app/public/vehicles \
+         storage/app/public/spa storage/app/public/movies storage/app/public/snacks \
+         storage/app/public/restaurant
 [ -L public/storage ] || rm -rf public/storage
 php artisan storage:link --force
 echo "[entrypoint] storage symlink: $(readlink -f public/storage 2>/dev/null || echo 'MISSING')"

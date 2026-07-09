@@ -28,6 +28,12 @@
                                     <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Type</td>
                                     <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $reservation->areaLabel() }}@if ($reservation->table_label) · {{ $reservation->table_label }}@endif</td>
                                 </tr>
+                                @if ($reservation->floor)
+                                <tr>
+                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Floor</td>
+                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $reservation->floor }}</td>
+                                </tr>
+                                @endif
                                 @if ($reservation->occasion)
                                 <tr>
                                     <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Occasion</td>

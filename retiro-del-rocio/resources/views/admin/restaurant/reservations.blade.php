@@ -112,7 +112,7 @@
                                 <td class="px-4 py-3.5 text-[13px] font-bold text-[#f38c00]">{{ $r->code }}</td>
                                 <td class="px-4 py-3.5"><p class="text-[13px] font-medium text-[#1e1e1e]">{{ $r->customer_name ?: '—' }}</p><p class="text-[11px] text-[#9ca3af]">{{ $r->customer_email }}</p></td>
                                 <td class="px-4 py-3.5"><span class="inline-flex rounded-full bg-[#eef2f6] px-2.5 py-0.5 text-[11px] font-semibold text-[#475569]">{{ $r->areaLabel() }}</span></td>
-                                <td class="px-4 py-3.5 text-[13px] text-[#374151]">{{ $r->guestsLabel() }}<span class="block text-[11px] text-[#9ca3af]">{{ $r->occasion ?: '—' }}@if ($r->table_label) · {{ $r->table_label }}@endif</span></td>
+                                <td class="px-4 py-3.5 text-[13px] text-[#374151]">{{ $r->guestsLabel() }}<span class="block text-[11px] text-[#9ca3af]">{{ $r->occasion ?: '—' }}@if ($r->table_label) · {{ $r->table_label }}@endif@if ($r->floor) · {{ $r->floor }}@endif</span></td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#374151]">{{ optional($r->reserved_date)->format('M j, Y') }}<span class="block text-[11px] text-[#9ca3af]">{{ $r->timeLabel() }}</span></td>
                                 <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $r->feeLabel() }}</td>
                                 <td class="px-4 py-3.5"><span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" style="background: {{ $pB }}; color: {{ $pC }};">{{ $r->paymentLabel() }}</span></td>
@@ -137,7 +137,7 @@
                             </div>
                         </div>
                         <div class="flex items-center justify-between"><p class="text-[14px] font-medium text-[#1e1e1e]">{{ $r->customer_name ?: '—' }}</p><p class="text-[14px] font-bold text-[#1e1e1e]">{{ $r->feeLabel() }}</p></div>
-                        <div class="flex items-center justify-between text-[12px] text-[#6b7280]"><span>{{ $r->areaLabel() }} · {{ $r->guestsLabel() }}</span><span>{{ optional($r->reserved_date)->format('M j') }} · {{ $r->timeLabel() }}</span></div>
+                        <div class="flex items-center justify-between text-[12px] text-[#6b7280]"><span>{{ $r->areaLabel() }}@if ($r->floor) · {{ $r->floor }}@endif · {{ $r->guestsLabel() }}</span><span>{{ optional($r->reserved_date)->format('M j') }} · {{ $r->timeLabel() }}</span></div>
                         <div class="flex justify-end pt-1">@include('admin.restaurant.partials.reservation-menu', ['r' => $r])</div>
                     </div>
                 @endforeach

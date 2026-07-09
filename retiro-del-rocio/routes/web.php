@@ -43,6 +43,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 
 // Public website.
 Route::view('/', 'welcome')->name('home');
@@ -342,7 +343,12 @@ Route::get('reservation-successful/receipt', function () {
         return redirect()->route('rooms');
     }
 
-    return view('receipt', ['order' => $order]);
+    // The session payload predates the booking row, so it carries no gate pass.
+    // Pull the persisted booking for the passcode + its provisioning status
+    // (TTLock issues the code asynchronously, right after the checkout response).
+    $booking = Booking::where('reference', $order['reference'] ?? '')->first();
+
+    return view('receipt', ['order' => $order, 'booking' => $booking]);
 })->name('checkout.receipt');
 
 /*
@@ -624,6 +630,12 @@ Route::post('restaurant-bar/reserve', function () {
         'reference' => ['required', 'string', 'max:190'],
         'area' => ['required', 'in:dining,lounge'],
         'table_id' => ['nullable', 'integer', 'exists:restaurant_tables,id'],
+        // Lounge guests must pick a floor; dining reservations never carry one.
+        'floor' => [
+            Rule::requiredIf(fn () => request('area') === 'lounge'),
+            'nullable',
+            Rule::in(RestaurantReservation::FLOORS),
+        ],
         'occasion' => ['nullable', 'string', 'max:120'],
         'guests' => ['required', 'integer', 'min:1', 'max:30'],
         'date' => ['required', 'date'],
@@ -665,6 +677,8 @@ Route::post('restaurant-bar/reserve', function () {
             'area' => $data['area'],
             'restaurant_table_id' => $table?->id,
             'table_label' => $table?->name,
+            // Guard against a dining reservation smuggling a floor through.
+            'floor' => $data['area'] === 'lounge' ? ($data['floor'] ?? null) : null,
             'occasion' => $data['occasion'] ?? null,
             'guests' => $data['guests'],
             'reserved_date' => $data['date'],
@@ -688,6 +702,9 @@ Route::post('restaurant-bar/reserve', function () {
         session(['restaurant_success' => [
             'code' => $reservation->code,
             'area_label' => $reservation->areaLabel(),
+            'table_label' => $reservation->table_label ?: '—',
+            'table_image' => $reservation->table?->imageUrl(),
+            'floor' => $reservation->floor, // null for dining
             'occasion' => $reservation->occasion ?: '—',
             'guests_label' => $reservation->guestsLabel(),
             'date' => optional($reservation->reserved_date)->format('M j, Y'),

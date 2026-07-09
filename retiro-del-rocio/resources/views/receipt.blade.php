@@ -22,7 +22,19 @@
         .foot { padding: 18px 36px; background: #f9fafb; color: #9ca3af; font-size: 12px; }
         .print { text-align: center; margin: 24px auto 0; max-width: 640px; }
         .print button { background: #ba6d04; color: #fff; border: 0; border-radius: 6px; padding: 12px 28px; font-size: 15px; cursor: pointer; }
-        @media print { body { background: #fff; padding: 0; } .sheet { box-shadow: none; } .print { display: none; } }
+        .gate { background: #222a1f; border-radius: 10px; padding: 18px 20px; text-align: center; }
+        .gate-label { color: #c2cdb9; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+        .gate-code { color: #fff; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin-top: 6px; }
+        .gate-code-pending { font-size: 20px; letter-spacing: 2px; color: #e8c07d; }
+        .gate-note { color: #9aa593; font-size: 12px; margin-top: 10px; line-height: 1.5; }
+        .gate-note strong { color: #fff; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .sheet { box-shadow: none; }
+            .print { display: none; }
+            /* Browsers strip background colours when printing unless asked not to. */
+            .gate { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body onload="window.print()">
@@ -40,6 +52,7 @@
 
             <p class="section-title">Reservation</p>
             <table>
+                <tr><td class="label">Booking ID</td><td class="value"><strong>{{ $order['reference'] }}</strong></td></tr>
                 <tr><td class="label">Room/Apartment</td><td class="value">{{ $order['room'] }}</td></tr>
                 <tr><td class="label">Guests</td><td class="value">{{ $order['guests'] }}</td></tr>
                 <tr><td class="label">Check-in / Check-out</td><td class="value">{{ $order['date_range'] }}</td></tr>
@@ -48,6 +61,26 @@
                     <tr><td class="label">Vehicle pickup</td><td class="value">{{ $order['pickup_vehicle'] }}</td></tr>
                 @endif
             </table>
+
+            {{-- Gate pass. TTLock issues the passcode asynchronously just after checkout,
+                 so it can still be missing when the receipt is opened — and it may fail
+                 outright. Never print a blank code as if it were valid. --}}
+            <p class="section-title">Gate Access</p>
+            @if ($booking?->passcode)
+                <div class="gate">
+                    <div class="gate-label">Gate Pass Code</div>
+                    <div class="gate-code">{{ $booking->passcode }}</div>
+                    <div class="gate-note">Enter this code on the gate keypad. Valid for your stay dates only; it expires automatically at check-out.</div>
+                </div>
+            @else
+                <div class="gate gate-pending">
+                    <div class="gate-label">Gate Pass Code</div>
+                    <div class="gate-code gate-code-pending">Pending</div>
+                    <div class="gate-note">Your gate pass is still being issued. We will email it to
+                        {{ $order['customer_email'] ?: 'you' }} as soon as it is ready. Quote Booking ID
+                        <strong>{{ $order['reference'] }}</strong> if you need to contact us.</div>
+                </div>
+            @endif
 
             <p class="section-title">Customer</p>
             <table>

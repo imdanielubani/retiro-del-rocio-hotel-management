@@ -8,11 +8,14 @@ use Illuminate\Support\Str;
 class RestaurantReservation extends Model
 {
     protected $fillable = [
-        'code', 'reference', 'area', 'restaurant_table_id', 'table_label', 'occasion',
+        'code', 'reference', 'area', 'restaurant_table_id', 'table_label', 'floor', 'occasion',
         'guests', 'reserved_date', 'reserved_time', 'special_request',
         'customer_name', 'customer_email', 'customer_phone',
         'status', 'payment_status', 'fee', 'payment_method', 'paid_at',
     ];
+
+    /** The two floors a lounge guest can pick between. */
+    public const FLOORS = ['Rooftop', 'Ground floor'];
 
     protected $casts = [
         'guests' => 'integer',
@@ -44,6 +47,17 @@ class RestaurantReservation extends Model
     public function areaLabel(): string
     {
         return $this->area === 'lounge' ? 'Lounge' : 'Table Reservation';
+    }
+
+    public function isLounge(): bool
+    {
+        return $this->area === 'lounge';
+    }
+
+    /** Only lounge reservations carry a floor. */
+    public function floorLabel(): string
+    {
+        return $this->floor ?: '—';
     }
 
     public function guestsLabel(): string

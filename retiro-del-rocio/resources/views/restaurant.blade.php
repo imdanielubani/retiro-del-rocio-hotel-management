@@ -7,6 +7,7 @@
             'id' => $t->id, 'name' => $t->name, 'area' => $t->area,
             'capacity' => $t->capacity, 'shape' => $t->shape,
             'capacity_label' => $t->capacityLabel(),
+            'image_url' => $t->imageUrl(), // null → the card falls back to its icon
         ])->values();
 
         $restoSuccess = session('restaurant_success');
@@ -171,19 +172,98 @@
                         </label>
                     </div>
 
-                    {{-- Preferred table --}}
+                    {{-- Preferred table — horizontal carousel (mirrors the spa service picker)
+                         so any number of tables/lounges scroll instead of wrapping. --}}
                     <div class="mt-8">
                         <p class="text-body font-semibold text-white" x-text="area === 'lounge' ? 'Select Preferred Lounge' : 'Select Preferred Table'"></p>
+                        <div class="relative mt-4"
+                             x-data="{
+                                canLeft: false,
+                                canRight: true,
+                                refresh() {
+                                    const t = $refs.tableTrack;
+                                    if (!t) return;
+                                    this.canLeft = t.scrollLeft > 4;
+                                    this.canRight = (t.scrollLeft + t.clientWidth) < (t.scrollWidth - 4);
+                                },
+                                slide(dir) {
+                                    const t = $refs.tableTrack;
+                                    const card = t.querySelector('[data-table-card]');
+                                    const amount = card ? (card.offsetWidth + 12) : 300;
+                                    t.scrollBy({ left: dir * amount, behavior: 'smooth' });
+                                }
+                             }"
+                             x-init="$nextTick(() => refresh())"
+                             x-effect="area; areaTables.length; $nextTick(() => setTimeout(() => { $refs.tableTrack && ($refs.tableTrack.scrollLeft = 0); refresh(); }, 60))">
+                            {{-- Left arrow --}}
+                            <button type="button" @click="slide(-1)" x-show="canRight || canLeft" :disabled="!canLeft"
+                                    aria-label="Previous"
+                                    class="absolute -left-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#ba6d04] shadow-lg transition hover:bg-[#fff3e0] disabled:cursor-not-allowed disabled:opacity-30 sm:flex">
+                                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                            </button>
+
+                            {{-- Track --}}
+                            <div x-ref="tableTrack" @scroll.debounce.50ms="refresh()"
+                                 class="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1">
+                                <template x-for="t in areaTables" :key="t.id">
+                                    <button type="button" data-table-card @click="selectTable(t.id)"
+                                            :aria-pressed="isTable(t.id)"
+                                            class="group flex w-[150px] shrink-0 snap-start flex-col overflow-hidden rounded-[14px] border text-left transition sm:w-[168px]"
+                                            :class="isTable(t.id) ? 'border-[#f38c00] bg-[#f38c00]/15' : 'border-white/10 bg-[#26261f] hover:border-white/30'">
+                                        {{-- Media --}}
+                                        <div class="relative flex h-[96px] w-full items-center justify-center overflow-hidden bg-[#1f1f1a]">
+                                            <template x-if="t.image_url">
+                                                <img :src="t.image_url" :alt="t.name" loading="lazy"
+                                                     class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]">
+                                            </template>
+                                            <template x-if="!t.image_url">
+                                                <svg class="size-10" :class="isTable(t.id) ? 'text-[#f38c00]' : 'text-white/55'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="7" y="7" width="10" height="10" rx="2"/>
+                                                    <path d="M10 4h4M10 20h4M4 10v4M20 10v4"/>
+                                                </svg>
+                                            </template>
+                                            {{-- Selected tick --}}
+                                            <span x-show="isTable(t.id)" x-cloak
+                                                  class="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-[#f38c00] text-white shadow">
+                                                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            </span>
+                                        </div>
+                                        {{-- Meta --}}
+                                        <div class="flex flex-col gap-0.5 px-3 py-2.5">
+                                            <span class="truncate text-label font-semibold text-white" x-text="t.name"></span>
+                                            <span class="text-label font-medium text-white/55" x-text="t.capacity_label"></span>
+                                        </div>
+                                    </button>
+                                </template>
+                            </div>
+
+                            {{-- Right arrow --}}
+                            <button type="button" @click="slide(1)" x-show="canRight || canLeft" :disabled="!canRight"
+                                    aria-label="Next"
+                                    class="absolute -right-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#ba6d04] shadow-lg transition hover:bg-[#fff3e0] disabled:cursor-not-allowed disabled:opacity-30 sm:flex">
+                                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Floor — lounge only. Guests pick Rooftop or Ground floor. --}}
+                    <div x-show="isLounge" x-cloak class="mt-8">
+                        <p class="text-body font-semibold text-white">Select Preferred Floor</p>
                         <div class="mt-4 flex flex-wrap gap-3">
-                            <template x-for="t in areaTables" :key="t.id">
-                                <button type="button" @click="selectTable(t.id)"
-                                        class="flex w-[120px] flex-col items-center gap-2 rounded-[14px] border p-4 transition"
-                                        :class="isTable(t.id) ? 'border-[#f38c00] bg-[#f38c00]/15' : 'border-white/10 bg-[#26261f] hover:border-white/30'">
-                                    <svg class="size-10" :class="isTable(t.id) ? 'text-[#f38c00]' : 'text-white/55'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="7" y="7" width="10" height="10" rx="2"/>
-                                        <path d="M10 4h4M10 20h4M4 10v4M20 10v4"/>
-                                    </svg>
-                                    <span class="text-label font-medium text-white/85" x-text="t.capacity_label"></span>
+                            <template x-for="f in floors" :key="f">
+                                <button type="button" @click="selectFloor(f)"
+                                        :aria-pressed="isFloor(f)"
+                                        class="flex min-w-[168px] flex-1 items-center gap-3 rounded-[14px] border px-4 py-3.5 text-left transition sm:flex-none"
+                                        :class="isFloor(f) ? 'border-[#f38c00] bg-[#f38c00]/15' : 'border-white/10 bg-[#26261f] hover:border-white/30'">
+                                    {{-- Radio dot --}}
+                                    <span class="flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition"
+                                          :class="isFloor(f) ? 'border-[#f38c00] bg-[#f38c00]' : 'border-white/35'">
+                                        <svg x-show="isFloor(f)" x-cloak class="size-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </span>
+                                    <span class="flex flex-col">
+                                        <span class="text-body font-semibold text-white" x-text="f"></span>
+                                        <span class="text-label text-white/50" x-text="f === 'Rooftop' ? 'Open-air, city views' : 'Indoor, street level'"></span>
+                                    </span>
                                 </button>
                             </template>
                         </div>
@@ -199,8 +279,14 @@
                     <h3 class="mt-9 text-h3 font-semibold tracking-tight text-white">Reservation Summary</h3>
                     <p class="mt-2 max-w-[760px] text-body leading-relaxed text-white/55">{{ cms('restaurant.summary_text') }}</p>
                     <div class="mt-4 flex flex-col gap-6 rounded-[16px] border border-white/10 bg-[#26261f] p-6 sm:flex-row sm:items-center">
-                        <div class="flex size-[120px] shrink-0 items-center justify-center rounded-[16px] bg-[#f38c00]">
-                            <svg class="size-16 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 4h4M10 20h4M4 10v4M20 10v4"/></svg>
+                        {{-- Shows the chosen table's photo once picked, else the icon tile. --}}
+                        <div class="flex size-[120px] shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-[#f38c00]">
+                            <template x-if="selectedTable && selectedTable.image_url">
+                                <img :src="selectedTable.image_url" :alt="selectedTable.name" class="h-full w-full object-cover">
+                            </template>
+                            <template x-if="!(selectedTable && selectedTable.image_url)">
+                                <svg class="size-16 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 4h4M10 20h4M4 10v4M20 10v4"/></svg>
+                            </template>
                         </div>
                         <div class="flex flex-1 flex-col gap-3">
                             <p class="text-title font-semibold text-white">Details of Reservation</p>
@@ -221,8 +307,14 @@
                     <div class="mt-7 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.1fr]">
                         {{-- Order details --}}
                         <div class="flex flex-col gap-5">
-                            <div class="flex items-center justify-center rounded-[16px] bg-[#f38c00] py-9">
-                                <svg class="size-24 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 4h4M10 20h4M4 10v4M20 10v4"/></svg>
+                            {{-- Photo of the chosen table/lounge; icon tile only when it has none. --}}
+                            <div class="flex h-[200px] items-center justify-center overflow-hidden rounded-[16px] bg-[#f38c00]">
+                                <template x-if="selectedTable && selectedTable.image_url">
+                                    <img :src="selectedTable.image_url" :alt="selectedTable.name" class="h-full w-full object-cover">
+                                </template>
+                                <template x-if="!(selectedTable && selectedTable.image_url)">
+                                    <svg class="size-24 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 4h4M10 20h4M4 10v4M20 10v4"/></svg>
+                                </template>
                             </div>
                             <div class="rounded-[16px] border border-white/10 bg-[#26261f] p-6">
                                 <p class="text-title font-semibold text-white">Order Details</p>
@@ -231,7 +323,8 @@
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Reservation Type</span><span x-text="area === 'lounge' ? 'Lounge' : 'Table Reservation'"></span></p>
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Occasion</span><span x-text="occasion"></span></p>
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Number of Guest</span><span x-text="guests + ' Guest' + (guests > 1 ? 's' : '')"></span></p>
-                                    <p class="flex justify-between gap-3"><span class="text-white/50">Table</span><span x-text="selectedTable ? selectedTable.name : '—'"></span></p>
+                                    <p class="flex justify-between gap-3"><span class="text-white/50" x-text="isLounge ? 'Lounge' : 'Table'"></span><span x-text="selectedTable ? selectedTable.name : '—'"></span></p>
+                                    <p x-show="isLounge" x-cloak class="flex justify-between gap-3"><span class="text-white/50">Floor</span><span x-text="floor || '—'"></span></p>
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Date</span><span x-text="prettyDate"></span></p>
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Time</span><span x-text="prettyTime"></span></p>
                                 </div>
@@ -282,7 +375,7 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-3">
-                                <button type="button" @click="pay()" class="flex h-[58px] flex-1 items-center justify-center rounded-[10px] bg-[#f38c00] text-body-lg font-semibold text-white transition hover:bg-[#dd7f00]">Confirm &amp; Pay <span class="ml-1.5" x-text="money(fee)"></span></button>
+                                <button type="button" @click="pay()" class="flex h-[58px] flex-1 items-center justify-center rounded-[10px] bg-[#f38c00] text-body-lg font-semibold text-white transition hover:bg-[#dd7f00]">Confirm &amp; Pay </span></button>
                                 <button type="button" @click="backToReserve()" class="h-[58px] rounded-[10px] border border-white/30 px-6 text-body font-medium text-white transition hover:bg-white/10">Back</button>
                             </div>
                         </div>
@@ -296,9 +389,28 @@
                         <div class="flex flex-col gap-7 text-white">
                             <p class="text-2xl font-semibold tracking-tight lg:text-h3">Order Details</p>
 
+                            {{-- Chosen table/lounge, with its photo when one is set. --}}
+                            <div x-show="success && (success.table_image || (success.table_label && success.table_label !== '—'))"
+                                 class="flex items-center gap-4 rounded-[14px] border border-white/10 bg-[#26261f] p-3">
+                                <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-[#1f1f1a]">
+                                    <template x-if="success && success.table_image">
+                                        <img :src="success.table_image" :alt="success.table_label" class="h-full w-full object-cover">
+                                    </template>
+                                    <template x-if="!(success && success.table_image)">
+                                        <svg class="size-8 text-white/55" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 4h4M10 20h4M4 10v4M20 10v4"/></svg>
+                                    </template>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-label uppercase tracking-wide text-white/45" x-text="success ? success.area_label : ''"></span>
+                                    <span class="text-body-lg font-semibold text-white" x-text="success ? success.table_label : ''"></span>
+                                    <span x-show="success && success.floor" x-cloak class="text-label text-[#f38c00]" x-text="success ? success.floor : ''"></span>
+                                </div>
+                            </div>
+
                             <div class="flex flex-col gap-2.5 text-body lg:text-body-lg">
                                 <p class="font-medium text-[#f38c00]">Reservation Details</p>
                                 <div class="flex items-center justify-between"><span>Reservation Type:</span><span class="font-medium" x-text="success ? success.occasion : ''"></span></div>
+                                <div x-show="success && success.floor" x-cloak class="flex items-center justify-between"><span>Floor:</span><span class="font-medium" x-text="success ? success.floor : ''"></span></div>
                                 <div class="flex items-center justify-between"><span>Number of Guest:</span><span class="font-medium" x-text="success ? success.guests_label : ''"></span></div>
                                 <div class="flex items-center justify-between"><span>Date:</span><span class="font-medium" x-text="success ? success.date : ''"></span></div>
                                 <div class="flex items-center justify-between"><span>Time:</span><span class="font-medium" x-text="success ? success.time : ''"></span></div>
@@ -347,6 +459,7 @@
                     <input type="hidden" name="reference" :value="payReference">
                     <input type="hidden" name="area" :value="area">
                     <input type="hidden" name="table_id" :value="tableId">
+                    <input type="hidden" name="floor" :value="floorPayload">
                     <input type="hidden" name="occasion" :value="occasion">
                     <input type="hidden" name="guests" :value="guests">
                     <input type="hidden" name="date" :value="date">

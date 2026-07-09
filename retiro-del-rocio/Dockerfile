@@ -52,6 +52,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction \
 # Create upload dirs + the public/storage symlink at build time (backstop in case
 # the runtime entrypoint link ever fails) so uploaded CMS/room/vehicle images serve.
 RUN mkdir -p storage/app/public/cms storage/app/public/rooms storage/app/public/vehicles \
+        storage/app/public/spa storage/app/public/movies storage/app/public/snacks \
+        storage/app/public/restaurant \
     && php artisan storage:link || true
 
 # Boot tasks (storage:link, migrate, config/route/view cache) run on container start.

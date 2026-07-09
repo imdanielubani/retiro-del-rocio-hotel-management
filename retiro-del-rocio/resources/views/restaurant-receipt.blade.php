@@ -33,11 +33,16 @@
         <div class="body">
             <p style="margin:0 0 4px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:.5px;">Reservation receipt</p>
             <div class="code">{{ $r->code }}</div>
+            @if ($r->table?->imageUrl())
+                <img src="{{ $r->table->imageUrl() }}" alt="{{ $r->table_label }}"
+                     style="margin-top:16px;width:100%;max-height:180px;object-fit:cover;border-radius:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+            @endif
             <table>
                 <tr><td class="k">Guest</td><td class="v">{{ $r->customer_name ?: '—' }}</td></tr>
                 <tr><td class="k">Email</td><td class="v">{{ $r->customer_email ?: '—' }}</td></tr>
                 @if ($r->customer_phone)<tr><td class="k">Phone</td><td class="v">{{ $r->customer_phone }}</td></tr>@endif
                 <tr><td class="k">Type</td><td class="v">{{ $r->areaLabel() }}@if ($r->table_label) · {{ $r->table_label }}@endif</td></tr>
+                @if ($r->floor)<tr><td class="k">Floor</td><td class="v">{{ $r->floor }}</td></tr>@endif
                 <tr><td class="k">Occasion</td><td class="v">{{ $r->occasion ?: '—' }}</td></tr>
                 <tr><td class="k">Party size</td><td class="v">{{ $r->guestsLabel() }}</td></tr>
                 <tr><td class="k">Date</td><td class="v">{{ optional($r->reserved_date)->format('M j, Y') ?: '—' }}</td></tr>

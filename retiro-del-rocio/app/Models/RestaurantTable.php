@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class RestaurantTable extends Model
 {
     protected $fillable = [
-        'name', 'area', 'capacity', 'shape', 'description', 'is_active', 'sort_order',
+        'name', 'area', 'capacity', 'shape', 'description', 'image', 'is_active', 'sort_order',
     ];
 
     protected $casts = [
@@ -44,5 +44,15 @@ class RestaurantTable extends Model
     public function capacityLabel(): string
     {
         return $this->capacity.' '.\Illuminate\Support\Str::plural('Guest', $this->capacity);
+    }
+
+    /**
+     * Public URL for the table/lounge photo, or null when none is set so the
+     * UI can fall back to its icon. Handles both seeded "images/..." assets and
+     * files uploaded to the public disk.
+     */
+    public function imageUrl(): ?string
+    {
+        return SiteContent::imageUrl($this->image);
     }
 }
