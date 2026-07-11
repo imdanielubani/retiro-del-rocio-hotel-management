@@ -946,7 +946,21 @@ Route::post('contact-us', function () {
     ]);
 })->name('contact.submit');
 
-Route::prefix('admin')->name('admin.')->group(function () {
+// Admin dashboard. Served from its own sub-domain (ADMIN_DOMAIN) in
+// staging/production; path-based (/admin) locally when no domain is set. Route
+// names stay `admin.*` in both modes, so every route('admin.…') keeps working
+// and /admin simply stops resolving on the public domain once ADMIN_DOMAIN is
+// configured.
+$adminDomain = config('app.admin_domain');
+$adminRoutes = Route::name('admin.');
+
+if ($adminDomain) {
+    $adminRoutes->domain($adminDomain);
+} else {
+    $adminRoutes->prefix('admin');
+}
+
+$adminRoutes->group(function () {
     // Guest-only authentication screens.
     Route::middleware('guest')->group(function () {
         Route::get('login', Login::class)->name('login');

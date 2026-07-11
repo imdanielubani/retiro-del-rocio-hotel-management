@@ -56,6 +56,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Sub-domain routing
+    |--------------------------------------------------------------------------
+    |
+    | When set, the admin dashboard and the API are served from their own
+    | sub-domains (e.g. admin.retirodelrocio.com / api.retirodelrocio.com).
+    | Leave EMPTY for local development — the app then falls back to path-based
+    | routing (/admin and /api/v1) so `php artisan serve` works with no DNS.
+    |
+    */
+
+    'admin_domain' => env('ADMIN_DOMAIN'),
+
+    'api_domain' => env('API_DOMAIN'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
