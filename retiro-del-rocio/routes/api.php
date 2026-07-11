@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\TabletController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,9 +41,29 @@ $api->group(function () {
     Route::get('app/config', [AppConfigController::class, 'show'])
         ->name('api.v1.app.config');
 
+    // Staff session check — authenticated by the staff JWT (not the device token).
+    Route::get('staff/me', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+
+        return response()->json(['data' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->getRoleNames()->values(),
+        ]]);
+    })->middleware('jwt')->name('api.v1.staff.me');
+
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:6,1')
         ->name('api.v1.auth.login');
+
+    // OTP password reset (tablet app): request code → verify → set new password.
+    Route::post('auth/forgot-password', [PasswordResetController::class, 'sendOtp'])
+        ->middleware('throttle:5,1')->name('api.v1.auth.forgot-password');
+    Route::post('auth/verify-otp', [PasswordResetController::class, 'verifyOtp'])
+        ->middleware('throttle:10,1')->name('api.v1.auth.verify-otp');
+    Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])
+        ->middleware('throttle:10,1')->name('api.v1.auth.reset-password');
 
     // Tablet provisioning — public, authenticated by the QR's provision token.
     Route::post('tablets/provision', [TabletController::class, 'provision'])
@@ -57,6 +78,9 @@ $api->group(function () {
         // Device self-reporting (called by the tablet with its device token).
         Route::post('tablets/heartbeat', [TabletController::class, 'heartbeat'])->name('api.v1.tablets.heartbeat');
         Route::post('tablets/sync', [TabletController::class, 'sync'])->name('api.v1.tablets.sync');
+
+        // The tablet's live room occupancy + checked-in guest (guest welcome).
+        Route::get('tablets/room-status', [TabletController::class, 'roomStatus'])->name('api.v1.tablets.room-status');
 
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])

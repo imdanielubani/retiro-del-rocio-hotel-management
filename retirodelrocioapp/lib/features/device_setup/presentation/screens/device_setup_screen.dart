@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retirodelrocioapp/app/app_router.dart';
-import 'package:retirodelrocioapp/core/media/ambient_video_background.dart';
-import 'package:retirodelrocioapp/core/media/ambient_video_provider.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
@@ -15,7 +12,7 @@ import 'package:retirodelrocioapp/features/device_setup/presentation/widgets/pai
 ///
 /// The tablet's "awaiting activation" screen: pair by scanning the QR issued
 /// at reception, or by typing the short setup code.
-class DeviceSetupScreen extends ConsumerWidget {
+class DeviceSetupScreen extends StatelessWidget {
   const DeviceSetupScreen({super.key});
 
   Future<void> _scanQr(BuildContext context) async {
@@ -42,17 +39,14 @@ class DeviceSetupScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final video = ref.watch(ambientVideoProvider).value;
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          AmbientVideoBackground(
-            controller: video,
-            fallback: Image.asset('assets/images/12375.jpg', fit: BoxFit.cover),
-          ),
+          // Static room image (no video here) per the Figma design.
+          Image.asset('assets/images/12375.jpg', fit: BoxFit.cover),
           const ColoredBox(color: AppColors.scrim),
           Center(
             child: Column(
@@ -60,8 +54,8 @@ class DeviceSetupScreen extends ConsumerWidget {
               children: [
                 Image.asset(
                   'assets/icons/Rociologosetup.png',
-                  width: 150,
-                  height: 150,
+                  width: 152,
+                  height: 152,
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 6),

@@ -159,7 +159,7 @@
             ['key' => 'website-cms', 'label' => 'Website CMS', 'icon' => 'cms', 'children' => [
                 ['label' => 'Contents', 'href' => route('admin.cms.index'), 'active' => request()->routeIs('admin.cms.*')],
             ]],
-            ['label' => 'Roles & Permissions', 'icon' => 'roles', 'href' => '#'],
+            ['label' => 'Roles & Permissions', 'icon' => 'roles', 'href' => route('admin.access.roles'), 'active' => request()->routeIs('admin.access.*')],
             ['label' => 'Settings', 'icon' => 'settings', 'href' => '#'],
         ]],
     ];

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/device_setup/presentation/screens/device_setup_screen.dart';
@@ -6,41 +7,53 @@ import 'package:retirodelrocioapp/features/onboarding/presentation/screens/onboa
 import 'package:retirodelrocioapp/features/splash/presentation/screens/splash_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/presentation/screens/welcome_screen.dart';
 
-/// Central navigation graph for the tablet app.
+/// The already-paired device loaded from disk at startup (null if unpaired).
+/// Overridden in `main()` after reading [DeviceSessionStore].
+final bootstrapDeviceProvider = Provider<ProvisionedDevice?>((ref) => null);
+
+/// Central navigation graph.
 ///
-/// Linear pairing flow: splash → onboarding → device setup → welcome.
-final appRouter = GoRouter(
-  initialLocation: Routes.splash,
-  routes: [
-    GoRoute(
-      path: Routes.splash,
-      builder: (context, state) => const SplashScreen(),
-    ),
-    GoRoute(
-      path: Routes.onboarding,
-      pageBuilder: (context, state) => CustomTransitionPage(
-        key: state.pageKey,
-        transitionDuration: const Duration(milliseconds: 600),
-        child: const OnboardingScreen(),
-        transitionsBuilder: (context, animation, _, child) =>
-            FadeTransition(opacity: animation, child: child),
+/// First-time flow: splash → onboarding → device setup → welcome.
+/// Once a tablet is paired, it is persisted, so on every subsequent launch the
+/// app **boots straight to the welcome screen** and stays there.
+final routerProvider = Provider<GoRouter>((ref) {
+  final paired = ref.read(bootstrapDeviceProvider);
+
+  return GoRouter(
+    initialLocation: paired != null ? Routes.welcome : Routes.splash,
+    routes: [
+      GoRoute(
+        path: Routes.splash,
+        builder: (context, state) => const SplashScreen(),
       ),
-    ),
-    GoRoute(
-      path: Routes.setup,
-      builder: (context, state) => const DeviceSetupScreen(),
-    ),
-    GoRoute(
-      path: Routes.welcome,
-      builder: (context, state) {
-        final device = state.extra;
-        // Guard against a direct/deep navigation without a paired device.
-        if (device is! ProvisionedDevice) return const DeviceSetupScreen();
-        return WelcomeScreen(device: device);
-      },
-    ),
-  ],
-);
+      GoRoute(
+        path: Routes.onboarding,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 600),
+          child: const OnboardingScreen(),
+          transitionsBuilder: (context, animation, _, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      ),
+      GoRoute(
+        path: Routes.setup,
+        builder: (context, state) => const DeviceSetupScreen(),
+      ),
+      GoRoute(
+        path: Routes.welcome,
+        builder: (context, state) {
+          // Prefer the device passed on pairing; fall back to the persisted one.
+          final device = state.extra is ProvisionedDevice
+              ? state.extra as ProvisionedDevice
+              : paired;
+          if (device == null) return const DeviceSetupScreen();
+          return WelcomeScreen(device: device);
+        },
+      ),
+    ],
+  );
+});
 
 /// Route paths, referenced instead of raw strings.
 abstract final class Routes {

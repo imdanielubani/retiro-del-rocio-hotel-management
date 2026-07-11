@@ -7,10 +7,17 @@ import 'package:retirodelrocioapp/core/media/ambient_video_background.dart';
 import 'package:retirodelrocioapp/core/media/ambient_video_provider.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
+import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
+import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
+import 'package:retirodelrocioapp/features/authentication/presentation/screens/staff_dashboard_screen.dart';
+import 'package:retirodelrocioapp/features/authentication/presentation/screens/staff_login_screen.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/device_setup/presentation/widgets/allocation_chip.dart';
+import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
+import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/weather.dart';
+import 'package:retirodelrocioapp/features/welcome/presentation/widgets/guest_welcome_view.dart';
 import 'package:video_player/video_player.dart';
 
 /// 0.9 — Role / Welcome display (Figma node 75:3012).
@@ -28,23 +35,6 @@ class WelcomeScreen extends ConsumerStatefulWidget {
 }
 
 class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
-  Timer? _clock;
-  DateTime _now = DateTime.now();
-
-  @override
-  void initState() {
-    super.initState();
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _now = DateTime.now());
-    });
-  }
-
-  @override
-  void dispose() {
-    _clock?.cancel();
-    super.dispose();
-  }
-
   void _toggleMute(VideoPlayerController video) {
     video.setVolume(video.value.volume == 0 ? 1 : 0);
   }
@@ -58,14 +48,35 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   }
 
   void _explore() {
+    final device = widget.device;
+    if (device.isStaff) {
+      // Already signed in → straight to the role dashboard; otherwise sign in.
+      final session = ref.read(authControllerProvider).value;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: StaffLoginScreen.routeName),
+          builder: (_) => session != null
+              ? StaffDashboardScreen(session: session)
+              : StaffLoginScreen(device: device),
+        ),
+      );
+      return;
+    }
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => _ComingSoonScreen(device: widget.device)),
+      MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Guest Home')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final device = widget.device;
+
+    // When a guest is checked in, show the personalized guest welcome.
+    final status = ref.watch(roomStatusProvider(device.token)).value;
+    if (device.isGuest && status != null && status.isOccupied && status.hasGuest) {
+      return GuestWelcomeView(status: status);
+    }
+
     final video = ref.watch(ambientVideoProvider).value;
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -77,15 +88,19 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             fallback: Image.asset('assets/images/12375.jpg', fit: BoxFit.cover),
           ),
           const ColoredBox(color: Color(0x99000000)),
-          Positioned(left: 64, right: 64, top: 64, child: _mediaBar(video)),
+          Positioned(left: 64, right: 64, top: 24, child: _mediaBar(video)),
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(vertical: 150),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset('assets/images/Rocio Logo Icon 1.png',
-                      width: 74, height: 38, fit: BoxFit.contain),
+                  Image.asset(
+                    'assets/images/Rocio Logo Icon 1.png',
+                    width: 74,
+                    height: 38,
+                    fit: BoxFit.contain,
+                  ),
                   const SizedBox(height: 25),
                   Text(
                     'WELCOME TO',
@@ -117,9 +132,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   const SizedBox(height: 22),
                   AllocationChip(device: device),
                   const SizedBox(height: 18),
-                  if (device.isGuest) _guestAvailability(),
+                  if (device.isGuest) _guestAvailability(status),
                   const SizedBox(height: 30),
-                  _infoRow(ref.watch(weatherProvider).value),
+                  _LiveInfoRow(weather: ref.watch(weatherProvider).value),
                   const SizedBox(height: 34),
                   _exploreButton(),
                 ],
@@ -133,32 +148,33 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
   Widget _mediaBar(VideoPlayerController? video) {
     Widget bar(bool muted, bool playing) => Container(
-          height: 63,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(100),
+      height: 63,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _circleControl(
+            muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+            video == null ? () {} : () => _toggleMute(video),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _circleControl(
-                muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                video == null ? () {} : () => _toggleMute(video),
-              ),
-              _pillControl(
-                playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                playing ? 'Pause' : 'Play',
-                video == null ? () {} : () => _togglePlay(video),
-              ),
-            ],
+          _pillControl(
+            playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            playing ? 'Pause' : 'Play',
+            video == null ? () {} : () => _togglePlay(video),
           ),
-        );
+        ],
+      ),
+    );
 
     if (video == null) return bar(true, true);
     return AnimatedBuilder(
       animation: video,
-      builder: (context, _) => bar(video.value.volume == 0, video.value.isPlaying),
+      builder: (context, _) =>
+          bar(video.value.volume == 0, video.value.isPlaying),
     );
   }
 
@@ -192,9 +208,14 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             children: [
               Icon(icon, size: 14, color: Colors.white),
               const SizedBox(width: 8),
-              Text(label,
-                  style: AppTypography.style(
-                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+              Text(
+                label,
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -202,7 +223,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     );
   }
 
-  Widget _guestAvailability() {
+  Widget _guestAvailability(RoomStatus? status) {
+    final occupied = status?.isOccupied ?? false;
+    final color = occupied ? const Color(0xFFF87171) : AppColors.success;
+
     return Column(
       children: [
         Row(
@@ -211,14 +235,15 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             Container(
               width: 10,
               height: 10,
-              decoration: const BoxDecoration(
-                  color: AppColors.success, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 8),
             Text(
-              'This room is currently available.',
+              occupied
+                  ? 'This room is currently occupied.'
+                  : 'This room is currently available.',
               style: AppTypography.style(
-                color: AppColors.success,
+                color: color,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -235,7 +260,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             ),
             children: [
               const TextSpan(
-                  text: 'If you have a reservation, please\ncomplete your check-in at '),
+                text:
+                    'If you have a reservation, please\ncomplete your check-in at ',
+              ),
               TextSpan(
                 text: 'Reception.',
                 style: AppTypography.style(
@@ -252,7 +279,75 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     );
   }
 
-  Widget _infoRow(Weather? weather) {
+  Widget _exploreButton() {
+    return Material(
+      color: AppColors.gold,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: _explore,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.device.isStaff ? 'Sign In' : 'Explore',
+                style: AppTypography.style(
+                  color: AppColors.onGold,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.48,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: AppColors.onGold,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The clock + date + weather row. Owns its own 1-second ticker so **only this
+/// small widget** rebuilds each second — the rest of the welcome screen stays
+/// put (no layout jitter). Tabular figures keep the digits a fixed width.
+class _LiveInfoRow extends StatefulWidget {
+  const _LiveInfoRow({required this.weather});
+
+  final Weather? weather;
+
+  @override
+  State<_LiveInfoRow> createState() => _LiveInfoRowState();
+}
+
+class _LiveInfoRowState extends State<_LiveInfoRow> {
+  static const List<FontFeature> _tabular = [FontFeature.tabularFigures()];
+
+  Timer? _timer;
+  DateTime _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -266,16 +361,20 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
           ),
         ),
         _dot(),
-        _weatherCard(weather),
+        _weatherCard(widget.weather),
       ],
     );
   }
 
   Widget _dot() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text('·',
-            style: AppTypography.style(
-                color: Colors.white.withValues(alpha: 0.2), fontSize: 20)),
+        child: Text(
+          '·',
+          style: AppTypography.style(
+            color: Colors.white.withValues(alpha: 0.2),
+            fontSize: 20,
+          ),
+        ),
       );
 
   Widget _clockCard() {
@@ -296,7 +395,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               fontSize: 32,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.28,
-            ),
+            ).copyWith(fontFeatures: _tabular),
           ),
           const SizedBox(width: 6),
           Padding(
@@ -308,7 +407,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.64,
-              ),
+              ).copyWith(fontFeatures: _tabular),
             ),
           ),
           const SizedBox(width: 4),
@@ -343,71 +442,24 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(weather?.temperatureLabel ?? '--°C',
-                  style: AppTypography.style(
-                      color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-              Text(weather?.subtitle ?? 'Loading…',
-                  style: AppTypography.style(
-                      color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
+              Text(
+                weather?.temperatureLabel ?? '--°C',
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                weather?.subtitle ?? 'Loading…',
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 11,
+                ),
+              ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _exploreButton() {
-    return Material(
-      color: AppColors.gold,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: _explore,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.device.isStaff ? 'Sign In' : 'Explore',
-                style: AppTypography.style(
-                  color: AppColors.onGold,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.48,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Icon(Icons.arrow_forward_rounded, color: AppColors.onGold, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Temporary landing for Explore / Sign In — the guest home & staff login
-/// screens replace this next.
-class _ComingSoonScreen extends StatelessWidget {
-  const _ComingSoonScreen({required this.device});
-
-  final ProvisionedDevice device;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Text(
-          device.isStaff ? 'Staff Sign In — coming next' : 'Guest Home — coming next',
-          style: AppTypography.style(
-              color: Colors.white.withValues(alpha: 0.6), fontSize: 18),
-        ),
       ),
     );
   }

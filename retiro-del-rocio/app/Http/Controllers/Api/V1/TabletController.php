@@ -11,6 +11,7 @@ use App\Http\Resources\DeviceResource;
 use App\Models\Device;
 use App\Models\User;
 use App\Services\DeviceCommandService;
+use App\Services\JwtService;
 use Closure;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -115,11 +116,22 @@ class TabletController extends Controller
 
         $device->log('login', $user->name.' signed in on the '.$device->role.' tablet.');
 
-        $token = $user->createToken('staff:'.$device->device_code, ['staff'])->plainTextToken;
+        // Issue a short-lived JWT (TTL from config/jwt.php → .env). Its exp claim
+        // drives the tablet app's session-expiring warning + timeout.
+        $jwt = app(JwtService::class)->issue([
+            'sub' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $device->role,
+            'roles' => $user->getRoleNames()->values()->all(),
+            'device' => $device->device_code,
+        ]);
 
         return response()->json([
-            'token' => $token,
+            'token' => $jwt['token'],
             'token_type' => 'Bearer',
+            'expires_in' => $jwt['expires_in'],
+            'expires_at' => \Illuminate\Support\Carbon::createFromTimestamp($jwt['expires_at'])->toIso8601String(),
             'role' => $device->role,
             'user' => [
                 'id' => $user->id,
@@ -177,6 +189,38 @@ class TabletController extends Controller
             ])->values(),
             'device' => new DeviceResource($device),
         ]);
+    }
+
+    /**
+     * GET /tablets/room-status — the tablet's current room occupancy and, when
+     * a guest is checked in, their booking details. Drives the guest welcome.
+     */
+    public function roomStatus(Request $request): JsonResponse
+    {
+        $device = $this->device($request);
+        $unit = $device->roomUnit()->with(['room', 'booking'])->first();
+
+        if (! $unit) {
+            return response()->json(['data' => [
+                'occupancy' => 'unassigned',
+                'suite_name' => null,
+                'room_number' => null,
+                'guest' => null,
+            ]]);
+        }
+
+        $booking = $unit->status === 'occupied' ? $unit->booking : null;
+
+        return response()->json(['data' => [
+            'occupancy' => $unit->status, // available | occupied | maintenance
+            'suite_name' => optional($unit->room)->name,
+            'room_number' => $unit->number,
+            'guest' => $booking ? [
+                'name' => $booking->customer_name,
+                'check_in' => optional($booking->check_in)->toDateString(),
+                'check_out' => optional($booking->check_out)->toDateString(),
+            ] : null,
+        ]]);
     }
 
     public function restart(Request $request, DeviceCommandService $commands): JsonResponse

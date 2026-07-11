@@ -111,7 +111,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget _header() {
     return Positioned(
       left: _margin,
-      top: 72,
+      top: 64,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -153,21 +153,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _topControls(VideoPlayerController? video) {
     Widget controls(bool muted, bool playing) => Row(
-          children: [
-            _CircleButton(
-              icon: muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-              onTap: video == null ? () {} : () => _toggleMute(video),
-            ),
-            const SizedBox(width: 12),
-            _PillButton(
-              icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              label: playing ? 'Pause' : 'Play',
-              onTap: video == null ? () {} : () => _togglePlay(video),
-            ),
-            const SizedBox(width: 12),
-            _SkipButton(onTap: _finish),
-          ],
-        );
+      children: [
+        _CircleButton(
+          icon: muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+          onTap: video == null ? () {} : () => _toggleMute(video),
+        ),
+        const SizedBox(width: 12),
+        _PillButton(
+          icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          label: playing ? 'Pause' : 'Play',
+          onTap: video == null ? () {} : () => _togglePlay(video),
+        ),
+        const SizedBox(width: 12),
+        _SkipButton(onTap: _finish),
+      ],
+    );
 
     return Positioned(
       right: _margin,
