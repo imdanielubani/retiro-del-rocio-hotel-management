@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for API calls and streaming the Cloudinary onboarding video. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Required to scan the setup QR code during device pairing. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
         android:label="Retiro Del Rocio"
         android:name="${applicationName}"

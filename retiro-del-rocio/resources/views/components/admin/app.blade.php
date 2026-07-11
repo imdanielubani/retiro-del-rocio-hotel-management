@@ -133,8 +133,8 @@
             ['label' => 'Departments', 'icon' => 'dashboard', 'href' => '#'],
         ]],
         ['label' => 'Device Management', 'items' => [
-            ['label' => 'Tablets', 'icon' => 'tablet', 'href' => '#'],
-            ['label' => 'Smart TVs', 'icon' => 'tv', 'href' => '#'],
+            ['label' => 'Tablets', 'icon' => 'tablet', 'href' => route('admin.devices.tablets'), 'active' => request()->routeIs('admin.devices.tablets') || request()->routeIs('admin.devices.dashboard') || request()->routeIs('admin.devices.show')],
+            ['label' => 'Smart TVs', 'icon' => 'tv', 'href' => route('admin.devices.smart-tvs'), 'active' => request()->routeIs('admin.devices.smart-tvs')],
         ]],
         ['label' => 'Access Control', 'items' => [
             ['label' => 'Gate Pass', 'icon' => 'lock', 'href' => route('admin.ttlock.locks'), 'active' => request()->routeIs('admin.ttlock.*')],

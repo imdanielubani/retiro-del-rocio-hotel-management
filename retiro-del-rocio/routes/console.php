@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 // Clear out expired (unbooked) cinema seat holds every 10 minutes so the
 // holds table doesn't accumulate stale rows. Booked seats are never touched.
 Schedule::command('cinema:prune-seat-holds')->everyTenMinutes()->withoutOverlapping();
+
+// Mark devices Offline when their heartbeat goes stale (timeout in config/devices.php).
+Schedule::command('devices:sweep-offline')->everyMinute()->withoutOverlapping();

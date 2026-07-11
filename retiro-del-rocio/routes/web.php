@@ -1026,5 +1026,11 @@ $adminRoutes->group(function () {
 
         // Access Control — TTLock smart locks (lock mapping + passcode dashboard)
         Route::get('access-control/ttlock', App\Livewire\Admin\Ttlock\Locks::class)->name('ttlock.locks');
+
+        // Device Management — tablets, smart TVs + fleet dashboard
+        Route::get('devices', App\Livewire\Admin\Devices\Dashboard::class)->middleware('permission:device.view')->name('devices.dashboard');
+        Route::get('devices/tablets', App\Livewire\Admin\Devices\Tablets::class)->middleware('permission:device.view')->name('devices.tablets');
+        Route::get('devices/smart-tvs', App\Livewire\Admin\Devices\SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
+        Route::get('devices/{device}', App\Livewire\Admin\Devices\Show::class)->whereNumber('device')->middleware('permission:device.view')->name('devices.show');
     });
 });

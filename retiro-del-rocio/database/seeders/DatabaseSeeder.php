@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             RestaurantTableSeeder::class,
             MovieSeeder::class,
             CinemaSnackSeeder::class,
+            DeviceManagementSeeder::class,
+            StaffRolesSeeder::class,
         ]);
     }
 }
