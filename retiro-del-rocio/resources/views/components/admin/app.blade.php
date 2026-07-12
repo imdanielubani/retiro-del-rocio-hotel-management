@@ -129,7 +129,7 @@
                 ['label' => 'Service History', 'href' => '#'],
             ]],
             ['label' => 'Security', 'icon' => 'shield', 'href' => '#'],
-            ['label' => 'Staff', 'icon' => 'user', 'href' => '#'],
+            ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users')],
             ['label' => 'Departments', 'icon' => 'dashboard', 'href' => '#'],
         ]],
         ['label' => 'Device Management', 'items' => [
@@ -160,7 +160,7 @@
                 ['label' => 'Contents', 'href' => route('admin.cms.index'), 'active' => request()->routeIs('admin.cms.*')],
             ]],
             ['label' => 'Roles & Permissions', 'icon' => 'roles', 'href' => route('admin.access.roles'), 'active' => request()->routeIs('admin.access.*')],
-            ['label' => 'Settings', 'icon' => 'settings', 'href' => '#'],
+            ['label' => 'Settings', 'icon' => 'settings', 'href' => route('admin.settings'), 'active' => request()->routeIs('admin.settings')],
         ]],
     ];
 

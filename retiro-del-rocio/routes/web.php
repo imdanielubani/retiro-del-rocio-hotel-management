@@ -1033,7 +1033,11 @@ $adminRoutes->group(function () {
         Route::get('devices/smart-tvs', App\Livewire\Admin\Devices\SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
         Route::get('devices/{device}', App\Livewire\Admin\Devices\Show::class)->whereNumber('device')->middleware('permission:device.view')->name('devices.show');
 
-        // Administration — access control (roles & permissions)
+        // Administration — access control (users, roles & permissions)
+        Route::get('users', App\Livewire\Admin\Access\Users::class)->name('access.users');
         Route::get('roles-permissions', App\Livewire\Admin\Access\Roles::class)->name('access.roles');
+
+        // Administration — hotel information & front-desk policy
+        Route::get('settings', App\Livewire\Admin\Settings\Index::class)->name('settings');
     });
 });

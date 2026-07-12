@@ -75,6 +75,10 @@ $api->group(function () {
         Route::get('auth/me', [AuthController::class, 'me'])->name('api.v1.auth.me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
 
+        // The tablet re-checking its own pairing at launch. Declared before the
+        // `tablets/{code}` lookup below so "me" is not read as a device code.
+        Route::get('tablets/me', [TabletController::class, 'me'])->name('api.v1.tablets.me');
+
         // Device self-reporting (called by the tablet with its device token).
         Route::post('tablets/heartbeat', [TabletController::class, 'heartbeat'])->name('api.v1.tablets.heartbeat');
         Route::post('tablets/sync', [TabletController::class, 'sync'])->name('api.v1.tablets.sync');

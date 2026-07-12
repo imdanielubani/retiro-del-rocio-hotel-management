@@ -257,6 +257,16 @@ trait ManagesDevices
         }
 
         $device->log('deleted', 'Device removed.');
+
+        // Cut the tablet loose: revoking its tokens and clearing the pairing
+        // means the app can no longer authenticate and drops back to setup.
+        $device->tokens()->delete();
+        $device->forceFill([
+            'is_provisioned' => false,
+            'provisioned_at' => null,
+            'provision_token' => null,
+        ])->save();
+
         $device->delete();
 
         $this->dispatch('toast', type: 'success', message: $this->singular().' deleted.');

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:retirodelrocioapp/core/config/api_config.dart';
+import 'package:retirodelrocioapp/core/session/device_session_service.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
 /// Fetches the tablet's live room occupancy using its device token.
@@ -25,6 +26,14 @@ class RoomStatusRepository {
       );
       final data = (response.data?['data'] as Map?)?.cast<String, dynamic>();
       return data == null ? null : RoomStatus.fromJson(data);
+    } on DioException catch (error) {
+      // The tablet was deleted or unpaired in the dashboard — surface that so
+      // the app can drop back to device setup instead of polling a dead token.
+      if (DeviceSessionService.isRevokedResponse(error)) {
+        throw const DeviceRevokedException();
+      }
+      debugPrint('RoomStatusRepository: fetch failed — $error');
+      return null;
     } catch (error) {
       debugPrint('RoomStatusRepository: fetch failed — $error');
       return null;

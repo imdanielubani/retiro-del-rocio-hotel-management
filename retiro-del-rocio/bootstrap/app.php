@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // /api/v1 locally) so it can be domain-scoped in staging/production.
         apiPrefix: '',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {

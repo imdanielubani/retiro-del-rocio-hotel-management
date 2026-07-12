@@ -5,14 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:retirodelrocioapp/core/media/ambient_video_background.dart';
 import 'package:retirodelrocioapp/core/media/ambient_video_provider.dart';
+import 'package:retirodelrocioapp/core/session/device_revocation.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/screens/staff_dashboard_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/screens/staff_login_screen.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/device_setup/presentation/widgets/allocation_chip.dart';
+import 'package:retirodelrocioapp/features/welcome/application/room_realtime_provider.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
@@ -35,6 +36,13 @@ class WelcomeScreen extends ConsumerStatefulWidget {
 }
 
 class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
+  /// True once the checked-in guest has tapped Explore. Reset automatically the
+  /// moment the room stops being occupied (i.e. reception checks them out).
+  bool _explored = false;
+
+  /// Occupancy at the previous poll, so a check-out can be detected as an edge.
+  bool _wasCheckedIn = false;
+
   void _toggleMute(VideoPlayerController video) {
     video.setVolume(video.value.volume == 0 ? 1 : 0);
   }
@@ -62,19 +70,48 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       );
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Guest Home')),
-    );
+    // Guest tablet: reveal the checked-in guest's welcome. Kept in place rather
+    // than pushed, so a check-out simply drops back to this screen.
+    setState(() => _explored = true);
   }
 
   @override
   Widget build(BuildContext context) {
     final device = widget.device;
 
-    // When a guest is checked in, show the personalized guest welcome.
-    final status = ref.watch(roomStatusProvider(device.token)).value;
-    if (device.isGuest && status != null && status.isOccupied && status.hasGuest) {
-      return GuestWelcomeView(status: status);
+    // Listen for check-in / check-out on this room, so the tablet reacts the
+    // moment reception clicks. Held here — this screen stays mounted beneath the
+    // guest's own screens — and it merely accelerates the poll below.
+    ref.watch(roomRealtimeProvider(device));
+
+    // A tablet deleted from the admin dashboard loses its token: forget the
+    // pairing and go back to device setup rather than sit on a dead session.
+    final statusAsync = ref.watch(roomStatusProvider(device.token));
+    unpairIfRevoked(context, statusAsync);
+
+    final status = statusAsync.value;
+    final checkedIn =
+        device.isGuest &&
+        status != null &&
+        status.isOccupied &&
+        status.hasGuest;
+
+    // Reception checking the guest out drops the tablet straight back to this
+    // welcome screen — no one has to touch it. The guest may have pushed their
+    // home dashboard (and screens above it) on top of us, so tear those down:
+    // this screen is the authority on whether anyone is still checked in.
+    if (!checkedIn) _explored = false;
+    if (device.isGuest && _wasCheckedIn && !checkedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+      });
+    }
+    _wasCheckedIn = checkedIn;
+
+    // The guest's own screens are behind Explore: on check-in this screen just
+    // reports the room as occupied and offers the way in.
+    if (checkedIn && _explored) {
+      return GuestWelcomeView(device: device, status: status);
     }
 
     final video = ref.watch(ambientVideoProvider).value;
@@ -87,8 +124,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             controller: video,
             fallback: Image.asset('assets/images/12375.jpg', fit: BoxFit.cover),
           ),
-          const ColoredBox(color: Color(0x99000000)),
-          Positioned(left: 64, right: 64, top: 24, child: _mediaBar(video)),
+          // Same background overlay as the device setup screen.
+          const ColoredBox(color: AppColors.scrim),
+          // Figma 75:3012 — mute + play sit together in the top-right corner.
+          Positioned(right: 90, top: 49, child: _mediaControls(video)),
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(vertical: 150),
@@ -132,11 +171,15 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   const SizedBox(height: 22),
                   AllocationChip(device: device),
                   const SizedBox(height: 18),
-                  if (device.isGuest) _guestAvailability(status),
+                  if (device.isGuest) _guestAvailability(status, checkedIn),
                   const SizedBox(height: 30),
                   _LiveInfoRow(weather: ref.watch(weatherProvider).value),
-                  const SizedBox(height: 34),
-                  _exploreButton(),
+                  // A guest tablet only offers a way in once reception has
+                  // checked someone in; an empty room shows no button at all.
+                  if (device.isStaff || checkedIn) ...[
+                    const SizedBox(height: 34),
+                    _exploreButton(),
+                  ],
                 ],
               ),
             ),
@@ -146,42 +189,38 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     );
   }
 
-  Widget _mediaBar(VideoPlayerController? video) {
-    Widget bar(bool muted, bool playing) => Container(
-      height: 63,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _circleControl(
-            muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-            video == null ? () {} : () => _toggleMute(video),
-          ),
-          _pillControl(
-            playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            playing ? 'Pause' : 'Play',
-            video == null ? () {} : () => _togglePlay(video),
-          ),
-        ],
-      ),
+  /// The mute + play controls, sitting side by side (Figma 75:3012 / 194:28).
+  Widget _mediaControls(VideoPlayerController? video) {
+    Widget controls(bool muted, bool playing) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _circleControl(
+          muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+          video == null ? () {} : () => _toggleMute(video),
+        ),
+        const SizedBox(width: 12),
+        _pillControl(
+          playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          playing ? 'Pause' : 'Play',
+          video == null ? () {} : () => _togglePlay(video),
+        ),
+      ],
     );
 
-    if (video == null) return bar(true, true);
+    if (video == null) return controls(true, true);
     return AnimatedBuilder(
       animation: video,
       builder: (context, _) =>
-          bar(video.value.volume == 0, video.value.isPlaying),
+          controls(video.value.volume == 0, video.value.isPlaying),
     );
   }
 
   Widget _circleControl(IconData icon, VoidCallback onTap) {
     return Material(
       color: Colors.white.withValues(alpha: 0.12),
-      shape: const CircleBorder(),
+      shape: CircleBorder(
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+      ),
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
@@ -201,8 +240,15 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
-        child: Padding(
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 0.8,
+            ),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -223,7 +269,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     );
   }
 
-  Widget _guestAvailability(RoomStatus? status) {
+  Widget _guestAvailability(RoomStatus? status, bool checkedIn) {
     final occupied = status?.isOccupied ?? false;
     final color = occupied ? const Color(0xFFF87171) : AppColors.success;
 
@@ -251,30 +297,44 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
           ],
         ),
         const SizedBox(height: 5),
-        Text.rich(
-          TextSpan(
+
+        // The guest is checked in — point them at Explore instead of Reception.
+        if (checkedIn)
+          Text(
+            'Welcome, ${status!.guest!.name.split(' ').first}.\n'
+            'Tap Explore to open your suite.',
+            textAlign: TextAlign.center,
             style: AppTypography.style(
               color: Colors.white.withValues(alpha: 0.42),
               fontSize: 14,
               height: 1.8,
             ),
-            children: [
-              const TextSpan(
-                text:
-                    'If you have a reservation, please\ncomplete your check-in at ',
+          )
+        else
+          Text.rich(
+            TextSpan(
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.42),
+                fontSize: 14,
+                height: 1.8,
               ),
-              TextSpan(
-                text: 'Reception.',
-                style: AppTypography.style(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              children: [
+                const TextSpan(
+                  text:
+                      'If you have a reservation, please\ncomplete your check-in at ',
                 ),
-              ),
-            ],
+                TextSpan(
+                  text: 'Reception.',
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
       ],
     );
   }
@@ -367,15 +427,15 @@ class _LiveInfoRowState extends State<_LiveInfoRow> {
   }
 
   Widget _dot() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text(
-          '·',
-          style: AppTypography.style(
-            color: Colors.white.withValues(alpha: 0.2),
-            fontSize: 20,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    child: Text(
+      '·',
+      style: AppTypography.style(
+        color: Colors.white.withValues(alpha: 0.2),
+        fontSize: 20,
+      ),
+    ),
+  );
 
   Widget _clockCard() {
     return Container(
@@ -383,7 +443,10 @@ class _LiveInfoRowState extends State<_LiveInfoRow> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -432,7 +495,10 @@ class _LiveInfoRowState extends State<_LiveInfoRow> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

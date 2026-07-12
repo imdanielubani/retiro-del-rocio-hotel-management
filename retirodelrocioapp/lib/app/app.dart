@@ -26,8 +26,12 @@ class RocioTabletApp extends ConsumerWidget {
         ),
       ),
       routerConfig: router,
-      builder: (context, child) =>
-          AmbientVideoScope(child: child ?? const SizedBox.shrink()),
+      // In-room kiosk: the screens are laid out to a fixed 1280 × 800 design, so
+      // the tablet's system font-size setting must not resize our text — it
+      // would push content past the fixed-height cards and bars.
+      builder: (context, child) => MediaQuery.withNoTextScaling(
+        child: AmbientVideoScope(child: child ?? const SizedBox.shrink()),
+      ),
     );
   }
 }

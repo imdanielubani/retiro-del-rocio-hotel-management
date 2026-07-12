@@ -12,6 +12,7 @@ use App\Models\Device;
 use App\Models\User;
 use App\Services\DeviceCommandService;
 use App\Services\JwtService;
+use App\Support\HotelSettings;
 use Closure;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -192,6 +193,22 @@ class TabletController extends Controller
     }
 
     /**
+     * GET /tablets/me — the tablet's own record, used to confirm at launch that
+     * its pairing is still valid. A deleted or unpaired device can no longer
+     * authenticate here, so the app clears its session and returns to setup.
+     */
+    public function me(Request $request): JsonResponse
+    {
+        $device = $this->device($request);
+
+        abort_unless($device->is_provisioned, 403, 'This device is no longer paired.');
+
+        return response()->json([
+            'device' => new DeviceResource($device->load(['type', 'room', 'roomUnit'])),
+        ]);
+    }
+
+    /**
      * GET /tablets/room-status — the tablet's current room occupancy and, when
      * a guest is checked in, their booking details. Drives the guest welcome.
      */
@@ -209,7 +226,10 @@ class TabletController extends Controller
             ]]);
         }
 
-        $booking = $unit->status === 'occupied' ? $unit->booking : null;
+        // Only a guest reception has actually checked in is shown on the tablet.
+        $booking = $unit->status === 'occupied' && $unit->booking?->status === 'checked_in'
+            ? $unit->booking
+            : null;
 
         return response()->json(['data' => [
             'occupancy' => $unit->status, // available | occupied | maintenance
@@ -217,8 +237,12 @@ class TabletController extends Controller
             'room_number' => $unit->number,
             'guest' => $booking ? [
                 'name' => $booking->customer_name,
-                'check_in' => optional($booking->check_in)->toDateString(),
-                'check_out' => optional($booking->check_out)->toDateString(),
+                'reference' => $booking->bookingCode(),
+                'nights' => (int) $booking->nights,
+                // The real arrival once reception checks them in; the expected
+                // time (date + hotel policy) until then.
+                'check_in' => optional($booking->arrivalAt())->toIso8601String(),
+                'check_out' => optional($booking->departureAt())->toIso8601String(),
             ] : null,
         ]]);
     }

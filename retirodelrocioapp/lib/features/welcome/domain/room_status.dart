@@ -5,9 +5,23 @@ enum Occupancy { available, occupied, maintenance, unassigned }
 /// The checked-in guest's booking details.
 @immutable
 class GuestInfo {
-  const GuestInfo({required this.name, this.checkIn, this.checkOut});
+  const GuestInfo({
+    required this.name,
+    this.reference,
+    this.nights,
+    this.checkIn,
+    this.checkOut,
+  });
 
   final String name;
+
+  /// Booking code, e.g. "RDR-000121".
+  final String? reference;
+
+  /// Nights as recorded on the booking (authoritative over the date maths).
+  final int? nights;
+
+  /// Arrival / departure, carrying the hotel's policy times (3:00 PM / 11:00 AM).
   final DateTime? checkIn;
   final DateTime? checkOut;
 
@@ -15,6 +29,8 @@ class GuestInfo {
         name: (json['name'] as String?)?.trim().isNotEmpty == true
             ? json['name'] as String
             : 'Guest',
+        reference: json['reference'] as String?,
+        nights: (json['nights'] as num?)?.toInt(),
         checkIn: DateTime.tryParse(json['check_in'] as String? ?? ''),
         checkOut: DateTime.tryParse(json['check_out'] as String? ?? ''),
       );

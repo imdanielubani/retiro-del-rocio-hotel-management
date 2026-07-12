@@ -6,6 +6,8 @@ import 'package:retirodelrocioapp/core/media/ambient_video_provider.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
+import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
+import 'package:retirodelrocioapp/features/guest/home/presentation/screens/guest_home_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -14,8 +16,9 @@ import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 /// Personalized greeting + guest name, room card (suite / number / stay dates),
 /// and a Quick Actions grid. Shown when a guest is checked in to the room.
 class GuestWelcomeView extends ConsumerWidget {
-  const GuestWelcomeView({super.key, required this.status});
+  const GuestWelcomeView({super.key, required this.device, required this.status});
 
+  final ProvisionedDevice device;
   final RoomStatus status;
 
   @override
@@ -34,7 +37,8 @@ class GuestWelcomeView extends ConsumerWidget {
             controller: video,
             fallback: Image.asset('assets/images/12375.jpg', fit: BoxFit.cover),
           ),
-          const ColoredBox(color: Color(0xCC000000)),
+          // Same background overlay as the device setup screen.
+          const ColoredBox(color: AppColors.scrim),
           Positioned(
             left: 24,
             top: 40,
@@ -139,7 +143,7 @@ class GuestWelcomeView extends ConsumerWidget {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _open(context, 'Guest Home'),
+        onTap: () => _enterSuite(context),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
           child: Row(
@@ -225,11 +229,11 @@ class GuestWelcomeView extends ConsumerWidget {
           const SizedBox(height: 23),
           Row(
             children: [
-              _dateChunk('CHECK-IN', guest.checkIn),
-              const SizedBox(width: 24),
+              Expanded(child: _dateChunk('CHECK-IN', guest.checkIn)),
+              const SizedBox(width: 16),
               Container(width: 1, height: 34, color: Colors.white.withValues(alpha: 0.1)),
-              const SizedBox(width: 24),
-              _dateChunk('CHECK-OUT', guest.checkOut),
+              const SizedBox(width: 16),
+              Expanded(child: _dateChunk('CHECK-OUT', guest.checkOut)),
             ],
           ),
         ],
@@ -252,6 +256,8 @@ class GuestWelcomeView extends ConsumerWidget {
         const SizedBox(height: 4),
         Text(
           date != null ? DateFormat('MMM d, y').format(date) : '—',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppTypography.style(
             color: Colors.white.withValues(alpha: 0.85),
             fontSize: 13,
@@ -345,6 +351,15 @@ class GuestWelcomeView extends ConsumerWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
       ),
       child: child,
+    );
+  }
+
+  /// Opens the guest home dashboard (Figma 84:3429).
+  void _enterSuite(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestHomeScreen(device: device, status: status),
+      ),
     );
   }
 

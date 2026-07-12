@@ -29,6 +29,10 @@ class DeviceResource extends JsonResource
             'room' => $this->whenLoaded('room', fn () => optional($this->room)->name),
             'room_unit_id' => $this->room_unit_id,
             'room_number' => $this->whenLoaded('roomUnit', fn () => optional($this->roomUnit)->number),
+            // The room's featured photo from Property Management. It belongs to
+            // the device's room, not to a booking, so the tablet fetches it once
+            // at launch rather than on every room-status poll.
+            'room_image' => $this->whenLoaded('room', fn () => optional($this->room)->featuredUrl()),
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
             'battery_level' => $this->battery_level,

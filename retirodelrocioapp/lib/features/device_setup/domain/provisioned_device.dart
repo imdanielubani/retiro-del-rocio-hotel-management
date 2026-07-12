@@ -15,6 +15,8 @@ class ProvisionedDevice {
     this.allocation,
     this.suiteName,
     this.roomNumber,
+    this.roomUnitId,
+    this.roomImageUrl,
   });
 
   /// Sanctum bearer token for this device's future API calls (heartbeat/sync).
@@ -37,13 +39,33 @@ class ProvisionedDevice {
   /// Physical room number for a guest tablet, e.g. "101".
   final String? roomNumber;
 
+  /// The room this tablet is bound to. Identifies the realtime channel it
+  /// listens on (`rooms.{id}`) for check-in / check-out.
+  final int? roomUnitId;
+
+  /// The room's featured photo (Property Management). Room-scoped and rarely
+  /// changes, so it rides on the device record rather than the 20-second poll.
+  final String? roomImageUrl;
+
   bool get isStaff => mode == 'staff';
   bool get isGuest => !isStaff;
 
   factory ProvisionedDevice.fromProvisionResponse(Map<String, dynamic> json) {
     final device = (json['device'] as Map?)?.cast<String, dynamic>() ?? const {};
-    return ProvisionedDevice(
+    return ProvisionedDevice.fromDeviceJson(
+      device,
       token: json['token'] as String? ?? '',
+    );
+  }
+
+  /// Builds a device from a `DeviceResource` payload, keeping the token we
+  /// already hold (the backend only issues one at provisioning time).
+  factory ProvisionedDevice.fromDeviceJson(
+    Map<String, dynamic> device, {
+    required String token,
+  }) {
+    return ProvisionedDevice(
+      token: token,
       deviceCode: device['device_code'] as String? ?? '',
       deviceName: device['device_name'] as String? ?? '',
       mode: device['mode'] as String? ?? 'guest',
@@ -51,6 +73,10 @@ class ProvisionedDevice {
       allocation: device['allocation'] as String?,
       suiteName: device['room'] as String?,
       roomNumber: device['room_number'] as String?,
+      roomUnitId: (device['room_unit_id'] as num?)?.toInt(),
+      roomImageUrl: (device['room_image'] as String?)?.trim().isNotEmpty == true
+          ? device['room_image'] as String
+          : null,
     );
   }
 
@@ -63,6 +89,8 @@ class ProvisionedDevice {
         'allocation': allocation,
         'suite_name': suiteName,
         'room_number': roomNumber,
+        'room_unit_id': roomUnitId,
+        'room_image': roomImageUrl,
       };
 
   factory ProvisionedDevice.fromJson(Map<String, dynamic> json) => ProvisionedDevice(
@@ -74,5 +102,7 @@ class ProvisionedDevice {
         allocation: json['allocation'] as String?,
         suiteName: json['suite_name'] as String?,
         roomNumber: json['room_number'] as String?,
+        roomUnitId: (json['room_unit_id'] as num?)?.toInt(),
+        roomImageUrl: json['room_image'] as String?,
       );
 }

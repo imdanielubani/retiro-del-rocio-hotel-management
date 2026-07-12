@@ -34,13 +34,23 @@ abstract final class ApiConfig {
     _ => AppEnvironment.dev,
   };
 
-  /// Base URL for the active environment. `10.0.2.2` is the Android emulator's
-  /// alias for the host machine's `localhost`; use `--dart-define=API_BASE_URL`
-  /// for iOS simulators (`localhost`) or physical devices (your LAN IP).
+  /// Base URL for the active environment.
+  ///
+  /// Dev points at the machine's **LAN IP**, not `localhost`. The tablet has to
+  /// reach the same host for three things — the API, the room photos (built from
+  /// the backend's `APP_URL`) and the Reverb socket — and only a real address
+  /// works for all three over Wi-Fi. Serve accordingly:
+  ///
+  ///   `php artisan serve --host=0.0.0.0`
+  ///   `php artisan reverb:start`
+  ///
+  /// When the dev machine's IP changes, override it rather than editing this:
+  /// `--dart-define=API_BASE_URL=http://192.168.x.x:8000/api`.
+  /// Android emulators use `http://10.0.2.2:8000/api`.
   static String get baseUrl {
     if (_override.isNotEmpty) return _override;
     return switch (environment) {
-      AppEnvironment.dev => 'http://192.168.18.6:8000/api',
+      AppEnvironment.dev => 'http://192.168.18.3:8000/api',
       AppEnvironment.staging => 'https://api.staging.retirodelrocio.com',
       AppEnvironment.prod => 'https://api.retirodelrocio.com',
     };

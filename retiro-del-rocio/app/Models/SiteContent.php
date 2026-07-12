@@ -32,6 +32,18 @@ class SiteContent extends Model
     }
 
     /**
+     * Drop the in-process cache.
+     *
+     * It is keyed to nothing but the process, so anything long-running — a queue
+     * worker, Octane, a test run — must flush it when the underlying rows may
+     * have changed underneath it.
+     */
+    public static function flush(): void
+    {
+        static::$cache = null;
+    }
+
+    /**
      * Resolve a stored image path to a public URL (mirrors Room::imageUrl).
      * - null            → null
      * - "images/x.jpg"  → asset() (bundled files in /public/images)

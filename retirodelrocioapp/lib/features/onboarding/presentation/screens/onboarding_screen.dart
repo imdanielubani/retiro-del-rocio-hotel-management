@@ -78,8 +78,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          AmbientVideoBackground(controller: video),
-          _scrim(),
+          AmbientVideoBackground(
+            controller: video,
+            fallback: Image.asset('assets/images/12375.jpg', fit: BoxFit.cover),
+          ),
+          // Same background overlay as the device setup screen.
+          const ColoredBox(color: AppColors.scrim),
           PageView.builder(
             controller: _pageController,
             itemCount: _slides.length,
@@ -94,17 +98,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
     );
   }
-
-  Widget _scrim() => const DecoratedBox(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: [Color(0xE6000000), Color(0x66000000)],
-        stops: [0.0, 0.9],
-      ),
-    ),
-  );
 
   // --- Fixed chrome ------------------------------------------------------
 
