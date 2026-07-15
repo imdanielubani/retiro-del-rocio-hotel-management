@@ -5,29 +5,19 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/device_setup/presentation/screens/scan_qr_screen.dart';
-import 'package:retirodelrocioapp/features/device_setup/presentation/widgets/enter_code_dialog.dart';
 import 'package:retirodelrocioapp/features/device_setup/presentation/widgets/pairing_success_dialog.dart';
 
 /// 0.5 — Device Setup (Figma node 67:2720).
 ///
-/// The tablet's "awaiting activation" screen: pair by scanning the QR issued
-/// at reception, or by typing the short setup code.
+/// The tablet's "awaiting activation" screen. Pairing is by QR only: the code is
+/// issued from the dashboard and carries a provisioning token, so a tablet can
+/// never be bound to a suite from a code someone read out or guessed.
 class DeviceSetupScreen extends StatelessWidget {
   const DeviceSetupScreen({super.key});
 
   Future<void> _scanQr(BuildContext context) async {
     final device = await Navigator.of(context).push<ProvisionedDevice>(
       MaterialPageRoute(builder: (_) => const ScanQrScreen()),
-    );
-    if (device != null && context.mounted) _onPaired(context, device);
-  }
-
-  Future<void> _enterCode(BuildContext context) async {
-    final device = await showDialog<ProvisionedDevice>(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.transparent,
-      builder: (_) => const EnterCodeDialog(),
     );
     if (device != null && context.mounted) _onPaired(context, device);
   }
@@ -72,8 +62,8 @@ class DeviceSetupScreen extends StatelessWidget {
                 SizedBox(
                   width: 640,
                   child: Text(
-                    'Please scan the QR code provided at check-in, or enter the '
-                    'setup code from the reception team to pair this device to a suite.',
+                    'Please scan the QR code provided by the reception team to '
+                    'pair this device to a suite.',
                     textAlign: TextAlign.center,
                     style: AppTypography.style(
                       color: Colors.white.withValues(alpha: 0.7),
@@ -83,21 +73,10 @@ class DeviceSetupScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 42),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _SetupCard(
-                      icon: Icons.qr_code_2_rounded,
-                      label: 'Scan QR Code',
-                      onTap: () => _scanQr(context),
-                    ),
-                    const SizedBox(width: 34),
-                    _SetupCard(
-                      icon: Icons.keyboard_alt_outlined,
-                      label: 'Enter Setup Code',
-                      onTap: () => _enterCode(context),
-                    ),
-                  ],
+                _SetupCard(
+                  icon: Icons.qr_code_2_rounded,
+                  label: 'Scan QR Code',
+                  onTap: () => _scanQr(context),
                 ),
               ],
             ),

@@ -81,7 +81,10 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // The hotel is in Jos, Nigeria (WAT, UTC+1). Timestamps we record — a
+    // check-in, a check-out — must read as the local wall-clock time the front
+    // desk actually saw, not an hour behind it.
+    'timezone' => env('APP_TIMEZONE', 'Africa/Lagos'),
 
     /*
     |--------------------------------------------------------------------------

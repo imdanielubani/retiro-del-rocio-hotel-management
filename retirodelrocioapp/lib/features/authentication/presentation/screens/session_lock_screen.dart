@@ -23,7 +23,11 @@ class SessionLockScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Positioned.fill(
+    // The lock is an overlay above the child's Scaffold, so it must bring its
+    // own Material ancestor — the password field, icon buttons and "Log out"
+    // TextButton all require one. `type: transparency` keeps the blur visible.
+    return Material(
+      type: MaterialType.transparency,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: ColoredBox(

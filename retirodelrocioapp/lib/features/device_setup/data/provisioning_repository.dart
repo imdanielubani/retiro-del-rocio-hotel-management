@@ -26,12 +26,9 @@ class ProvisioningRepository {
   final Dio _dio;
   final DeviceSessionStore _store;
 
-  /// Pairs using the short setup code typed at reception (no secret token).
-  Future<ProvisionedDevice> provisionWithCode(String setupCode) {
-    return _provision(deviceCode: setupCode.trim());
-  }
-
-  /// Pairs using the JSON payload decoded from a provisioning QR.
+  /// Pairs using the JSON payload decoded from a provisioning QR. This is the
+  /// only way in: pairing by a typed code was removed, so a device can never be
+  /// bound without the token the dashboard mints.
   Future<ProvisionedDevice> provisionWithQrPayload(Map<String, dynamic> payload) {
     final deviceCode = payload['device_code'] as String?;
     if (deviceCode == null || deviceCode.isEmpty) {

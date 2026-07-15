@@ -42,7 +42,13 @@ return [
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
             ],
             'client_options' => [
-                // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                // Broadcasting is signal-only and must NEVER block a core action:
+                // an SOS acknowledge/raise happens in-request (ShouldBroadcastNow),
+                // so if Reverb is unreachable these short timeouts make the HTTP
+                // call fail fast and get swallowed by the event's try/catch,
+                // rather than hanging until the tablet times out.
+                'timeout' => env('REVERB_CLIENT_TIMEOUT', 2),
+                'connect_timeout' => env('REVERB_CLIENT_CONNECT_TIMEOUT', 2),
             ],
         ],
 

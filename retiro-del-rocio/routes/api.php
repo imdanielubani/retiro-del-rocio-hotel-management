@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\SecurityController;
+use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\TabletController;
 use Illuminate\Support\Facades\Route;
 
@@ -86,6 +88,15 @@ $api->group(function () {
         // The tablet's live room occupancy + checked-in guest (guest welcome).
         Route::get('tablets/room-status', [TabletController::class, 'roomStatus'])->name('api.v1.tablets.room-status');
 
+        // Emergency SOS from a guest's in-room tablet. Raising is throttled — a
+        // panicking guest may hammer the button — but the endpoint is idempotent,
+        // so a burst still yields exactly one alert for the room.
+        Route::get('sos/active', [SosController::class, 'active'])->name('api.v1.sos.active');
+        Route::post('sos', [SosController::class, 'store'])
+            ->middleware('throttle:20,1')->name('api.v1.sos.store');
+        Route::post('sos/{alert}/cancel', [SosController::class, 'cancel'])
+            ->middleware('throttle:20,1')->name('api.v1.sos.cancel');
+
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])
             ->middleware('throttle:10,1')->name('api.v1.tablets.staff-login');
@@ -97,5 +108,21 @@ $api->group(function () {
         Route::post('tablets/restart', [TabletController::class, 'restart'])->name('api.v1.tablets.restart');
         Route::post('tablets/lock', [TabletController::class, 'lock'])->name('api.v1.tablets.lock');
         Route::post('tablets/unlock', [TabletController::class, 'unlock'])->name('api.v1.tablets.unlock');
+    });
+
+    // --- Security tablet (staff JWT, security role) ---
+    // The security officer signs in on the security station, then their JWT
+    // (not the device token) authorises the hotel-wide dashboard and lets them
+    // acknowledge / resolve incoming SOS incidents. The role is re-checked in
+    // the controller on every call.
+    Route::middleware('jwt')->group(function () {
+        Route::get('security/overview', [SecurityController::class, 'overview'])
+            ->name('api.v1.security.overview');
+        Route::get('security/incidents', [SecurityController::class, 'incidents'])
+            ->name('api.v1.security.incidents');
+        Route::post('security/incidents/{alert}/respond', [SecurityController::class, 'respond'])
+            ->middleware('throttle:60,1')->name('api.v1.security.incidents.respond');
+        Route::post('security/incidents/{alert}/resolve', [SecurityController::class, 'resolve'])
+            ->middleware('throttle:60,1')->name('api.v1.security.incidents.resolve');
     });
 });

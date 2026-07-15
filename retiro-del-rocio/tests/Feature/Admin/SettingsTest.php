@@ -43,9 +43,17 @@ class SettingsTest extends TestCase
     public function test_it_falls_back_to_the_configured_defaults(): void
     {
         $this->assertSame('15:00', HotelSettings::checkInTime());
-        $this->assertSame('11:00', HotelSettings::checkOutTime());
+        $this->assertSame('12:00', HotelSettings::checkOutTime());
         $this->assertSame('3:00 PM', HotelSettings::checkInLabel());
-        $this->assertSame('11:00 AM', HotelSettings::checkOutLabel());
+        $this->assertSame('12:00 PM', HotelSettings::checkOutLabel());
+    }
+
+    public function test_timestamps_are_recorded_in_nigerian_time(): void
+    {
+        // The hotel is in Jos (WAT, UTC+1). A check-in stamped in UTC would read
+        // an hour behind the clock the front desk is looking at.
+        $this->assertSame('Africa/Lagos', config('app.timezone'));
+        $this->assertSame('+01:00', now()->format('P'));
     }
 
     public function test_an_admin_saves_the_hotel_profile_and_policy_times(): void

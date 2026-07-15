@@ -31,9 +31,15 @@ class GuestInfo {
             : 'Guest',
         reference: json['reference'] as String?,
         nights: (json['nights'] as num?)?.toInt(),
-        checkIn: DateTime.tryParse(json['check_in'] as String? ?? ''),
-        checkOut: DateTime.tryParse(json['check_out'] as String? ?? ''),
+        // The API sends ISO-8601 with an offset (+01:00). `DateTime.parse` keeps
+        // that as a UTC instant, and DateFormat would then render it in UTC — an
+        // hour behind Nigeria. `toLocal()` puts it back on the tablet's clock.
+        checkIn: _localDate(json['check_in']),
+        checkOut: _localDate(json['check_out']),
       );
+
+  static DateTime? _localDate(Object? value) =>
+      DateTime.tryParse(value as String? ?? '')?.toLocal();
 }
 
 /// Live occupancy of the tablet's room (from `GET /v1/tablets/room-status`).

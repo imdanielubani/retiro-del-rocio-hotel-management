@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Events\RoomStatusChanged;
 use Illuminate\Database\Eloquent\Model;
+use Throwable;
 
 class RoomUnit extends Model
 {
@@ -21,8 +22,18 @@ class RoomUnit extends Model
     protected static function booted(): void
     {
         static::updated(function (self $unit) {
-            if ($unit->wasChanged('status')) {
+            if (! $unit->wasChanged('status')) {
+                return;
+            }
+
+            // Realtime is an accelerator, never a dependency. If the broadcaster
+            // is down or unreachable the guest is still checked in — the tablet
+            // just falls back to its 20-second poll. Reception must never see a
+            // 500 with a guest standing at the desk.
+            try {
                 broadcast(RoomStatusChanged::forUnit($unit));
+            } catch (Throwable $e) {
+                report($e);
             }
         });
     }

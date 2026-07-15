@@ -33,25 +33,17 @@ class TabletController extends Controller
     public function provision(ProvisionTabletRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $hasToken = ! empty($data['provision_token']);
 
-        $query = Device::where('device_code', $data['device_code']);
-        if ($hasToken) {
-            $query->where('provision_token', $data['provision_token']);
-        }
-        $device = $query->first();
+        // Both halves of the QR payload must match. The provisioning token is
+        // the secret; a device code on its own can be read off the dashboard or
+        // guessed, so it never pairs a tablet by itself.
+        $device = Device::where('device_code', $data['device_code'])
+            ->where('provision_token', $data['provision_token'])
+            ->first();
 
         if (! $device) {
             throw ValidationException::withMessages([
                 'device_code' => ['Invalid device code or provisioning token.'],
-            ]);
-        }
-
-        // The typed setup-code flow (no token) may only pair a device that is
-        // still awaiting provisioning. Re-pairing an active tablet needs the QR.
-        if (! $hasToken && $device->is_provisioned) {
-            throw ValidationException::withMessages([
-                'device_code' => ['This device is already paired. Use its QR code to re-pair it.'],
             ]);
         }
 

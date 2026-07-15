@@ -42,6 +42,7 @@ return [
 
     'check_in_time' => env('HOTEL_CHECK_IN_TIME', '15:00'),
 
-    'check_out_time' => env('HOTEL_CHECK_OUT_TIME', '11:00'),
+    // Guests always leave by midday.
+    'check_out_time' => env('HOTEL_CHECK_OUT_TIME', '12:00'),
 
 ];

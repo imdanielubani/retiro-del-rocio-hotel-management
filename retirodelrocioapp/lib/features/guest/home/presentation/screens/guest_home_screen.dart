@@ -9,6 +9,7 @@ import 'package:retirodelrocioapp/features/guest/home/domain/guest_service.dart'
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/current_stay_card.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/quick_service_card.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
@@ -46,61 +47,13 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
     );
   }
 
-  Future<void> _emergency() async {
-    await showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.7),
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF161616),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          'Emergency assistance',
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Text(
-          'Reception and hotel security will be alerted immediately and sent to '
-          'Room ${widget.status.roomNumber ?? '—'}.',
-          style: AppTypography.style(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 14,
-            height: 1.5,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              'Cancel',
-              style: AppTypography.style(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 14,
-              ),
-            ),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _emergencyRed,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(100),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              'Alert Reception',
-              style: AppTypography.style(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+  /// Opens the Emergency SOS screen (Figma 113:725). The confirm step and the
+  /// alert itself live there, so the guest reaches the same place whether they
+  /// come from here or from an alert already in progress.
+  void _emergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
       ),
     );
   }
@@ -141,7 +94,7 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
             // Header, stay card and section heading stay put; the design frame
             // is taller than the tablet, so only the service grid scrolls.
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(25, 31, 25, 0),
+              padding: const EdgeInsets.fromLTRB(25, 24, 25, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -266,8 +219,11 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.warning_amber_rounded,
-                  size: 14, color: _emergencyRed),
+              const Icon(
+                Icons.warning_amber_rounded,
+                size: 14,
+                color: _emergencyRed,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Emergency',

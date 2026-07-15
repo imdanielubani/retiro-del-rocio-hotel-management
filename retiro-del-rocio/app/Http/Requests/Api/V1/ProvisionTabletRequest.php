@@ -18,9 +18,10 @@ class ProvisionTabletRequest extends FormRequest
     {
         return [
             'device_code' => ['required', 'string', 'max:60'],
-            // Sent by the QR flow (carries the secret token). Absent in the typed
-            // "setup code" flow, which is only allowed for an unpaired device.
-            'provision_token' => ['nullable', 'string', 'max:64'],
+            // Pairing is QR-only: the token is the secret that authorises binding
+            // a tablet to a suite. A device code alone is guessable and readable
+            // off the dashboard, so it is never sufficient on its own.
+            'provision_token' => ['required', 'string', 'max:64'],
 
             // Optional hardware/software details the tablet reports at bind time.
             'serial_number' => ['nullable', 'string', 'max:120'],

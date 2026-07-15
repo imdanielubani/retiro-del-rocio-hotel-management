@@ -10,8 +10,10 @@ use App\Models\DeviceType;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Support\HotelSettings;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -125,11 +127,11 @@ class BookingCheckInTabletTest extends TestCase
         $this->assertSame(5, $status['guest']['nights']);
 
         // Arrival is the moment reception actually checked them in; departure is
-        // still the expected time (the hotel's 11:00 AM policy).
+        // still the expected time (the hotel's 12:00 PM policy).
         $this->assertTrue(
             Carbon::parse($status['guest']['check_in'])->diffInMinutes(now()) < 2
         );
-        $this->assertSame('11:00', Carbon::parse($status['guest']['check_out'])->format('H:i'));
+        $this->assertSame('12:00', Carbon::parse($status['guest']['check_out'])->format('H:i'));
     }
 
     public function test_the_tablet_gets_the_rooms_own_photo_at_launch(): void
@@ -172,6 +174,59 @@ class BookingCheckInTabletTest extends TestCase
         );
     }
 
+    public function test_a_check_in_still_works_when_the_broadcaster_is_down(): void
+    {
+        // Reverb unreachable (server down, or the dev machine's IP moved). The
+        // guest must still be checked in — the tablet falls back to its poll.
+        Broadcast::shouldReceive('event')
+            ->andThrow(new BroadcastException('Pusher error: cURL error 7.'));
+
+        $booking = $this->booking();
+
+        Livewire::test(Show::class, ['booking' => $booking])
+            ->call('startCheckIn')
+            ->set('assignUnitId', $this->unit->id)
+            ->call('confirmCheckIn')
+            ->assertHasNoErrors();
+
+        $this->assertSame('checked_in', $booking->fresh()->status);
+        $this->assertSame('occupied', $this->unit->fresh()->status);
+        $this->assertSame('occupied', $this->roomStatus()['occupancy']);
+    }
+
+    public function test_a_failed_check_in_leaves_no_half_occupied_room(): void
+    {
+        // Check-in occupies the room *and* checks the booking in. If it dies
+        // between the two, the room must not be left occupied by a guest who was
+        // never checked in — the tablet would sit there saying "occupied" with
+        // nobody in the room, which is exactly what happened in production.
+        // Blow up on the *second* write — checking the booking in — after the
+        // room has already been marked occupied.
+        Event::listen('eloquent.updating: '.Booking::class, function () {
+            throw new \RuntimeException('boom, mid-check-in');
+        });
+
+        $booking = $this->booking();
+
+        try {
+            Livewire::test(Show::class, ['booking' => $booking])
+                ->call('startCheckIn')
+                ->set('assignUnitId', $this->unit->id)
+                ->call('confirmCheckIn');
+        } catch (\Throwable $e) {
+            // the failure itself is not the point — the state it leaves behind is
+        }
+
+        Event::forget('eloquent.updating: '.Booking::class);
+
+        // The whole check-in rolled back: the room is free and bookable again,
+        // and nothing is left for the tablet to misread as an occupied room.
+        $this->assertSame('available', $this->unit->fresh()->status);
+        $this->assertNull($this->unit->fresh()->booking_id);
+        $this->assertSame('paid', $booking->fresh()->status);
+        $this->assertNull($booking->fresh()->checked_in_at);
+    }
+
     public function test_the_recorded_arrival_survives_a_policy_change(): void
     {
         $booking = $this->booking();
@@ -204,9 +259,9 @@ class BookingCheckInTabletTest extends TestCase
             ->set('assignUnitId', $this->unit->id)
             ->call('confirmCheckIn');
 
-        // The guest has not left yet, so departure is the policy time.
+        // The guest has not left yet, so departure is the policy time (midday).
         $this->assertSame(
-            '11:00',
+            '12:00',
             Carbon::parse($this->roomStatus()['guest']['check_out'])->format('H:i')
         );
 

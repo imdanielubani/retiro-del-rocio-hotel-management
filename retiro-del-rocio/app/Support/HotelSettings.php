@@ -65,7 +65,7 @@ class HotelSettings
     {
         return self::normalise(
             SiteContent::get(self::CHECK_OUT_KEY, (string) config('hotel.check_out_time')),
-            '11:00'
+            '12:00'
         );
     }
 

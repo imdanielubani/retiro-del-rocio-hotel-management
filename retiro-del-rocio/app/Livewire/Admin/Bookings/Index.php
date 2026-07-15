@@ -403,10 +403,13 @@ class Index extends Component
             return;
         }
 
-        $this->freeUnit($booking);
-        $booking->status = 'checked_out';
-        $booking->checked_out_at = now(); // the real departure, not the policy time
-        $booking->save();
+        // Freeing the room and closing the booking are one act — never half done.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+            $this->freeUnit($booking);
+            $booking->status = 'checked_out';
+            $booking->checked_out_at = now(); // the real departure, not the policy time
+            $booking->save();
+        });
 
         $this->dispatch('toast', type: 'success', message: $booking->bookingCode().' checked out — room is now available.');
     }

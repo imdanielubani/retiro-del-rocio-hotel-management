@@ -23,7 +23,7 @@ class SessionGuard extends ConsumerStatefulWidget {
 
 class _SessionGuardState extends ConsumerState<SessionGuard> {
   /// Lock the screen after this much inactivity.
-  static const _idleLock = Duration(minutes: 3);
+  static const _idleLock = Duration(minutes: 30);
 
   /// Show the expiring banner once the session has this little left.
   static const _warnBefore = Duration(minutes: 2);
@@ -81,7 +81,8 @@ class _SessionGuardState extends ConsumerState<SessionGuard> {
   Widget build(BuildContext context) {
     final session = ref.watch(authControllerProvider).value;
     final timeLeft = session?.timeLeft;
-    final showBanner = !_locked &&
+    final showBanner =
+        !_locked &&
         session != null &&
         timeLeft != null &&
         !timeLeft.isNegative &&
@@ -107,12 +108,14 @@ class _SessionGuardState extends ConsumerState<SessionGuard> {
               ),
             ),
           if (_locked && session != null)
-            SessionLockScreen(
-              session: session,
-              onUnlocked: () {
-                _bump();
-                setState(() => _locked = false);
-              },
+            Positioned.fill(
+              child: SessionLockScreen(
+                session: session,
+                onUnlocked: () {
+                  _bump();
+                  setState(() => _locked = false);
+                },
+              ),
             ),
         ],
       ),

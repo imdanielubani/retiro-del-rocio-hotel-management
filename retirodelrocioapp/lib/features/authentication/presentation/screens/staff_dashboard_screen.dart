@@ -6,9 +6,10 @@ import 'package:retirodelrocioapp/features/authentication/application/auth_provi
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_dashboard_screen.dart';
 
-/// Placeholder role dashboard shown after a successful staff sign-in. Each role
-/// lands here (its own dashboard content comes next, per role).
+/// Role dashboard shown after a successful staff sign-in. Each role lands on its
+/// own dashboard; roles without one yet see the placeholder below.
 class StaffDashboardScreen extends ConsumerWidget {
   const StaffDashboardScreen({super.key, required this.session});
 
@@ -23,6 +24,11 @@ class StaffDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Security has its own live dashboard; other roles get theirs in turn.
+    if (session.role == 'security') {
+      return SecurityDashboardScreen(session: session);
+    }
+
     return SessionGuard(
       child: Scaffold(
       backgroundColor: AppColors.background,
