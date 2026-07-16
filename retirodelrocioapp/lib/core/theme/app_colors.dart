@@ -14,7 +14,7 @@ abstract final class AppColors {
   static const Color onGold = Color(0xFF0B0606);
 
   /// Success green (#34D399) — paired confirmation, availability dot.
-  static const Color success = Color(0xFF34D399);
+  static const Color success = Color(0xFF00FF00);
 
   /// Warm glow behind the logo — rgba(201,162,39,0.6).
   static const Color goldGlow = Color(0x99C9A227);

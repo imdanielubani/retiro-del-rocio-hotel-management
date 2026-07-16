@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\SosAlert;
 use App\Models\User;
+use App\Models\VisitorPass;
+use App\Services\VisitorPassProvisioner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,6 +35,12 @@ class SecurityController extends Controller
             ->latest('raised_at')
             ->get();
 
+        // Today's visitor passes, hotel-wide: verified ones fill "Visitors Today",
+        // pending ones the "Visitor Pass Requests" column and the counters.
+        $today = VisitorPass::whereDate('created_at', today())->latest('id')->get();
+        $verified = $today->where('status', VisitorPass::VERIFIED);
+        $pending = $today->where('status', VisitorPass::PENDING);
+
         return response()->json(['data' => [
             'officer' => [
                 'name' => $officer->name,
@@ -40,15 +48,93 @@ class SecurityController extends Controller
             ],
             'stats' => [
                 'active_incidents' => $incidents->where('status', SosAlert::ACTIVE)->count(),
-                'visitors_today' => 0,
-                'verified_passes' => 0,
+                'visitors_today' => $today->count(),
+                'verified_passes' => $verified->count(),
             ],
             'incidents' => $incidents->map->toSecurityArray()->values(),
-            // Populated when the Visitor Pass feature is built; empty for now so
-            // the dashboard renders its truthful "no visitors yet" state.
-            'visitors' => [],
-            'pass_requests' => [],
+            'visitors' => $verified->map->toVisitorRowArray()->values(),
+            'pass_requests' => $pending->map->toPassRequestArray()->values(),
         ]]);
+    }
+
+    /**
+     * GET /security/visitors — today's visitor passes hotel-wide, newest first.
+     *
+     * Drives the Visitor Verification list. Security watches every room's passes,
+     * not one, so this is not scoped to a device.
+     */
+    public function visitors(Request $request): JsonResponse
+    {
+        $this->officer($request);
+
+        $passes = VisitorPass::whereDate('created_at', today())
+            ->latest('id')
+            ->limit(100)
+            ->get();
+
+        return response()->json(['data' => $passes->map->toSecurityArray()->values()]);
+    }
+
+    /**
+     * POST /security/visitors/verify — look up a visitor by the 6-digit code they
+     * quote at the gate. Returns the matching *open* pass, or a clear 404: a spent
+     * code reads differently from one that was never issued.
+     */
+    public function verifyCode(Request $request): JsonResponse
+    {
+        $this->officer($request);
+
+        $data = $request->validate(['code' => ['required', 'string', 'max:12']]);
+        $code = preg_replace('/\D/', '', $data['code']);
+
+        // The officer may key either the online (TTLock) or the offline code.
+        $pass = VisitorPass::open()
+            ->where(fn ($q) => $q->where('code', $code)->orWhere('online_code', $code))
+            ->latest('id')
+            ->first();
+        if ($pass) {
+            return response()->json(['data' => $pass->toSecurityArray()]);
+        }
+
+        $spent = VisitorPass::where('code', $code)->orWhere('online_code', $code)->exists();
+
+        return response()->json([
+            'message' => $spent ? 'This code has already been used.' : 'Code not recognised.',
+        ], 404);
+    }
+
+    /**
+     * POST /security/visitors/{pass}/grant — admit the visitor. The pass moves to
+     * verified and the officer is recorded; a second tap is a no-op.
+     */
+    public function grant(Request $request, VisitorPass $pass): JsonResponse
+    {
+        $officer = $this->officer($request);
+
+        // Admitted at the manned gate. Delete the online code too, so a pass
+        // verified on the keypad can't also be walked in on later at the lock.
+        if ($pass->grant($officer, 'keypad')) {
+            app(VisitorPassProvisioner::class)->revoke($pass);
+            $pass->forceFill(['ttlock_status' => $pass->keyboard_pwd_id ? 'deleted' : $pass->ttlock_status])->save();
+        }
+
+        return response()->json(['data' => $pass->fresh()->toSecurityArray()]);
+    }
+
+    /**
+     * POST /security/visitors/{pass}/deny — turn the visitor away. Their codes
+     * stop working immediately; a second tap is a no-op.
+     */
+    public function deny(Request $request, VisitorPass $pass): JsonResponse
+    {
+        $officer = $this->officer($request);
+
+        if ($pass->deny($officer)) {
+            app(VisitorPassProvisioner::class)->revoke($pass);
+            $pass->forceFill(['ttlock_status' => $pass->keyboard_pwd_id ? 'deleted' : $pass->ttlock_status])->save();
+        }
+
+        return response()->json(['data' => $pass->fresh()->toSecurityArray()]);
     }
 
     /**

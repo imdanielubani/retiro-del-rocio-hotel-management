@@ -7,6 +7,7 @@ import 'package:retirodelrocioapp/core/realtime/sos_channel.dart';
 import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
+import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
 
 final securityRepositoryProvider =
     Provider<SecurityRepository>((ref) => SecurityRepository());
@@ -39,6 +40,19 @@ final incidentLogsProvider =
   ref.onDispose(timer.cancel);
 
   return repo.incidents(token);
+});
+
+/// Today's visitor passes hotel-wide, newest first — the Visitor Verification
+/// list. Re-polled every 20 seconds so a pass a guest just issued (or one another
+/// station granted) appears without a manual refresh.
+final securityVisitorsProvider =
+    FutureProvider.family<List<VisitorPassRecord>, String>((ref, token) async {
+  final repo = ref.watch(securityRepositoryProvider);
+
+  final timer = Timer(const Duration(seconds: 20), ref.invalidateSelf);
+  ref.onDispose(timer.cancel);
+
+  return repo.visitors(token);
 });
 
 /// Subscribes the tablet to the hotel-wide `sos` channel and refreshes both the
@@ -84,6 +98,30 @@ class SecurityActions {
     _ref.invalidate(securityOverviewProvider(_token));
     _ref.invalidate(incidentLogsProvider(_token));
     return incident;
+  }
+
+  /// Look up a visitor by their quoted code. A read-only lookup — it changes
+  /// nothing, so it invalidates nothing.
+  Future<VisitorPassRecord> verifyVisitor(String code) =>
+      _ref.read(securityRepositoryProvider).verifyCode(_token, code);
+
+  /// Admit the visitor, then refresh the list + dashboard counters from the
+  /// server so every screen renders one source of truth.
+  Future<VisitorPassRecord> grantVisitor(int passId) async {
+    final pass =
+        await _ref.read(securityRepositoryProvider).grantVisitor(_token, passId);
+    _ref.invalidate(securityVisitorsProvider(_token));
+    _ref.invalidate(securityOverviewProvider(_token));
+    return pass;
+  }
+
+  /// Turn the visitor away, then refresh the list so the denial reflects.
+  Future<VisitorPassRecord> denyVisitor(int passId) async {
+    final pass =
+        await _ref.read(securityRepositoryProvider).denyVisitor(_token, passId);
+    _ref.invalidate(securityVisitorsProvider(_token));
+    _ref.invalidate(securityOverviewProvider(_token));
+    return pass;
   }
 }
 

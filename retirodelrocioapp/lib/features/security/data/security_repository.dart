@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:retirodelrocioapp/core/config/api_config.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
+import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
 
 /// Raised when a security action could not be completed, carrying a
 /// user-facing [message].
@@ -97,6 +98,76 @@ class SecurityRepository {
     } catch (error) {
       debugPrint('SecurityRepository: $action failed — $error');
       throw SecurityException('Could not update the incident.');
+    }
+  }
+
+  /// Today's visitor passes hotel-wide, newest first. Failures fall back to an
+  /// empty list so the list still renders while the keypad stays usable.
+  Future<List<VisitorPassRecord>> visitors(String token) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('security/visitors')),
+        options: _auth(token),
+      );
+      final list = (response.data?['data'] as List?) ?? const [];
+      return list
+          .whereType<Map>()
+          .map((e) => VisitorPassRecord.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    } catch (error) {
+      debugPrint('SecurityRepository: visitors failed — $error');
+      return const [];
+    }
+  }
+
+  /// Look up a visitor by the 6-digit code they quote. Throws
+  /// [SecurityException] carrying the server's message ("Code not recognised." /
+  /// "This code has already been used.") when there is no live match.
+  Future<VisitorPassRecord> verifyCode(String token, String code) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('security/visitors/verify')),
+        data: {'code': code},
+        options: _auth(token),
+      );
+      return VisitorPassRecord.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw SecurityException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('SecurityRepository: verifyCode failed — $error');
+      throw SecurityException('Could not verify the code.');
+    }
+  }
+
+  /// Admit the visitor — the pass moves to verified and the entry is logged.
+  Future<VisitorPassRecord> grantVisitor(String token, int passId) =>
+      _visitorAction(token, passId, 'grant', 'Could not grant access.');
+
+  /// Turn the visitor away — the pass is denied and its codes stop working.
+  Future<VisitorPassRecord> denyVisitor(String token, int passId) =>
+      _visitorAction(token, passId, 'deny', 'Could not deny access.');
+
+  Future<VisitorPassRecord> _visitorAction(
+    String token,
+    int passId,
+    String action,
+    String fallback,
+  ) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('security/visitors/$passId/$action')),
+        options: _auth(token),
+      );
+      return VisitorPassRecord.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw SecurityException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('SecurityRepository: $action visitor failed — $error');
+      throw SecurityException(fallback);
     }
   }
 

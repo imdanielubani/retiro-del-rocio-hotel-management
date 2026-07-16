@@ -11,6 +11,7 @@ import 'package:retirodelrocioapp/features/security/application/security_provide
 import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_detail_panel.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_log_row.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
@@ -54,7 +55,11 @@ class _IncidentResponseScreenState
       case SecurityNavItem.dashboard:
         Navigator.of(context).pop(); // back to the dashboard beneath
       case SecurityNavItem.verifiedPass:
-        _comingSoon('Verified Pass');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => VisitorVerificationScreen(session: widget.session),
+          ),
+        );
       case SecurityNavItem.chat:
         _comingSoon('Chat');
     }

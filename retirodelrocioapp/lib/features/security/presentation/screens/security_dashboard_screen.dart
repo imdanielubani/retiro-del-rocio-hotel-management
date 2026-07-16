@@ -13,6 +13,7 @@ import 'package:retirodelrocioapp/features/security/domain/security_incident.dar
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
 import 'package:retirodelrocioapp/features/security/presentation/dialogs/sos_alert_overlay.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/incident_response_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_card.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_stat_card.dart';
@@ -59,9 +60,9 @@ class _SecurityDashboardScreenState
   }
 
   void _comingSoon(String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)));
   }
 
   void _onNav(SecurityNavItem item) {
@@ -75,17 +76,25 @@ class _SecurityDashboardScreenState
           ),
         );
       case SecurityNavItem.verifiedPass:
-        _comingSoon('Verified Pass');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => VisitorVerificationScreen(session: widget.session),
+          ),
+        );
       case SecurityNavItem.chat:
         _comingSoon('Chat');
     }
   }
 
-  Future<void> _respond(int incidentId) =>
-      _run(incidentId, () => ref.read(securityActionsProvider(_token)).respond(incidentId));
+  Future<void> _respond(int incidentId) => _run(
+    incidentId,
+    () => ref.read(securityActionsProvider(_token)).respond(incidentId),
+  );
 
-  Future<void> _resolve(int incidentId) =>
-      _run(incidentId, () => ref.read(securityActionsProvider(_token)).resolve(incidentId));
+  Future<void> _resolve(int incidentId) => _run(
+    incidentId,
+    () => ref.read(securityActionsProvider(_token)).resolve(incidentId),
+  );
 
   Future<void> _run(int incidentId, Future<void> Function() action) async {
     setState(() => _busyIncidentId = incidentId);
@@ -106,7 +115,10 @@ class _SecurityDashboardScreenState
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -147,14 +159,17 @@ class _SecurityDashboardScreenState
         context,
         incident: incident,
         officerName: officerName,
+        token: _token,
         onAcknowledge: () =>
             ref.read(securityActionsProvider(_token)).respond(incident.id),
         onCallRoom: () => ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
             backgroundColor: const Color(0xFF1F2937),
-            content: Text('Room calling is coming soon.',
-                style: AppTypography.style(color: Colors.white, fontSize: 14)),
+            content: Text(
+              'Room calling is coming soon.',
+              style: AppTypography.style(color: Colors.white, fontSize: 14),
+            ),
           ),
         ),
       );
@@ -183,7 +198,8 @@ class _SecurityDashboardScreenState
 
     // Prefer the session's name until the first fetch resolves the officer.
     final overview = overviewAsync.value;
-    final officerName = overview?.officerName != null && overview!.officerName != 'Security'
+    final officerName =
+        overview?.officerName != null && overview!.officerName != 'Security'
         ? overview.officerName
         : widget.session.name;
 
@@ -213,7 +229,8 @@ class _SecurityDashboardScreenState
                         children: [
                           SecurityTopBar(
                             officerName: officerName,
-                            officerRole: overview?.officerRole ?? 'Security Office',
+                            officerRole:
+                                overview?.officerRole ?? 'Security Office',
                             weather: weather,
                             hasAlert: (overview?.activeIncidents ?? 0) > 0,
                           ),
@@ -226,7 +243,10 @@ class _SecurityDashboardScreenState
                               loading: () => overview != null
                                   ? _content(overview)
                                   : const Center(
-                                      child: CircularProgressIndicator(color: AppColors.gold)),
+                                      child: CircularProgressIndicator(
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
                               error: (_, _) => overview != null
                                   ? _content(overview)
                                   : _errorState(),
@@ -370,25 +390,32 @@ class _SecurityDashboardScreenState
   }
 
   Widget _sectionLabel(String text) => Text(
-        text,
-        style: AppTypography.style(
-          color: Colors.white.withValues(alpha: 0.35),
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.4,
-        ),
-      );
+    text,
+    style: AppTypography.style(
+      color: Colors.white.withValues(alpha: 0.35),
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.4,
+    ),
+  );
 
   Widget _errorState() {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off_rounded, size: 30, color: Colors.white.withValues(alpha: 0.4)),
+          Icon(
+            Icons.wifi_off_rounded,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
           Text(
             'Could not load the dashboard.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 16),
           Material(
@@ -398,7 +425,10 @@ class _SecurityDashboardScreenState
               onTap: () => ref.invalidate(securityOverviewProvider(_token)),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Text(
                   'Retry',
                   style: AppTypography.style(

@@ -1033,6 +1033,16 @@ $adminRoutes->group(function () {
         Route::get('devices/smart-tvs', App\Livewire\Admin\Devices\SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
         Route::get('devices/{device}', App\Livewire\Admin\Devices\Show::class)->whereNumber('device')->middleware('permission:device.view')->name('devices.show');
 
+        // Security — SOS emergency register (management oversight of guest alerts)
+        Route::redirect('security', 'security/incidents');
+        Route::get('security/incidents', App\Livewire\Admin\Security\Incidents::class)->name('security.incidents');
+
+        // Visitor passes register — issue/manage passes, gate codes & TTLock status.
+        Route::get('security/visitor-passes', App\Livewire\Admin\Security\VisitorPasses::class)->name('security.visitor-passes');
+
+        // Visitor access log — the audit of gate entries, exits & denials.
+        Route::get('security/visitor-access', App\Livewire\Admin\Security\VisitorAccessLog::class)->name('security.visitor-access');
+
         // Administration — access control (users, roles & permissions)
         Route::get('users', App\Livewire\Admin\Access\Users::class)->name('access.users');
         Route::get('roles-permissions', App\Livewire\Admin\Access\Roles::class)->name('access.roles');

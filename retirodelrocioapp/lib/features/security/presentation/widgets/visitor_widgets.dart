@@ -198,7 +198,7 @@ class VisitorPassRequestCard extends StatelessWidget {
           [
             if (request.suiteName != null) request.suiteName!,
             if (request.roomNumber != null) 'Room ${request.roomNumber}',
-            if (request.arrivalLabel != null) request.arrivalLabel!,
+            if (request.submittedLabel != null) request.submittedLabel!,
           ].join('  ·  '),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

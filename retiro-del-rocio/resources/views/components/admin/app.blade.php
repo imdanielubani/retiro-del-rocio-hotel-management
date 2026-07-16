@@ -58,7 +58,7 @@
     $nav = [
         ['label' => 'Operations Management', 'items' => [
             ['label' => 'Reception', 'icon' => 'reception', 'href' => '#'],
-            ['label' => 'Visitor Pass', 'icon' => 'visitor', 'href' => '#'],
+            ['label' => 'Visitor Pass', 'icon' => 'visitor', 'href' => route('admin.security.visitor-passes'), 'active' => request()->routeIs('admin.security.visitor-passes')],
             ['label' => 'Task Center', 'icon' => 'task', 'href' => '#'],
         ]],
         ['label' => 'Guest Management', 'items' => [
@@ -128,7 +128,7 @@
                 ['label' => 'Assets', 'href' => '#'],
                 ['label' => 'Service History', 'href' => '#'],
             ]],
-            ['label' => 'Security', 'icon' => 'shield', 'href' => '#'],
+            ['label' => 'Security', 'icon' => 'shield', 'href' => route('admin.security.incidents'), 'active' => request()->routeIs('admin.security.incidents')],
             ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users')],
             ['label' => 'Departments', 'icon' => 'dashboard', 'href' => '#'],
         ]],
@@ -139,7 +139,7 @@
         ['label' => 'Access Control', 'items' => [
             ['label' => 'Gate Pass', 'icon' => 'lock', 'href' => route('admin.ttlock.locks'), 'active' => request()->routeIs('admin.ttlock.*')],
             ['label' => 'RFID Cards', 'icon' => 'card', 'href' => '#'],
-            ['label' => 'Visitor Access', 'icon' => 'door', 'href' => '#'],
+            ['label' => 'Visitor Access', 'icon' => 'door', 'href' => route('admin.security.visitor-access'), 'active' => request()->routeIs('admin.security.visitor-access')],
             ['label' => 'Access Logs', 'icon' => 'list', 'href' => '#'],
         ]],
         ['label' => 'Analytics Management', 'items' => [

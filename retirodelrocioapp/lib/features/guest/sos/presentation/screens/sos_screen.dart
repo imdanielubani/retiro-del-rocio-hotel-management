@@ -101,7 +101,7 @@ class _SosScreenState extends ConsumerState<SosScreen> {
         fit: StackFit.expand,
         children: [
           Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
-          const ColoredBox(color: Color(0xE6000000)),
+          const ColoredBox(color: Color.fromARGB(243, 0, 0, 0)),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(25, 24, 25, 30),

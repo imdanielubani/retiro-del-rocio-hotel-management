@@ -130,6 +130,7 @@ class Booking extends Model
     {
         return match ($this->ttlock_status) {
             'active' => 'Access active',
+            'partial' => 'Partial access',
             'pending' => 'Generating…',
             'failed' => 'Failed',
             'deleted', 'disabled' => 'Revoked',
@@ -141,7 +142,7 @@ class Booking extends Model
     {
         return match ($this->ttlock_status) {
             'active' => 'bg-[#dcfce7] text-[#16a34a]',
-            'pending' => 'bg-[#fef3c7] text-[#d97706]',
+            'partial', 'pending' => 'bg-[#fef3c7] text-[#d97706]',
             'failed' => 'bg-[#fee2e2] text-[#dc2626]',
             'deleted', 'disabled' => 'bg-[#eef2f6] text-[#475569]',
             default => 'bg-[#f3f4f6] text-[#6b7280]',

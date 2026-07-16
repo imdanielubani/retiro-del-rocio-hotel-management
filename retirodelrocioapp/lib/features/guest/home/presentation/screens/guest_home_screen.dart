@@ -10,6 +10,7 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/curre
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/quick_service_card.dart';
 import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
+import 'package:retirodelrocioapp/features/guest/visitor_pass/presentation/screens/visitor_pass_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
@@ -42,6 +43,20 @@ const Color _emergencyRed = Color(0xFFFF0000);
 
 class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
   void _open(GuestService service) {
+    // Visitor Pass is built — take the guest there rather than "coming soon".
+    if (service.id == GuestServices.visitorPass.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => VisitorPassScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ComingSoonScreen(title: service.title)),
     );
@@ -89,7 +104,7 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
         fit: StackFit.expand,
         children: [
           Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
-          const ColoredBox(color: Color(0xE6000000)),
+          const ColoredBox(color: Color.fromARGB(243, 0, 0, 0)),
           SafeArea(
             // Header, stay card and section heading stay put; the design frame
             // is taller than the tablet, so only the service grid scrolls.

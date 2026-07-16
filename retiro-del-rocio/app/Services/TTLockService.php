@@ -23,6 +23,11 @@ class TTLockService
     // TTLock error codes that mean the access token is stale/invalid.
     protected const TOKEN_ERROR_CODES = [10003, 80000];
 
+    // "The same passcode already exists on this lock." Recoverable — the code is
+    // already on the lock (usually a prior attempt that landed but whose id we
+    // never captured), so we adopt it instead of failing. See createPasscode().
+    protected const DUPLICATE_PASSCODE_CODE = -3007;
+
     // Cache key holding the current (possibly refreshed) token bundle.
     protected const TOKEN_CACHE_KEY = 'ttlock.token';
 
@@ -157,7 +162,7 @@ class TTLockService
         }
 
         if ($errcode) {
-            throw new TTLockException("TTLock API error {$errcode}: ".($body['errmsg'] ?? 'unknown').' ['.$endpoint.']');
+            throw new TTLockException("TTLock API error {$errcode}: ".($body['errmsg'] ?? 'unknown').' ['.$endpoint.']', (int) $errcode);
         }
 
         return $body;
@@ -182,16 +187,39 @@ class TTLockService
     {
         // Custom TTLock passcodes are 4–9 digits; use a 6-digit code (no leading zero).
         $passcode = $passcode ?: (string) random_int(100000, 999999);
+        $codeName = Str::limit($name ?: 'Guest', 30, '');
 
-        $body = $this->call('/v3/keyboardPwd/add', [
-            'lockId' => $lockId,
-            'keyboardPwd' => $passcode,
-            'keyboardPwdName' => Str::limit($name ?: 'Guest', 30, ''),
-            'startDate' => (string) $start->getTimestampMs(),
-            'endDate' => (string) $end->getTimestampMs(),
-            // 1=bluetooth (needs SDK), 2=gateway, 3=NB-IoT. Gateway can call the API directly.
-            'addType' => (int) $this->cfg('add_type', 2),
-        ]);
+        try {
+            $body = $this->call('/v3/keyboardPwd/add', [
+                'lockId' => $lockId,
+                'keyboardPwd' => $passcode,
+                'keyboardPwdName' => $codeName,
+                'startDate' => (string) $start->getTimestampMs(),
+                'endDate' => (string) $end->getTimestampMs(),
+                // 1=bluetooth (needs SDK), 2=gateway, 3=NB-IoT. Gateway can call the API directly.
+                'addType' => (int) $this->cfg('add_type', 2),
+            ]);
+        } catch (TTLockException $e) {
+            // -3007: this exact code is already on the lock. Almost always a
+            // previous attempt that reached the lock but whose id we never
+            // recorded (gateway latency), or the shared code already pushed to
+            // this gate on a retry. Adopt the existing passcode instead of
+            // failing — but only when it is provably ours (same digits AND the
+            // name we set), so we never re-window a stranger's code.
+            if ($e->errcode === self::DUPLICATE_PASSCODE_CODE
+                && ($existingId = $this->findPasscodeId($lockId, $passcode, $codeName)) !== null) {
+                // Best-effort: align the recovered code to the requested window.
+                try {
+                    $this->updatePasscode($lockId, $existingId, $start, $end);
+                } catch (TTLockException) {
+                    // Keep the adopted code even if the period sync can't reach the lock.
+                }
+
+                return ['keyboardPwd' => $passcode, 'keyboardPwdId' => $existingId];
+            }
+
+            throw $e;
+        }
 
         if (empty($body['keyboardPwdId'])) {
             throw new TTLockException('TTLock did not return a passcode id.');
@@ -201,6 +229,56 @@ class TTLockService
             'keyboardPwd' => $passcode,
             'keyboardPwdId' => (int) $body['keyboardPwdId'],
         ];
+    }
+
+    /**
+     * Every keyboard passcode currently on a lock, across all pages.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listPasscodes(string $lockId, int $pageSize = 100): array
+    {
+        $all = [];
+        $pageNo = 1;
+
+        do {
+            $body = $this->call('/v3/lock/listKeyboardPwd', [
+                'lockId' => $lockId,
+                'pageNo' => $pageNo,
+                'pageSize' => $pageSize,
+            ]);
+
+            $all = array_merge($all, $body['list'] ?? []);
+            $pages = (int) ($body['pages'] ?? 1);
+            $pageNo++;
+        } while ($pageNo <= $pages);
+
+        return $all;
+    }
+
+    /**
+     * The keyboardPwdId of an existing passcode with these exact digits, or null.
+     *
+     * A lock never holds two passcodes with identical digits (that is precisely
+     * what triggers errcode -3007), so at most one entry can match. When a name
+     * is given we also require it to match, so reconciliation only ever adopts a
+     * code this system created — never one that belongs to someone else.
+     */
+    protected function findPasscodeId(string $lockId, string $passcode, ?string $name = null): ?int
+    {
+        foreach ($this->listPasscodes($lockId) as $entry) {
+            if ((string) ($entry['keyboardPwd'] ?? '') !== $passcode || empty($entry['keyboardPwdId'])) {
+                continue;
+            }
+
+            if ($name !== null && (string) ($entry['keyboardPwdName'] ?? '') !== $name) {
+                continue;
+            }
+
+            return (int) $entry['keyboardPwdId'];
+        }
+
+        return null;
     }
 
     /** Permanently delete a passcode, immediately revoking access. */
@@ -258,6 +336,29 @@ class TTLockService
     public function lockDetail(string $lockId): array
     {
         return $this->call('/v3/lock/detail', ['lockId' => $lockId]);
+    }
+
+    /* ===================== Access records ===================== */
+
+    /**
+     * Unlock records for a lock within a window, newest first. Used to detect
+     * when a visitor has actually punched their one-time passcode into the gate,
+     * so the pass can be auto-confirmed.
+     *
+     * @return array<int, array<string, mixed>> each: {recordType, success,
+     *         keyboardPwd, lockDate, ...}
+     */
+    public function lockRecords(string $lockId, Carbon $start, Carbon $end, int $pageSize = 100): array
+    {
+        $body = $this->call('/v3/lockRecord/list', [
+            'lockId' => $lockId,
+            'startDate' => (string) $start->getTimestampMs(),
+            'endDate' => (string) $end->getTimestampMs(),
+            'pageNo' => 1,
+            'pageSize' => $pageSize,
+        ]);
+
+        return $body['list'] ?? [];
     }
 
     /**

@@ -1,4 +1,6 @@
-<div class="flex flex-col gap-4">
+{{-- The `admin` echo channel refreshes this live the moment a gate pass changes;
+     the 30s poll is only the backstop for when the socket is down. --}}
+<div class="flex flex-col gap-4" wire:poll.30s>
     {{-- ===== Stat cards ===== --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ($stats as $stat)
@@ -87,17 +89,17 @@
                                         @if ($b->ttlock_status === 'active')<span class="size-[5px] rounded-full bg-[#22c55e]"></span>@endif
                                         {{ $b->ttlockStatusLabel() }}
                                     </span>
-                                    @if ($b->ttlock_status === 'failed' && $b->ttlock_error)
+                                    @if (in_array($b->ttlock_status, ['failed', 'partial']) && $b->ttlock_error)
                                         <div class="mt-1 max-w-[240px] truncate text-[11px] text-[#dc2626]" title="{{ $b->ttlock_error }}">{{ $b->ttlock_error }}</div>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3.5 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        @if (in_array($b->ttlock_status, ['failed', 'deleted', 'disabled']) || ! $b->keyboard_pwd_id)
+                                        @if (in_array($b->ttlock_status, ['failed', 'partial', 'deleted', 'disabled']) || ! $b->keyboard_pwd_id)
                                             <button wire:click="retryAccess({{ $b->id }})"
                                                     class="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-medium text-[#374151] hover:bg-[#f9fafb]">Generate</button>
                                         @endif
-                                        @if ($b->keyboard_pwd_id && $b->ttlock_status === 'active')
+                                        @if ($b->keyboard_pwd_id && in_array($b->ttlock_status, ['active', 'partial']))
                                             <button wire:click="revokeAccess({{ $b->id }})"
                                                     class="rounded-lg border border-[#fee2e2] px-3 py-1.5 text-[12px] font-medium text-[#dc2626] hover:bg-[#fef2f2]">Revoke</button>
                                         @endif
@@ -128,15 +130,15 @@
                             <span>{{ $b->room_name ?: '—' }}</span>
                             <span>{{ optional($b->check_in)->format('M j') }} – {{ optional($b->check_out)->format('M j') }}</span>
                         </div>
-                        @if ($b->ttlock_status === 'failed' && $b->ttlock_error)
+                        @if (in_array($b->ttlock_status, ['failed', 'partial']) && $b->ttlock_error)
                             <p class="text-[11px] text-[#dc2626]">{{ $b->ttlock_error }}</p>
                         @endif
                         <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
-                            @if (in_array($b->ttlock_status, ['failed', 'deleted', 'disabled']) || ! $b->keyboard_pwd_id)
+                            @if (in_array($b->ttlock_status, ['failed', 'partial', 'deleted', 'disabled']) || ! $b->keyboard_pwd_id)
                                 <button wire:click="retryAccess({{ $b->id }})"
                                         class="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-medium text-[#374151]">Generate</button>
                             @endif
-                            @if ($b->keyboard_pwd_id && $b->ttlock_status === 'active')
+                            @if ($b->keyboard_pwd_id && in_array($b->ttlock_status, ['active', 'partial']))
                                 <button wire:click="revokeAccess({{ $b->id }})"
                                         class="rounded-lg border border-[#fee2e2] px-3 py-1.5 text-[12px] font-medium text-[#dc2626]">Revoke</button>
                             @endif

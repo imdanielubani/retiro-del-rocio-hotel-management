@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/audio/sos_alarm.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
+import 'package:retirodelrocioapp/features/security/application/security_providers.dart';
 import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
@@ -27,6 +29,7 @@ Future<void> showSosAlertOverlay(
   BuildContext context, {
   required SecurityIncident incident,
   required String officerName,
+  required String token,
   required Future<void> Function() onAcknowledge,
   VoidCallback? onCallRoom,
 }) {
@@ -40,30 +43,33 @@ Future<void> showSosAlertOverlay(
     builder: (_) => _SosAlertOverlay(
       incident: incident,
       officerName: officerName,
+      token: token,
       onAcknowledge: onAcknowledge,
       onCallRoom: onCallRoom,
     ),
   );
 }
 
-class _SosAlertOverlay extends StatefulWidget {
+class _SosAlertOverlay extends ConsumerStatefulWidget {
   const _SosAlertOverlay({
     required this.incident,
     required this.officerName,
+    required this.token,
     required this.onAcknowledge,
     this.onCallRoom,
   });
 
   final SecurityIncident incident;
   final String officerName;
+  final String token;
   final Future<void> Function() onAcknowledge;
   final VoidCallback? onCallRoom;
 
   @override
-  State<_SosAlertOverlay> createState() => _SosAlertOverlayState();
+  ConsumerState<_SosAlertOverlay> createState() => _SosAlertOverlayState();
 }
 
-class _SosAlertOverlayState extends State<_SosAlertOverlay>
+class _SosAlertOverlayState extends ConsumerState<_SosAlertOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
@@ -74,6 +80,9 @@ class _SosAlertOverlayState extends State<_SosAlertOverlay>
 
   bool _busy = false;
   bool _acknowledged = false;
+
+  /// True once we've begun auto-dismissing, so it only happens once.
+  bool _closing = false;
   String? _error;
 
   SecurityIncident get incident => widget.incident;
@@ -118,6 +127,24 @@ class _SosAlertOverlayState extends State<_SosAlertOverlay>
 
   @override
   Widget build(BuildContext context) {
+    // If the emergency is no longer active — the guest stood it down, or another
+    // officer already took it — dismiss and silence the siren on our own. Only
+    // while showing the red alert (not our own green confirmation, and not while
+    // our acknowledge is in flight).
+    final overview = ref.watch(securityOverviewProvider(widget.token)).value;
+    if (overview != null && !_acknowledged && !_busy && !_closing) {
+      final stillActive =
+          overview.incidents.any((i) => i.id == incident.id && i.isActive);
+      if (!stillActive) {
+        _closing = true;
+        final navigator = Navigator.of(context);
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await _alarm.stop();
+          if (mounted) navigator.pop();
+        });
+      }
+    }
+
     final accent = _acknowledged ? _green : _redGlow;
 
     return Stack(

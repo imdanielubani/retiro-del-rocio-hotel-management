@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\SecurityController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\TabletController;
+use App\Http\Controllers\Api\V1\VisitorPassController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -97,6 +98,13 @@ $api->group(function () {
         Route::post('sos/{alert}/cancel', [SosController::class, 'cancel'])
             ->middleware('throttle:20,1')->name('api.v1.sos.cancel');
 
+        // Visitor passes issued from a guest's in-room tablet — the guest invites
+        // a visitor and the server mints a unique entry code. Scoped to the room.
+        Route::get('visitor-passes', [VisitorPassController::class, 'index'])
+            ->name('api.v1.visitor-passes.index');
+        Route::post('visitor-passes', [VisitorPassController::class, 'store'])
+            ->middleware('throttle:30,1')->name('api.v1.visitor-passes.store');
+
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])
             ->middleware('throttle:10,1')->name('api.v1.tablets.staff-login');
@@ -124,5 +132,16 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.security.incidents.respond');
         Route::post('security/incidents/{alert}/resolve', [SecurityController::class, 'resolve'])
             ->middleware('throttle:60,1')->name('api.v1.security.incidents.resolve');
+
+        // Visitor verification at the gate — list today's passes, look one up by
+        // the code the visitor quotes, and admit them.
+        Route::get('security/visitors', [SecurityController::class, 'visitors'])
+            ->name('api.v1.security.visitors');
+        Route::post('security/visitors/verify', [SecurityController::class, 'verifyCode'])
+            ->middleware('throttle:60,1')->name('api.v1.security.visitors.verify');
+        Route::post('security/visitors/{pass}/grant', [SecurityController::class, 'grant'])
+            ->middleware('throttle:60,1')->name('api.v1.security.visitors.grant');
+        Route::post('security/visitors/{pass}/deny', [SecurityController::class, 'deny'])
+            ->middleware('throttle:60,1')->name('api.v1.security.visitors.deny');
     });
 });

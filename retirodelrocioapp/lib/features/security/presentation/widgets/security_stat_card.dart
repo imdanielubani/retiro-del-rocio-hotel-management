@@ -28,7 +28,10 @@ class SecurityStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Stack(
         children: [
@@ -64,14 +67,17 @@ class SecurityStatCard extends StatelessWidget {
             ],
           ),
           Positioned(
-            left: 0,
+            left: -15,
             right: 0,
             bottom: 0,
             child: Container(
               height: 2,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [accent.withValues(alpha: pulsing ? 1 : 0.25), Colors.transparent],
+                  colors: [
+                    accent.withValues(alpha: pulsing ? 1 : 0.25),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
@@ -90,7 +96,8 @@ class _PulseDot extends StatefulWidget {
   State<_PulseDot> createState() => _PulseDotState();
 }
 
-class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -127,7 +134,10 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(color: _red, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: _red,
+                  shape: BoxShape.circle,
+                ),
               ),
             ],
           );
