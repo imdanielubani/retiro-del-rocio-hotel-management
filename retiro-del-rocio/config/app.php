@@ -56,6 +56,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Sub-domain routing
+    |--------------------------------------------------------------------------
+    |
+    | When set, the admin dashboard and the API are served from their own
+    | sub-domains (e.g. admin.retirodelrocio.com / api.retirodelrocio.com).
+    | Leave EMPTY for local development — the app then falls back to path-based
+    | routing (/admin and /api/v1) so `php artisan serve` works with no DNS.
+    |
+    */
+
+    'admin_domain' => env('ADMIN_DOMAIN'),
+
+    'api_domain' => env('API_DOMAIN'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
@@ -65,7 +81,10 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // The hotel is in Jos, Nigeria (WAT, UTC+1). Timestamps we record — a
+    // check-in, a check-out — must read as the local wall-clock time the front
+    // desk actually saw, not an hour behind it.
+    'timezone' => env('APP_TIMEZONE', 'Africa/Lagos'),
 
     /*
     |--------------------------------------------------------------------------

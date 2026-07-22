@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Large videos live on Cloudinary — never commit
+assets/videos/*.mp4

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\TtlockAccessChanged;
 use App\Models\Booking;
 use App\Services\TTLockService;
 use Illuminate\Bus\Queueable;
@@ -70,6 +71,9 @@ class RevokeTtlockAccess implements ShouldQueue
             'ttlock_status' => 'deleted',
             'ttlock_error' => null,
         ]);
+
+        // Query-builder update fires no model events, so notify the dashboard here.
+        TtlockAccessChanged::announce($this->bookingId, 'deleted');
     }
 
     public function failed(Throwable $e): void

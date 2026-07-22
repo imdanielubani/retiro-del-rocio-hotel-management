@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\TtlockAccessChanged;
 use App\Models\Booking;
 use App\Services\TTLockService;
 use Illuminate\Bus\Queueable;
@@ -68,5 +69,6 @@ class UpdateTtlockAccess implements ShouldQueue
             'ttlock_status' => 'failed',
             'ttlock_error' => $e->getMessage(),
         ]);
+        TtlockAccessChanged::announce($this->booking->id, 'failed');
     }
 }

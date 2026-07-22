@@ -22,24 +22,26 @@
         {{-- Location (guest selects a pickup point) --}}
         <div class="flex h-[73px] flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-[#f6f6f6] px-[17px] lg:min-w-0 lg:flex-[1.6]">
             <p class="text-label font-medium tracking-tight text-[#3c3c3c]">Location</p>
-            <div class="flex items-center gap-[7px]">
-                <svg class="icon-sm shrink-0 text-[#202020]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
-                <select x-model="location" class="w-full min-w-0 cursor-pointer appearance-none truncate bg-transparent text-body-sm font-bold tracking-tight text-[#202020] focus:outline-none">
+            {{-- Icons are overlaid on the select (not siblings) so clicking them
+                 falls through to the select and opens the dropdown. --}}
+            <div class="relative flex items-center">
+                <svg class="pointer-events-none absolute left-0 icon-sm shrink-0 text-[#202020]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+                <select x-model="location" class="w-full min-w-0 cursor-pointer appearance-none truncate bg-transparent pl-[27px] pr-6 text-body-sm font-bold tracking-tight text-[#202020] focus:outline-none">
                     @foreach ($pickupLocations as $loc)
                         <option value="{{ $loc }}">{{ $loc }}</option>
                     @endforeach
                 </select>
-                <svg class="icon-sm shrink-0 text-[#7a7a7a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                <svg class="pointer-events-none absolute right-0 icon-sm shrink-0 text-[#7a7a7a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
             </div>
         </div>
 
         {{-- No. of Passengers (guest selects) --}}
         <div class="flex h-[73px] flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-[#f6f6f6] px-[18px] lg:min-w-0 lg:flex-[0.85]">
             <p class="text-label font-medium tracking-tight text-[#3c3c3c]">No. of Passengers</p>
-            <div class="flex items-center gap-[5px]">
-                <svg class="icon-md shrink-0 text-[#202020]" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16a3 3 0 0 1 3-3h2a3 3 0 0 1 3 3v4H5v-4zM9 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM16 11h2a2 2 0 0 1 2 2v7h-4v-9z"/></svg>
+            <div class="relative flex items-center">
+                <svg class="pointer-events-none absolute left-0 icon-md shrink-0 text-[#202020]" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16a3 3 0 0 1 3-3h2a3 3 0 0 1 3 3v4H5v-4zM9 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM16 11h2a2 2 0 0 1 2 2v7h-4v-9z"/></svg>
                 <select x-model.number="passengers"
-                        class="w-full cursor-pointer appearance-none bg-transparent text-body-sm font-bold tracking-tight text-[#202020] focus:outline-none">
+                        class="w-full cursor-pointer appearance-none bg-transparent pl-[29px] text-body-sm font-bold tracking-tight text-[#202020] focus:outline-none">
                     @for ($n = 1; $n <= 14; $n++)
                         <option value="{{ $n }}">{{ $n }}</option>
                     @endfor
@@ -50,22 +52,22 @@
         {{-- Arrival Date (guest selects) --}}
         <div class="flex h-[73px] flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-[#f6f6f6] px-[19px] lg:min-w-0 lg:flex-1">
             <p class="text-label font-medium tracking-tight text-[#3c3c3c]">Arrival Date</p>
-            <div class="flex items-center gap-[5px]">
-                <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="icon-sm shrink-0 object-contain">
+            <div class="relative flex items-center">
+                <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                 <input type="date" x-model="arrivalDate" :min="today"
                        @click="$event.target.showPicker && $event.target.showPicker()"
-                       class="w-full min-w-0 cursor-pointer bg-transparent text-body-sm font-semibold tracking-tight text-[#202020] focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
+                       class="w-full min-w-0 cursor-pointer bg-transparent pl-[25px] text-body-sm font-semibold tracking-tight text-[#202020] focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
             </div>
         </div>
 
         {{-- Pick-up Time (guest selects) --}}
         <div class="flex h-[73px] flex-col justify-center rounded-[14px] border-[0.5px] border-black/20 bg-[#f6f6f6] px-[19px] lg:min-w-0 lg:flex-1">
             <p class="text-label font-medium tracking-tight text-[#3c3c3c]">Pick-up Time</p>
-            <div class="flex items-center gap-[7px]">
-                <svg class="icon-sm shrink-0 text-[#202020]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="relative flex items-center">
+                <svg class="pointer-events-none absolute left-0 icon-sm shrink-0 text-[#202020]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 <input type="time" x-model="pickupTime"
                        @click="$event.target.showPicker && $event.target.showPicker()"
-                       class="w-full min-w-0 cursor-pointer bg-transparent text-body-sm font-semibold tracking-tight text-[#202020] focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
+                       class="w-full min-w-0 cursor-pointer bg-transparent pl-[27px] text-body-sm font-semibold tracking-tight text-[#202020] focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
             </div>
         </div>
 

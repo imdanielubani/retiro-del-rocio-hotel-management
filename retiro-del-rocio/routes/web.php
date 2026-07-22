@@ -43,6 +43,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 
 // Public website.
 Route::view('/', 'welcome')->name('home');
@@ -342,7 +343,12 @@ Route::get('reservation-successful/receipt', function () {
         return redirect()->route('rooms');
     }
 
-    return view('receipt', ['order' => $order]);
+    // The session payload predates the booking row, so it carries no gate pass.
+    // Pull the persisted booking for the passcode + its provisioning status
+    // (TTLock issues the code asynchronously, right after the checkout response).
+    $booking = Booking::where('reference', $order['reference'] ?? '')->first();
+
+    return view('receipt', ['order' => $order, 'booking' => $booking]);
 })->name('checkout.receipt');
 
 /*
@@ -612,14 +618,24 @@ Route::post('gym/subscribe', function () {
 | Restaurant reservation flow (Paystack)
 |--------------------------------------------------------------------------
 */
-Route::view('restaurant', 'restaurant')->name('restaurant');
+// Renamed from /restaurant. The old path is kept as a permanent redirect so
+// existing links, bookmarks and indexed pages keep working.
+Route::permanentRedirect('restaurant', 'restaurant-bar');
+
+Route::view('restaurant-bar', 'restaurant')->name('restaurant');
 
 // Reserve — called via a hidden POST after a successful Paystack charge.
-Route::post('restaurant/reserve', function () {
+Route::post('restaurant-bar/reserve', function () {
     $data = request()->validate([
         'reference' => ['required', 'string', 'max:190'],
         'area' => ['required', 'in:dining,lounge'],
         'table_id' => ['nullable', 'integer', 'exists:restaurant_tables,id'],
+        // Lounge guests must pick a floor; dining reservations never carry one.
+        'floor' => [
+            Rule::requiredIf(fn () => request('area') === 'lounge'),
+            'nullable',
+            Rule::in(RestaurantReservation::FLOORS),
+        ],
         'occasion' => ['nullable', 'string', 'max:120'],
         'guests' => ['required', 'integer', 'min:1', 'max:30'],
         'date' => ['required', 'date'],
@@ -661,6 +677,8 @@ Route::post('restaurant/reserve', function () {
             'area' => $data['area'],
             'restaurant_table_id' => $table?->id,
             'table_label' => $table?->name,
+            // Guard against a dining reservation smuggling a floor through.
+            'floor' => $data['area'] === 'lounge' ? ($data['floor'] ?? null) : null,
             'occasion' => $data['occasion'] ?? null,
             'guests' => $data['guests'],
             'reserved_date' => $data['date'],
@@ -684,6 +702,9 @@ Route::post('restaurant/reserve', function () {
         session(['restaurant_success' => [
             'code' => $reservation->code,
             'area_label' => $reservation->areaLabel(),
+            'table_label' => $reservation->table_label ?: '—',
+            'table_image' => $reservation->table?->imageUrl(),
+            'floor' => $reservation->floor, // null for dining
             'occasion' => $reservation->occasion ?: '—',
             'guests_label' => $reservation->guestsLabel(),
             'date' => optional($reservation->reserved_date)->format('M j, Y'),
@@ -925,7 +946,21 @@ Route::post('contact-us', function () {
     ]);
 })->name('contact.submit');
 
-Route::prefix('admin')->name('admin.')->group(function () {
+// Admin dashboard. Served from its own sub-domain (ADMIN_DOMAIN) in
+// staging/production; path-based (/admin) locally when no domain is set. Route
+// names stay `admin.*` in both modes, so every route('admin.…') keeps working
+// and /admin simply stops resolving on the public domain once ADMIN_DOMAIN is
+// configured.
+$adminDomain = config('app.admin_domain');
+$adminRoutes = Route::name('admin.');
+
+if ($adminDomain) {
+    $adminRoutes->domain($adminDomain);
+} else {
+    $adminRoutes->prefix('admin');
+}
+
+$adminRoutes->group(function () {
     // Guest-only authentication screens.
     Route::middleware('guest')->group(function () {
         Route::get('login', Login::class)->name('login');
@@ -991,5 +1026,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Access Control — TTLock smart locks (lock mapping + passcode dashboard)
         Route::get('access-control/ttlock', App\Livewire\Admin\Ttlock\Locks::class)->name('ttlock.locks');
+
+        // Device Management — tablets, smart TVs + fleet dashboard
+        Route::get('devices', App\Livewire\Admin\Devices\Dashboard::class)->middleware('permission:device.view')->name('devices.dashboard');
+        Route::get('devices/tablets', App\Livewire\Admin\Devices\Tablets::class)->middleware('permission:device.view')->name('devices.tablets');
+        Route::get('devices/smart-tvs', App\Livewire\Admin\Devices\SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
+        Route::get('devices/{device}', App\Livewire\Admin\Devices\Show::class)->whereNumber('device')->middleware('permission:device.view')->name('devices.show');
+
+        // Security — SOS emergency register (management oversight of guest alerts)
+        Route::redirect('security', 'security/incidents');
+        Route::get('security/incidents', App\Livewire\Admin\Security\Incidents::class)->name('security.incidents');
+
+        // Visitor passes register — issue/manage passes, gate codes & TTLock status.
+        Route::get('security/visitor-passes', App\Livewire\Admin\Security\VisitorPasses::class)->name('security.visitor-passes');
+
+        // Visitor access log — the audit of gate entries, exits & denials.
+        Route::get('security/visitor-access', App\Livewire\Admin\Security\VisitorAccessLog::class)->name('security.visitor-access');
+
+        // Administration — access control (users, roles & permissions)
+        Route::get('users', App\Livewire\Admin\Access\Users::class)->name('access.users');
+        Route::get('roles-permissions', App\Livewire\Admin\Access\Roles::class)->name('access.roles');
+
+        // Administration — hotel information & front-desk policy
+        Route::get('settings', App\Livewire\Admin\Settings\Index::class)->name('settings');
     });
 });

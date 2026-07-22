@@ -31,13 +31,25 @@ fi
 # --- Storage symlink (public/storage -> storage/app/public) ---
 # Ensure the upload dirs exist (the volume mounts at storage/app/public) and the
 # public/storage symlink is (re)created so uploaded CMS/room/vehicle images serve.
-mkdir -p storage/app/public/cms storage/app/public/rooms storage/app/public/vehicles
+mkdir -p storage/app/public/cms storage/app/public/rooms storage/app/public/vehicles \
+         storage/app/public/spa storage/app/public/movies storage/app/public/snacks \
+         storage/app/public/restaurant
 [ -L public/storage ] || rm -rf public/storage
 php artisan storage:link --force
 echo "[entrypoint] storage symlink: $(readlink -f public/storage 2>/dev/null || echo 'MISSING')"
 
 # --- Database migrations (abort boot on real failure) ---
 php artisan migrate --force
+
+# --- Idempotent data seeding (never abort boot) ---
+# DeviceManagementSeeder is safe to re-run: it only firstOrCreate's device types,
+# permissions and the IT Administrator role, and (re)grants device permissions to
+# existing roles. It resets no passwords and destroys no data, so it runs on every
+# boot. Non-fatal — a seeding hiccup must not take the whole site down.
+php artisan db:seed --class=DeviceManagementSeeder --force \
+    || echo "[entrypoint] WARNING: DeviceManagementSeeder failed (non-fatal) — device permissions may be incomplete."
+php artisan db:seed --class=StaffRolesSeeder --force \
+    || echo "[entrypoint] WARNING: StaffRolesSeeder failed (non-fatal) — staff tablet roles may be incomplete."
 
 # --- Framework caches (config/route/view/event) for production performance ---
 php artisan config:cache

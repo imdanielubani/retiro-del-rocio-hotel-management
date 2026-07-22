@@ -1,30 +1,35 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:retirodelrocioapp/app/app.dart';
+import 'package:retirodelrocioapp/core/media/ambient_video_provider.dart';
 
-import 'package:retirodelrocioapp/main.dart';
+Future<void> pumpApp(WidgetTester tester) => tester.pumpWidget(
+      ProviderScope(
+        // No network/video in tests: the ambient video resolves to nothing.
+        overrides: [ambientVideoProvider.overrideWith((ref) async => null)],
+        child: const RocioTabletApp(),
+      ),
+    );
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Splash screen shows the brand wordmark', (tester) async {
+    await pumpApp(tester);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('RETIRO DEL ROCIO'), findsOneWidget);
+    expect(find.text('INITIALIZING EXPERIENCE'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('the kiosk ignores the tablet system font-size setting',
+      (tester) async {
+    // A guest (or a technician) raising the device's font size would otherwise
+    // inflate our text and overflow the fixed-height cards and bars.
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await pumpApp(tester);
+
+    final context = tester.element(find.text('RETIRO DEL ROCIO'));
+    expect(MediaQuery.textScalerOf(context), TextScaler.noScaling);
   });
 }

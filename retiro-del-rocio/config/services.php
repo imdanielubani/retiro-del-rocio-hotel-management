@@ -62,6 +62,8 @@ return [
         'checkout_time' => env('TTLOCK_CHECKOUT_TIME', '12:00'),
         // How passcodes reach the lock: 1=bluetooth, 2=gateway, 3=NB-IoT.
         'add_type' => (int) env('TTLOCK_ADD_TYPE', 2),
+        // How long a visitor's one-time online passcode stays valid, in hours.
+        'visitor_window_hours' => (int) env('TTLOCK_VISITOR_WINDOW_HOURS', 12),
         // Request timeout (seconds) and retry attempts for the HTTP client.
         'timeout' => (int) env('TTLOCK_TIMEOUT', 15),
         'retries' => (int) env('TTLOCK_RETRIES', 2),

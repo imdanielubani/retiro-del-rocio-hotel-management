@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\TtlockAccessChanged;
 use App\Mail\TtlockAccessMail;
 use App\Models\Booking;
 use App\Services\TTLockService;
@@ -50,6 +51,8 @@ class GenerateTtlockAccess implements ShouldQueue
         }
 
         $booking->forceFill(['ttlock_status' => 'pending', 'ttlock_error' => null])->save();
+        // Flip the dashboard to "Generating…" the instant we start.
+        TtlockAccessChanged::announce($booking->id, 'pending');
 
         [$start, $end] = $booking->accessWindow();
 
@@ -105,6 +108,17 @@ class GenerateTtlockAccess implements ShouldQueue
         $activeGrants = collect($orderedGrants)->where('status', 'active');
         $primary = $activeGrants->first() ?: ($orderedGrants[0] ?? null);
 
+        // Status reflects reality per gate: 'active' when every gate succeeded,
+        // 'failed' only when NO gate could be provisioned, and 'partial' when the
+        // guest has a working code on at least one gate but another gate is down.
+        // A partial pass must never read as a blanket failure — the guest already
+        // has access — but it still surfaces the degraded gate for follow-up.
+        $status = match (true) {
+            $activeGrants->isEmpty() => 'failed',
+            $errors !== [] => 'partial',
+            default => 'active',
+        };
+
         $booking->forceFill([
             'passcode' => $activeGrants->isNotEmpty() ? $sharedCode : $booking->passcode,
             'ttlock_grants' => $orderedGrants,
@@ -113,9 +127,12 @@ class GenerateTtlockAccess implements ShouldQueue
             'keyboard_pwd_id' => $primary['keyboardPwdId'] ?? $booking->keyboard_pwd_id,
             'qr_code_id' => null,
             'qr_code_link' => null,
-            'ttlock_status' => $errors ? 'failed' : 'active',
+            'ttlock_status' => $status,
             'ttlock_error' => $errors ? implode(' · ', $errors) : null,
         ])->save();
+
+        // Push the settled result to the dashboard so the row updates live.
+        TtlockAccessChanged::announce($booking->id, $status);
 
         // Email the guest their shared passcode (+ QR links) once — on first
         // provisioning or a date-change re-issue, not on a pure retry of a
@@ -134,6 +151,7 @@ class GenerateTtlockAccess implements ShouldQueue
     {
         $booking->forceFill(['ttlock_status' => 'failed', 'ttlock_error' => $message])->save();
         Log::warning('TTLock access not provisioned for booking '.$booking->id.': '.$message);
+        TtlockAccessChanged::announce($booking->id, 'failed');
     }
 
     public function failed(Throwable $e): void
@@ -144,5 +162,6 @@ class GenerateTtlockAccess implements ShouldQueue
             'ttlock_status' => 'failed',
             'ttlock_error' => $e->getMessage(),
         ]);
+        TtlockAccessChanged::announce($this->booking->id, 'failed');
     }
 }

@@ -177,7 +177,7 @@
                                        class="bg-transparent text-body-lg tracking-tight text-white placeholder:text-white/40 focus:outline-none">
                             </label>
                             <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2">
-                                <span class="text-label font-medium tracking-tight text-[#a5a5a5]">Phone Number</span>
+                                <span class="text-label font-medium tracking-tight text-[#a5a5a5]">Phone Number (Preferably WhatsApp)</span>
                                 <div class="flex items-center gap-2">
                                     <span class="flex shrink-0 items-center gap-1 text-body-lg text-white">
                                         <img loading="lazy" src="{{ str_replace(' ', '%20', asset('images/Hotel Logo 1.png')) }}" alt="" class="hidden">

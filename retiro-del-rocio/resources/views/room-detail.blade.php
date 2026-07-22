@@ -148,32 +148,34 @@
 
                 <div class="flex min-w-[240px] flex-1 flex-col justify-center rounded-[6px] border-[0.5px] border-black/20 bg-[#f6f6f6]/[0.87] px-[23px] py-[14px]">
                     <label class="text-body-sm font-medium tracking-tight text-black">Number of Guest</label>
-                    <div class="flex items-center justify-between">
+                    {{-- Arrow is overlaid on the select (not a sibling) so clicking it
+                         falls through to the select and opens the dropdown. --}}
+                    <div class="relative flex items-center justify-between">
                         <select name="guests" x-model.number="guests"
-                                class="w-full appearance-none bg-transparent text-body-lg font-bold text-black focus:outline-none">
+                                class="w-full cursor-pointer appearance-none bg-transparent pr-8 text-body-lg font-bold text-black focus:outline-none">
                             @for ($n = 1; $n <= 10; $n++)
                                 <option value="{{ $n }}">{{ $n }}</option>
                             @endfor
                         </select>
-                        <img loading="lazy" src="{{ asset('images/keyboard_arrow_down.png') }}" alt="" class="pointer-events-none icon-md shrink-0 object-contain">
+                        <img loading="lazy" src="{{ asset('images/keyboard_arrow_down.png') }}" alt="" class="pointer-events-none absolute right-0 icon-md shrink-0 object-contain">
                     </div>
                 </div>
                 <div class="flex min-w-[200px] flex-1 flex-col justify-center rounded-[6px] border-[0.5px] border-black/20 bg-[#f6f6f6]/[0.87] px-[25px] py-[11px]">
                     <label class="text-body-sm font-medium tracking-tight text-black">Check-in Date</label>
-                    <div class="flex items-center gap-[5px]">
-                        <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="icon-sm shrink-0 object-contain">
+                    <div class="relative flex items-center">
+                        <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                         <input type="date" name="check_in" x-model="checkIn" :min="today"
                                @click="$event.target.showPicker && $event.target.showPicker()"
-                               class="w-full min-w-0 bg-transparent text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
+                               class="w-full min-w-0 cursor-pointer bg-transparent pl-[25px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                     </div>
                 </div>
                 <div class="flex min-w-[200px] flex-1 flex-col justify-center rounded-[6px] border-[0.5px] border-black/20 bg-[#f6f6f6]/[0.87] px-[25px] py-[11px]">
                     <label class="text-body-sm font-medium tracking-tight text-black">Check-out Date</label>
-                    <div class="flex items-center gap-[7px]">
-                        <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="icon-sm shrink-0 object-contain">
+                    <div class="relative flex items-center">
+                        <img loading="lazy" src="{{ asset('images/date.png') }}" alt="" class="pointer-events-none absolute left-0 icon-sm shrink-0 object-contain">
                         <input type="date" name="check_out" x-model="checkOut" :min="checkIn || today"
                                @click="$event.target.showPicker && $event.target.showPicker()"
-                               class="w-full min-w-0 bg-transparent text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
+                               class="w-full min-w-0 cursor-pointer bg-transparent pl-[27px] text-body-sm font-semibold text-black focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden">
                     </div>
                 </div>
                 <button type="submit" :disabled="!datesValid || (availChecked && !available)"

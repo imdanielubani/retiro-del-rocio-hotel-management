@@ -6,6 +6,7 @@ use App\Jobs\GenerateTtlockAccess;
 use App\Jobs\RevokeTtlockAccess;
 use App\Models\Booking;
 use App\Services\TTLockService;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -71,6 +72,24 @@ class Locks extends Component
         $this->dispatch('toast', type: $result['ok'] ? 'success' : 'error', message: $result['message']);
     }
 
+    /**
+     * A gate pass was generated, activated, went partial, failed or was revoked
+     * anywhere in the system. Livewire re-renders after this handler runs, so the
+     * list, stats and status badges refresh live — no page reload. A failed pass
+     * also raises a toast so the desk notices without watching the table. The
+     * `wire:poll` on the view is the backstop when the socket is down.
+     */
+    #[On('echo:admin,.ttlock.changed')]
+    public function onTtlockChanged(array $payload = []): void
+    {
+        if (($payload['status'] ?? null) === 'failed') {
+            $id = $payload['id'] ?? null;
+            $booking = $id ? Booking::find($id) : null;
+            $who = $booking?->bookingCode();
+            $this->dispatch('toast', type: 'error', message: '⚠️ Gate pass could not be issued'.($who ? " for {$who}" : '').'.');
+        }
+    }
+
     public function render()
     {
         $service = app(TTLockService::class);
@@ -96,7 +115,7 @@ class Locks extends Component
         $gateIds = (new Booking)->lockIds();
         $stats = [
             'gate' => ['label' => count($gateIds) > 1 ? 'Access Gates' : 'Access Gate', 'value' => $service->isConfigured() && $gateIds ? (count($gateIds) > 1 ? count($gateIds).' gates' : 'Connected') : 'Not set', 'sub' => $gateIds ? (count($gateIds) > 1 ? 'Locks #'.implode(', #', $gateIds) : 'Lock #'.$gateIds[0]) : 'Set TTLOCK_LOCK_ID', 'accent' => '#f38c00'],
-            'active' => ['label' => 'Active Passes', 'value' => Booking::where('ttlock_status', 'active')->count(), 'sub' => 'Passcode + QR live', 'accent' => '#16a34a'],
+            'active' => ['label' => 'Active Passes', 'value' => Booking::whereIn('ttlock_status', ['active', 'partial'])->count(), 'sub' => 'Passcode live at the gate', 'accent' => '#16a34a'],
             'pending' => ['label' => 'Pending', 'value' => Booking::where('ttlock_status', 'pending')->count(), 'sub' => 'Being generated', 'accent' => '#d97706'],
             'failed' => ['label' => 'Failed', 'value' => Booking::where('ttlock_status', 'failed')->count(), 'sub' => 'Need attention', 'accent' => '#dc2626'],
         ];

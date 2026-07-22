@@ -1,11 +1,11 @@
 {
-    "name": "retirodelrocioapp",
-    "short_name": "retirodelrocioapp",
+    "name": "Retiro Del Rocio",
+    "short_name": "Retiro",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Retiro Del Rocio — luxury hotel and retreat in Jos, Plateau State.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

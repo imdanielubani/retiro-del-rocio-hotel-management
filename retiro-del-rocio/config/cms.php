@@ -109,7 +109,7 @@ $pages = [
                 ['label' => 'Experience', 'url' => '/experience'],
                 ['label' => 'Gym', 'url' => '/gym'],
                 ['label' => 'Cinema', 'url' => '/cinema'],
-                ['label' => 'Restaurant', 'url' => '/restaurant'],
+                ['label' => 'Restaurant/Bar', 'url' => '/restaurant-bar'],
                 ['label' => 'Spa/Wellness', 'url' => '/spa-wellness'],
             ]],
             ['key' => 'nav.cta_label', 'label' => 'Button text', 'type' => 'text', 'default' => 'Get in touch'],
@@ -412,10 +412,10 @@ $pages = [
     ],
 
     'restaurant' => [
-        'label' => 'Restaurant',
+        'label' => 'Restaurant/Bar',
         'category' => 'core',
         'chips' => ['Hero', 'Opening Hours', 'Signature Dishes', 'Culinary', 'Reservation'],
-        'preview' => '/restaurant',
+        'preview' => '/restaurant-bar',
         'fields' => [
             // Hero
             ['key' => 'restaurant.hero_image', 'label' => 'Hero image', 'type' => 'image', 'default' => 'images/image 383.jpg'],
@@ -460,7 +460,7 @@ $pages = [
         'label' => 'Restaurant Reservation',
         'category' => 'service',
         'chips' => ['Popup', 'Summary'],
-        'preview' => '/restaurant',
+        'preview' => '/restaurant-bar',
         'fields' => [
             ['key' => 'restaurant.reservation_title', 'label' => 'Popup heading', 'type' => 'text', 'default' => 'Reservation'],
             ['key' => 'restaurant.reservation_text', 'label' => 'Popup intro text', 'type' => 'textarea', 'default' => 'Whether you’re joining us for a casual lunch, a romantic dinner, or celebratory drinks, every visit promises something memorable.'],
@@ -472,7 +472,7 @@ $pages = [
         'label' => 'Restaurant Checkout',
         'category' => 'service',
         'chips' => ['Checkout', 'Payment', 'Success'],
-        'preview' => '/restaurant',
+        'preview' => '/restaurant-bar',
         'fields' => [
             // Checkout
             ['key' => 'restaurant.reservation_fee', 'label' => 'Refundable reservation fee (₦)', 'type' => 'text', 'default' => '10000'],

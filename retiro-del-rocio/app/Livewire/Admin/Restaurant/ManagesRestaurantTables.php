@@ -4,6 +4,8 @@ namespace App\Livewire\Admin\Restaurant;
 
 use App\Models\RestaurantReservation;
 use App\Models\RestaurantTable;
+use Illuminate\Support\Facades\Storage;
+use Livewire\WithFileUploads;
 
 /**
  * Shared CRUD for the admin Tables + Lounge screens. The consuming component
@@ -11,6 +13,8 @@ use App\Models\RestaurantTable;
  */
 trait ManagesRestaurantTables
 {
+    use WithFileUploads;
+
     public string $search = '';
 
     public string $statusFilter = ''; // '' | active | inactive
@@ -29,8 +33,14 @@ trait ManagesRestaurantTables
 
     public bool $fActive = true;
 
+    /** Newly picked upload (TemporaryUploadedFile), null when untouched. */
+    public $fImage = null;
+
+    /** Path already stored on the record, kept when no new file is picked. */
+    public ?string $existingImage = null;
+
     protected $validationAttributes = [
-        'fName' => 'name', 'fCapacity' => 'capacity',
+        'fName' => 'name', 'fCapacity' => 'capacity', 'fImage' => 'image',
     ];
 
     public function setStatus(string $s): void
@@ -40,7 +50,7 @@ trait ManagesRestaurantTables
 
     public function openCreate(): void
     {
-        $this->reset(['editingId', 'fName', 'fCapacity', 'fShape', 'fDescription', 'fActive']);
+        $this->reset(['editingId', 'fName', 'fCapacity', 'fShape', 'fDescription', 'fActive', 'fImage', 'existingImage']);
         $this->fCapacity = 2;
         $this->fShape = 'round';
         $this->fActive = true;
@@ -57,8 +67,35 @@ trait ManagesRestaurantTables
         $this->fShape = $t->shape;
         $this->fDescription = (string) $t->description;
         $this->fActive = $t->is_active;
+        $this->fImage = null;
+        $this->existingImage = $t->image;
         $this->resetValidation();
         $this->showForm = true;
+    }
+
+    /** Preview for the modal: the pending upload if any, else what is stored. */
+    public function imagePreviewUrl(): ?string
+    {
+        if ($this->fImage) {
+            return $this->fImage->temporaryUrl();
+        }
+
+        if (! $this->existingImage) {
+            return null;
+        }
+
+        if (str_starts_with($this->existingImage, 'images/')) {
+            return str_replace(' ', '%20', asset($this->existingImage));
+        }
+
+        return Storage::disk('public')->url($this->existingImage);
+    }
+
+    /** Clear the photo so the guest-facing card falls back to the icon. */
+    public function removeImage(): void
+    {
+        $this->fImage = null;
+        $this->existingImage = null;
     }
 
     public function save(): void
@@ -68,8 +105,24 @@ trait ManagesRestaurantTables
             'fCapacity' => ['required', 'integer', 'min:1', 'max:50'],
             'fShape' => ['required', 'in:round,square,rectangle'],
             'fDescription' => ['nullable', 'string', 'max:255'],
+            'fImage' => ['nullable', 'image', 'max:5120'],
             'fActive' => ['boolean'],
         ]);
+
+        $imagePath = $this->existingImage;
+
+        if ($this->fImage) {
+            $imagePath = $this->fImage->store('restaurant', 'public');
+            \App\Support\ImageOptimizer::optimize($imagePath);
+
+            // Bin the file we just replaced — but never a seeded /public asset,
+            // which is shared and not ours to delete.
+            if ($this->existingImage
+                && ! str_starts_with($this->existingImage, 'images/')
+                && Storage::disk('public')->exists($this->existingImage)) {
+                Storage::disk('public')->delete($this->existingImage);
+            }
+        }
 
         $payload = [
             'name' => $data['fName'],
@@ -77,6 +130,7 @@ trait ManagesRestaurantTables
             'capacity' => (int) $data['fCapacity'],
             'shape' => $data['fShape'],
             'description' => $data['fDescription'] ?: null,
+            'image' => $imagePath,
             'is_active' => $this->fActive,
         ];
 
@@ -89,6 +143,7 @@ trait ManagesRestaurantTables
 
         $this->showForm = false;
         $this->dispatch('toast', type: 'success', message: $this->singular().' '.($this->editingId ? 'updated' : 'created').'.');
+        $this->reset(['fImage', 'existingImage']);
     }
 
     public function toggleActive(int $id): void
@@ -100,7 +155,20 @@ trait ManagesRestaurantTables
 
     public function delete(int $id): void
     {
-        RestaurantTable::where('area', $this->area)->where('id', $id)->delete();
+        $t = RestaurantTable::where('area', $this->area)->where('id', $id)->first();
+
+        if (! $t) {
+            return;
+        }
+
+        $image = $t->image;
+        $t->delete();
+
+        // Drop the uploaded photo with the record; leave seeded assets alone.
+        if ($image && ! str_starts_with($image, 'images/') && Storage::disk('public')->exists($image)) {
+            Storage::disk('public')->delete($image);
+        }
+
         $this->dispatch('toast', type: 'success', message: $this->singular().' deleted.');
     }
 

@@ -181,7 +181,7 @@
                         <div class="flex h-[60px] items-center gap-3 rounded-[11px] bg-[#ececec] px-4">
                             <svg class="size-6 shrink-0 text-[#6a6a6a]" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.7 0-8 1.3-8 4v3h8v-3c0-1 .4-1.9 1-2.7-.3 0-.7-.3-1-.3zm8 0c-.3 0-.7 0-1 .1 1 .8 1.6 1.7 1.6 2.9v3H24v-3c0-2.7-5.3-4-8-4z"/></svg>
                             <select x-model.number="guests" class="h-full w-full bg-transparent text-body-lg font-bold text-[#6a6a6a] focus:outline-none">
-                                @for ($g = 1; $g <= 10; $g++)
+                                @for ($g = 1; $g <= 2; $g++)
                                     <option value="{{ $g }}">{{ $g }} {{ \Illuminate\Support\Str::plural('Guest', $g) }}</option>
                                 @endfor
                             </select>
@@ -374,7 +374,7 @@
                                         <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Last Name</span><input type="text" x-model="lastName" placeholder="Philips" class="bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></label>
                                     </div>
                                     <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Email Address</span><input type="email" x-model="email" placeholder="micheal.philips@gmail.com" class="bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></label>
-                                    <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Phone Number</span><div class="flex items-center gap-2"><span class="shrink-0 text-body-lg text-white">🇳🇬 +234</span><input type="tel" x-model="phone" placeholder="8143432903" inputmode="numeric" class="w-full bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></div></label>
+                                    <label class="flex flex-col gap-1.5 border-b border-white/30 pb-2"><span class="text-label text-[#a5a5a5]">Phone Number (Preferably WhatsApp)</span><div class="flex items-center gap-2"><span class="shrink-0 text-body-lg text-white">🇳🇬 +234</span><input type="tel" x-model="phone" placeholder="8143432903" inputmode="numeric" class="w-full bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none"></div></label>
                                 </div>
                             </div>
 

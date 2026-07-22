@@ -58,7 +58,7 @@
     $nav = [
         ['label' => 'Operations Management', 'items' => [
             ['label' => 'Reception', 'icon' => 'reception', 'href' => '#'],
-            ['label' => 'Visitor Pass', 'icon' => 'visitor', 'href' => '#'],
+            ['label' => 'Visitor Pass', 'icon' => 'visitor', 'href' => route('admin.security.visitor-passes'), 'active' => request()->routeIs('admin.security.visitor-passes')],
             ['label' => 'Task Center', 'icon' => 'task', 'href' => '#'],
         ]],
         ['label' => 'Guest Management', 'items' => [
@@ -128,18 +128,18 @@
                 ['label' => 'Assets', 'href' => '#'],
                 ['label' => 'Service History', 'href' => '#'],
             ]],
-            ['label' => 'Security', 'icon' => 'shield', 'href' => '#'],
-            ['label' => 'Staff', 'icon' => 'user', 'href' => '#'],
+            ['label' => 'Security', 'icon' => 'shield', 'href' => route('admin.security.incidents'), 'active' => request()->routeIs('admin.security.incidents')],
+            ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users')],
             ['label' => 'Departments', 'icon' => 'dashboard', 'href' => '#'],
         ]],
         ['label' => 'Device Management', 'items' => [
-            ['label' => 'Tablets', 'icon' => 'tablet', 'href' => '#'],
-            ['label' => 'Smart TVs', 'icon' => 'tv', 'href' => '#'],
+            ['label' => 'Tablets', 'icon' => 'tablet', 'href' => route('admin.devices.tablets'), 'active' => request()->routeIs('admin.devices.tablets') || request()->routeIs('admin.devices.dashboard') || request()->routeIs('admin.devices.show')],
+            ['label' => 'Smart TVs', 'icon' => 'tv', 'href' => route('admin.devices.smart-tvs'), 'active' => request()->routeIs('admin.devices.smart-tvs')],
         ]],
         ['label' => 'Access Control', 'items' => [
             ['label' => 'Gate Pass', 'icon' => 'lock', 'href' => route('admin.ttlock.locks'), 'active' => request()->routeIs('admin.ttlock.*')],
             ['label' => 'RFID Cards', 'icon' => 'card', 'href' => '#'],
-            ['label' => 'Visitor Access', 'icon' => 'door', 'href' => '#'],
+            ['label' => 'Visitor Access', 'icon' => 'door', 'href' => route('admin.security.visitor-access'), 'active' => request()->routeIs('admin.security.visitor-access')],
             ['label' => 'Access Logs', 'icon' => 'list', 'href' => '#'],
         ]],
         ['label' => 'Analytics Management', 'items' => [
@@ -159,8 +159,8 @@
             ['key' => 'website-cms', 'label' => 'Website CMS', 'icon' => 'cms', 'children' => [
                 ['label' => 'Contents', 'href' => route('admin.cms.index'), 'active' => request()->routeIs('admin.cms.*')],
             ]],
-            ['label' => 'Roles & Permissions', 'icon' => 'roles', 'href' => '#'],
-            ['label' => 'Settings', 'icon' => 'settings', 'href' => '#'],
+            ['label' => 'Roles & Permissions', 'icon' => 'roles', 'href' => route('admin.access.roles'), 'active' => request()->routeIs('admin.access.*')],
+            ['label' => 'Settings', 'icon' => 'settings', 'href' => route('admin.settings'), 'active' => request()->routeIs('admin.settings')],
         ]],
     ];
 

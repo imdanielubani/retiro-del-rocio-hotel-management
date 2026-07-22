@@ -36,28 +36,35 @@
     @else
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             @foreach ($items as $t)
-                <div wire:key="rt-{{ $t->id }}" class="flex flex-col gap-4 rounded-2xl border border-[#e5e7eb] bg-white p-5">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <span class="flex size-12 items-center justify-center rounded-xl bg-[#fff3e0] text-[#f38c00]">
-                                <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 4h4M10 20h4M4 10v4M20 10v4"/></svg>
-                            </span>
-                            <div>
-                                <p class="text-[15px] font-bold text-[#1e1e1e]">{{ $t->name }}</p>
-                                <p class="text-[12px] capitalize text-[#9ca3af]">{{ $t->shape }} · {{ $t->capacityLabel() }}</p>
+                <div wire:key="rt-{{ $t->id }}" class="flex flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white">
+                    {{-- Image banner leads the card. --}}
+                    <div class="relative h-[150px] w-full overflow-hidden bg-[#f3f4f6]">
+                        @if ($t->imageUrl())
+                            <img src="{{ $t->imageUrl() }}" alt="{{ $t->name }}" loading="lazy" class="h-full w-full object-cover">
+                        @else
+                            <div class="flex h-full w-full items-center justify-center text-[#cbd5e1]">
+                                <svg class="size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
                             </div>
+                        @endif
+                        <div class="absolute right-2.5 top-2.5 rounded-lg bg-white shadow-md ring-1 ring-black/5">
+                            @include('admin.restaurant.partials.table-menu', ['t' => $t])
                         </div>
-                        @include('admin.restaurant.partials.table-menu', ['t' => $t])
                     </div>
-                    @if ($t->description)
-                        <p class="text-[13px] leading-relaxed text-[#6b7280]">{{ $t->description }}</p>
-                    @endif
-                    <div class="mt-auto flex items-center justify-between border-t border-[#f1f1ee] pt-3">
+                    <div class="flex flex-1 flex-col gap-4 p-5">
+                        <div>
+                            <p class="text-[15px] font-bold text-[#1e1e1e]">{{ $t->name }}</p>
+                            <p class="text-[12px] capitalize text-[#9ca3af]">{{ $t->shape }} · {{ $t->capacityLabel() }}</p>
+                        </div>
+                        @if ($t->description)
+                            <p class="text-[13px] leading-relaxed text-[#6b7280]">{{ $t->description }}</p>
+                        @endif
+                        <div class="mt-auto flex items-center justify-between border-t border-[#f1f1ee] pt-3">
                         <span @class(['inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold', 'bg-[#dcfce7] text-[#16a34a]' => $t->is_active, 'bg-[#f3f4f6] text-[#6b7280]' => ! $t->is_active])>
                             <span @class(['size-1.5 rounded-full', 'bg-[#16a34a]' => $t->is_active, 'bg-[#9ca3af]' => ! $t->is_active])></span>
                             {{ $t->is_active ? 'Active' : 'Inactive' }}
                         </span>
                         <span class="text-[12px] font-medium text-[#374151]">{{ $t->capacity }} seats</span>
+                        </div>
                     </div>
                 </div>
             @endforeach
@@ -97,6 +104,35 @@
                     <div class="flex flex-col gap-1.5">
                         <label class="text-[12px] font-semibold text-[#374151]">Description <span class="font-normal text-[#9ca3af]">(optional)</span></label>
                         <input type="text" wire:model="fDescription" placeholder="Short note shown internally" class="h-11 rounded-xl border border-[#e5e7eb] px-3.5 text-[14px] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
+                    </div>
+                    {{-- Photo shown to guests on the reservation picker. Optional:
+                         without one the card falls back to the table icon. --}}
+                    @php $previewImg = $this->imagePreviewUrl(); @endphp
+                    <div class="flex flex-col gap-1.5" wire:key="rtimg-{{ $editingId ?? 'new' }}">
+                        <label class="text-[12px] font-semibold text-[#374151]">{{ $singular }} Photo <span class="font-normal text-[#9ca3af]">(optional)</span></label>
+                        <div class="flex items-center gap-4">
+                            <span class="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#e5e7eb] bg-[#f9fafb]">
+                                @if ($previewImg)
+                                    <img src="{{ $previewImg }}" alt="" class="h-full w-full object-cover">
+                                @else
+                                    <svg class="size-7 text-[#cbd5e1]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+                                @endif
+                            </span>
+                            <div class="flex flex-col items-start gap-1.5" x-data="cmsImageUpload('fImage')">
+                                <label class="cursor-pointer rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-[13px] font-semibold text-[#374151] transition hover:bg-[#f9fafb]">
+                                    <span x-show="!uploading">{{ $previewImg ? 'Change photo' : 'Upload photo' }}</span>
+                                    <span x-show="uploading" x-cloak>Uploading… <span x-text="progress + '%'"></span></span>
+                                    <input type="file" accept="image/*" class="hidden" @change="handle($event)">
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <p class="text-[11px] text-[#9ca3af]">PNG or JPG, up to 5MB.</p>
+                                    @if ($previewImg)
+                                        <button type="button" wire:click="removeImage" class="text-[11px] font-semibold text-[#dc2626] hover:underline">Remove</button>
+                                    @endif
+                                </div>
+                                @error('fImage') <span class="text-[11px] text-[#dc2626]">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
                     </div>
                     <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-3">
                         <input type="checkbox" wire:model="fActive" class="size-4 rounded border-[#d1d5db] text-[#f38c00] focus:ring-[#f38c00]/30">

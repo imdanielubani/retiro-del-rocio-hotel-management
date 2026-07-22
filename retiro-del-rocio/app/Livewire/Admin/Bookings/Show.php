@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Show extends Component
@@ -81,6 +82,9 @@ class Show extends Component
 
         return RoomUnit::where('room_id', $this->booking->room_id)
             ->where(fn ($q) => $q->where('status', 'available')->orWhere('id', $this->booking->room_unit_id))
+            // Reception needs to see which room numbers have an in-room tablet:
+            // that is the tablet the guest's details will appear on.
+            ->with(['devices' => fn ($q) => $q->where('is_provisioned', true)])
             ->orderByRaw('LENGTH(number), number')
             ->get();
     }
@@ -93,21 +97,30 @@ class Show extends Component
 
     public function confirmCheckIn(): void
     {
-        // Assign the chosen room number (if any) and mark it occupied.
-        if ($this->assignUnitId) {
-            $unit = RoomUnit::where('room_id', $this->booking->room_id)->find($this->assignUnitId);
-            if ($unit && ($unit->status === 'available' || $unit->id === $this->booking->room_unit_id)) {
-                // free any previously held unit first
-                if ($this->booking->room_unit_id && $this->booking->room_unit_id !== $unit->id) {
-                    RoomUnit::where('id', $this->booking->room_unit_id)->update(['status' => 'available', 'booking_id' => null]);
+        // Occupying the room and checking the booking in are one act: if either
+        // half fails, neither may stand. Without this, an error between them
+        // leaves the room occupied by a guest who was never checked in — and the
+        // in-room tablet shows "occupied" with nobody there.
+        DB::transaction(function () {
+            if ($this->assignUnitId) {
+                $unit = RoomUnit::where('room_id', $this->booking->room_id)->find($this->assignUnitId);
+                if ($unit && ($unit->status === 'available' || $unit->id === $this->booking->room_unit_id)) {
+                    // free any previously held unit first
+                    if ($this->booking->room_unit_id && $this->booking->room_unit_id !== $unit->id) {
+                        RoomUnit::release($this->booking->room_unit_id);
+                    }
+                    $unit->update(['status' => 'occupied', 'booking_id' => $this->booking->id]);
+                    $this->booking->room_unit_id = $unit->id;
                 }
-                $unit->update(['status' => 'occupied', 'booking_id' => $this->booking->id]);
-                $this->booking->room_unit_id = $unit->id;
             }
-        }
 
-        $this->booking->status = 'checked_in';
-        $this->booking->save();
+            // Record the real arrival, not the policy estimate — the policy can change.
+            $this->booking->status = 'checked_in';
+            $this->booking->checked_in_at = now();
+            $this->booking->checked_out_at = null;
+            $this->booking->save();
+        });
+
         $this->assigning = false;
         $this->refresh();
 
@@ -117,11 +130,15 @@ class Show extends Component
 
     public function checkOut(): void
     {
-        // Free the assigned room number so it's available again.
-        if ($this->booking->room_unit_id) {
-            RoomUnit::where('id', $this->booking->room_unit_id)->update(['status' => 'available', 'booking_id' => null]);
-        }
-        $this->booking->update(['status' => 'checked_out']);
+        // Freeing the room and closing the booking likewise stand or fall together.
+        DB::transaction(function () {
+            RoomUnit::release($this->booking->room_unit_id);
+            $this->booking->update([
+                'status' => 'checked_out',
+                'checked_out_at' => now(),
+            ]);
+        });
+
         $this->refresh();
         $this->dispatch('toast', type: 'success', message: $this->booking->bookingCode().' checked out — room is now available.');
     }
@@ -129,11 +146,7 @@ class Show extends Component
     public function cancel(): void
     {
         // Release the room number this booking held, if any.
-        if ($this->booking->room_unit_id) {
-            RoomUnit::where('id', $this->booking->room_unit_id)
-                ->where('booking_id', $this->booking->id)
-                ->update(['status' => 'available', 'booking_id' => null]);
-        }
+        RoomUnit::release($this->booking->room_unit_id, $this->booking->id);
         $this->booking->status = 'cancelled';
         if (! $this->booking->refund_status) {
             $this->booking->refund_status = 'pending';
@@ -222,10 +235,11 @@ class Show extends Component
         // A guest who renews keeps staying — reactivate a completed stay and re-hold the room.
         if ($this->booking->status === 'checked_out') {
             $this->booking->status = 'checked_in';
-            if ($this->booking->room_unit_id) {
-                RoomUnit::where('id', $this->booking->room_unit_id)
-                    ->where('status', 'available')
-                    ->update(['status' => 'occupied', 'booking_id' => $this->booking->id]);
+            $this->booking->checked_out_at = null; // they never actually left
+            $this->booking->checked_in_at ??= now();
+            $unit = RoomUnit::find($this->booking->room_unit_id);
+            if ($unit && $unit->status === 'available') {
+                $unit->update(['status' => 'occupied', 'booking_id' => $this->booking->id]);
             }
         }
         $this->booking->save();

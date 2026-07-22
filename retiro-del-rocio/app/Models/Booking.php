@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Observers\BookingObserver;
+use App\Support\HotelSettings;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 #[ObservedBy(BookingObserver::class)]
 class Booking extends Model
@@ -14,7 +16,7 @@ class Booking extends Model
         'amount', 'customer_name', 'customer_email', 'customer_phone',
         'pickup_vehicle', 'pickup_price', 'pickup_passengers', 'pickup_location',
         'pickup_arrival_date', 'pickup_time', 'pickup_flight_number',
-        'status', 'payment_method', 'paid_at',
+        'status', 'payment_method', 'paid_at', 'checked_in_at', 'checked_out_at',
         'refund_amount', 'refund_method', 'refund_status', 'room_unit_id',
         'passcode', 'keyboard_pwd_id', 'qr_code_id', 'qr_code_link', 'ttlock_grants', 'ttlock_status', 'ttlock_error',
     ];
@@ -24,6 +26,8 @@ class Booking extends Model
         'check_out' => 'date',
         'pickup_arrival_date' => 'date',
         'paid_at' => 'datetime',
+        'checked_in_at' => 'datetime',
+        'checked_out_at' => 'datetime',
         'amount' => 'integer',
         'nights' => 'integer',
         'guests' => 'integer',
@@ -126,6 +130,7 @@ class Booking extends Model
     {
         return match ($this->ttlock_status) {
             'active' => 'Access active',
+            'partial' => 'Partial access',
             'pending' => 'Generating…',
             'failed' => 'Failed',
             'deleted', 'disabled' => 'Revoked',
@@ -137,7 +142,7 @@ class Booking extends Model
     {
         return match ($this->ttlock_status) {
             'active' => 'bg-[#dcfce7] text-[#16a34a]',
-            'pending' => 'bg-[#fef3c7] text-[#d97706]',
+            'partial', 'pending' => 'bg-[#fef3c7] text-[#d97706]',
             'failed' => 'bg-[#fee2e2] text-[#dc2626]',
             'deleted', 'disabled' => 'bg-[#eef2f6] text-[#475569]',
             default => 'bg-[#f3f4f6] text-[#6b7280]',
@@ -281,6 +286,37 @@ class Booking extends Model
     public function bookingCode(): string
     {
         return 'BK-'.str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * When the guest arrived: the moment reception actually checked them in,
+     * falling back to the expected time (their date at the hotel's check-in
+     * policy) for a stay that has not started.
+     *
+     * Recording the real moment matters because the policy is editable — without
+     * it, changing check-in to 2:00 PM would silently rewrite the arrival time of
+     * every guest who ever stayed.
+     */
+    public function arrivalAt(): ?Carbon
+    {
+        return $this->checked_in_at ?? HotelSettings::arrivalFor($this->check_in);
+    }
+
+    /** When the guest left, or is expected to. See {@see arrivalAt()}. */
+    public function departureAt(): ?Carbon
+    {
+        return $this->checked_out_at ?? HotelSettings::departureFor($this->check_out);
+    }
+
+    /** True once the arrival/departure is a recorded fact, not a policy estimate. */
+    public function hasArrived(): bool
+    {
+        return $this->checked_in_at !== null;
+    }
+
+    public function hasDeparted(): bool
+    {
+        return $this->checked_out_at !== null;
     }
 
     // Where this transaction came from (room vs spa) for the Payments table.

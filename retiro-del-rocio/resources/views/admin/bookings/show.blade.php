@@ -3,6 +3,17 @@
     $initials = collect(explode(' ', trim((string) $b->customer_name)))->filter()->take(2)->map(fn ($p) => strtoupper(substr($p, 0, 1)))->implode('') ?: '—';
     $naira = fn ($n) => '₦'.number_format((int) $n);
 
+    // Once reception checks the guest in/out we show the moment that actually
+    // happened; before that, the expected time from Settings → Hotel Info.
+    $arrival = $b->arrivalAt();
+    $departure = $b->departureAt();
+    $arrivalLabel = $arrival
+        ? $arrival->format('M j, Y · g:i A').($b->hasArrived() ? '' : ' (expected)')
+        : '—';
+    $departureLabel = $departure
+        ? $departure->format('M j, Y · g:i A').($b->hasDeparted() ? '' : ' (expected)')
+        : '—';
+
     // Timeline events derived from the booking.
     $paymentDone = $b->paid_at || in_array($b->status, ['paid', 'checked_in', 'checked_out']);
     $checkedIn = in_array($b->status, ['checked_in', 'checked_out']);
@@ -10,8 +21,8 @@
     $timeline = [
         ['title' => 'Booking Created', 'at' => optional($b->created_at)->format('M j, Y · g:i A'), 'done' => true, 'color' => '#f38c00'],
         ['title' => 'Payment Confirmed', 'at' => optional($b->paid_at ?? $b->created_at)->format('M j, Y · g:i A'), 'done' => $paymentDone, 'color' => '#16a34a'],
-        ['title' => 'Check-in', 'at' => $b->check_in ? $b->check_in->format('M j, Y').' · 2:00 PM' : '—', 'done' => $checkedIn, 'color' => '#16a34a'],
-        ['title' => 'Check-out', 'at' => $b->check_out ? $b->check_out->format('M j, Y').' · 12:00 PM' : '—', 'done' => $checkedOut, 'color' => '#16a34a'],
+        ['title' => 'Check-in', 'at' => $arrivalLabel, 'done' => $checkedIn, 'color' => '#16a34a'],
+        ['title' => 'Check-out', 'at' => $departureLabel, 'done' => $checkedOut, 'color' => '#16a34a'],
     ];
     if ($b->status === 'cancelled') {
         $timeline[] = ['title' => 'Cancelled', 'at' => optional($b->updated_at)->format('M j, Y · g:i A'), 'done' => true, 'color' => '#dc2626'];
@@ -117,8 +128,8 @@
                             'Room' => $b->room_name ?: '—',
                             'Room Type' => $b->room?->type ?: '—',
                             'Room Number' => $b->roomUnit?->number ?: 'Not assigned',
-                            'Check-in' => $b->check_in ? $b->check_in->format('M j, Y').' · 2:00 PM' : '—',
-                            'Check-out' => $b->check_out ? $b->check_out->format('M j, Y').' · 12:00 PM' : '—',
+                            'Check-in' => $arrivalLabel,
+                            'Check-out' => $departureLabel,
                             'Duration' => $b->nights.' '.\Illuminate\Support\Str::plural('night', $b->nights),
                             'Guests' => $b->guests.' '.\Illuminate\Support\Str::plural('Guest', $b->guests),
                         ];
@@ -303,12 +314,25 @@
                             @foreach ($assignableUnits as $unit)
                                 <button type="button" wire:click="$set('assignUnitId', {{ $unit->id }})"
                                         @class([
-                                            'rounded-lg border px-3.5 py-2 text-[14px] font-semibold transition',
+                                            'flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[14px] font-semibold transition',
                                             'border-[#f38c00] bg-[#fff7ed] text-[#f38c00]' => $assignUnitId === $unit->id,
                                             'border-[#e5e7eb] bg-white text-[#374151] hover:bg-[#f9fafb]' => $assignUnitId !== $unit->id,
-                                        ])>{{ $unit->number }}</button>
+                                        ])>
+                                    {{ $unit->number }}
+                                    @if ($unit->devices->isNotEmpty())
+                                        <svg class="size-3.5 text-[#16a34a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>
+                                        </svg>
+                                    @endif
+                                </button>
                             @endforeach
                         </div>
+                        <p class="mt-2.5 flex items-center gap-1.5 text-[12px] text-[#6b7280]">
+                            <svg class="size-3.5 text-[#16a34a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>
+                            </svg>
+                            Has an in-room tablet — the guest’s details appear on it right after check-in.
+                        </p>
                     @endif
                 </div>
                 <div class="flex items-center justify-end gap-2 border-t border-[#e5e7eb] px-5 py-4">

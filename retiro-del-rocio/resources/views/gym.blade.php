@@ -201,7 +201,7 @@
                             <input type="email" x-model="email" placeholder="mich.philip@gmail.com" class="bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none">
                         </label>
                         <label class="flex flex-col gap-1.5 rounded-xl bg-[#373d35] px-4 py-3">
-                            <span class="text-label font-medium text-[#a5a5a5]">Phone Number</span>
+                            <span class="text-label font-medium text-[#a5a5a5]">Phone Number (Preferably WhatsApp)</span>
                             <div class="flex items-center gap-2">
                                 <span class="shrink-0 text-body-lg text-white">🇳🇬 +234</span>
                                 <input type="tel" x-model="phone" inputmode="numeric" placeholder="7012623680" class="w-full bg-transparent text-body-lg text-white placeholder:text-white/40 focus:outline-none">

@@ -217,6 +217,8 @@ window.restaurantReservation = function (config) {
         step: config.successData ? 'success' : 'reserve',
         area: 'dining', // dining | lounge
         occasion: 'Casual Dining',
+        floor: '', // lounge only: 'Rooftop' | 'Ground floor'
+        floors: ['Rooftop', 'Ground floor'],
         guests: 2,
         date: '',
         time: '',
@@ -241,7 +243,15 @@ window.restaurantReservation = function (config) {
         },
         close() { this.showModal = false; document.body.style.overflow = ''; },
 
-        setArea(area) { this.area = area; this.pickFirstTable(); },
+        // Floor is a lounge-only choice: drop it when switching back to dining so
+        // a dining reservation can never carry a stale floor through to checkout.
+        setArea(area) { this.area = area; if (area !== 'lounge') { this.floor = ''; } this.pickFirstTable(); },
+        get isLounge() { return this.area === 'lounge'; },
+        selectFloor(f) { this.floor = f; },
+        isFloor(f) { return this.floor === f; },
+        /** Only lounge reservations submit a floor. */
+        get floorPayload() { return this.isLounge ? this.floor : ''; },
+
         get areaTables() { return this.tables.filter((t) => t.area === this.area); },
         pickFirstTable() { const list = this.areaTables; this.tableId = list.length ? list[0].id : null; },
         selectTable(id) { this.tableId = id; },
@@ -274,6 +284,10 @@ window.restaurantReservation = function (config) {
                 window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Please select a preferred ' + (this.area === 'lounge' ? 'lounge space' : 'table') + '.' } }));
                 return;
             }
+            if (this.isLounge && !this.floor) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Please choose whether you would like the Rooftop or Ground floor.' } }));
+                return;
+            }
             this.step = 'checkout';
         },
         backToReserve() { this.step = 'reserve'; },
@@ -303,6 +317,7 @@ window.restaurantReservation = function (config) {
                     phone: this.phone ? '+234' + this.phone : '',
                     custom_fields: [
                         { display_name: 'Reservation', variable_name: 'area', value: this.area === 'lounge' ? 'Lounge' : 'Table Reservation' },
+                        ...(this.isLounge && this.floor ? [{ display_name: 'Floor', variable_name: 'floor', value: this.floor }] : []),
                         { display_name: 'Guests', variable_name: 'guests', value: String(this.guests) },
                     ],
                 },
