@@ -140,25 +140,38 @@ class VisitorVerificationRow extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Row(
+        // A Wrap, not a Row: the code is read digit by digit at the gate, so it
+        // must never be squeezed to fit the reference alongside it. On a narrow
+        // list the reference drops to the next line instead.
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 2,
           children: [
-            Text(
-              pass.hasOnlineCode ? 'Online Code — ' : 'Offline Code — ',
-              style: AppTypography.style(
-                color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 12,
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: pass.hasOnlineCode ? 'Online Code — ' : 'Offline Code — ',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 12,
+                    ),
+                  ),
+                  TextSpan(
+                    text: pass.code,
+                    style: AppTypography.style(
+                      color: accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                    ).copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
               ),
             ),
-            Text(
-              pass.code,
-              style: AppTypography.style(
-                color: accent,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-              ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-            ),
-            const SizedBox(width: 10),
             Text(
               pass.reference,
               style: AppTypography.style(
@@ -225,8 +238,16 @@ class VisitorVerificationRow extends StatelessWidget {
     );
   }
 
+  /// Label left, value hard against the right edge.
+  ///
+  /// A `Spacer` plus a `Flexible` both carry flex 1, so they halve the leftover
+  /// width between them: the value gets only half the room it should and starts
+  /// ellipsizing — and, because the gap grows with the value, no two rows line
+  /// up. `Expanded` on the value alone gives it every remaining pixel and puts
+  /// each row's right edge in the same place.
   Widget _detailRow(String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -235,8 +256,8 @@ class VisitorVerificationRow extends StatelessWidget {
             fontSize: 12,
           ),
         ),
-        const Spacer(),
-        Flexible(
+        const SizedBox(width: 12),
+        Expanded(
           child: Text(
             value,
             maxLines: 1,

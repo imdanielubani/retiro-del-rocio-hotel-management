@@ -35,11 +35,42 @@ class SecurityController extends Controller
             ->latest('raised_at')
             ->get();
 
-        // Today's visitor passes, hotel-wide: verified ones fill "Visitors Today",
-        // pending ones the "Visitor Pass Requests" column and the counters.
-        $today = VisitorPass::whereDate('created_at', today())->latest('id')->get();
-        $verified = $today->where('status', VisitorPass::VERIFIED);
-        $pending = $today->where('status', VisitorPass::PENDING);
+        // "Visitors Today" means people who came through the gate today, so it
+        // keys off when they were VERIFIED — not when their pass happened to be
+        // issued. A visitor invited last night who arrives this morning belongs
+        // on today's list; the pass they were issued last week does not.
+        $verified = VisitorPass::where('status', VisitorPass::VERIFIED)
+            ->whereDate('verified_at', today())
+            ->orderByDesc('verified_at')
+            ->limit(50)
+            ->get();
+
+        // "Visitor Pass Requests" is a feed of the gate's recent work, not a
+        // pending-only queue — the design (Figma 257:1336) shows verified entries
+        // sitting among the pending ones, and an officer who has just worked
+        // through the queue should still see what they admitted rather than a
+        // column that empties itself.
+        //
+        // Pending is scoped to the last day rather than to the calendar day: a
+        // pass issued at 11pm is still walking up to the gate at 00:05. Anything
+        // the visitor never used is closed out by the reconcile command.
+        $pending = VisitorPass::where('status', VisitorPass::PENDING)
+            ->where('created_at', '>=', now()->subDay())
+            ->latest('id')
+            ->limit(25)
+            ->get();
+
+        // Both columns render the same population, for different jobs:
+        //
+        //  • "Visitors Today" (Figma 257:1256) answers *who is here* — arrivals
+        //    first, then those still expected, who show as "Not Inside". Sending
+        //    only verified passes is why that list looked empty and why the
+        //    "Not Inside" state in the design never appeared: a visitor who has
+        //    not arrived yet is exactly the one that pill is describing.
+        //  • "Visitor Pass Requests" (Figma 257:1336) answers *what is left to
+        //    do* — still-pending first, then what has already been admitted.
+        $visitors = $verified->concat($pending)->values();
+        $requests = $pending->concat($verified)->values();
 
         return response()->json(['data' => [
             'officer' => [
@@ -48,12 +79,15 @@ class SecurityController extends Controller
             ],
             'stats' => [
                 'active_incidents' => $incidents->where('status', SosAlert::ACTIVE)->count(),
-                'visitors_today' => $today->count(),
+                // Everything the gate has dealt with today: those already in,
+                // plus those still expected. Counting only passes *issued* today
+                // read as zero on a quiet morning after a busy night.
+                'visitors_today' => $verified->count() + $pending->count(),
                 'verified_passes' => $verified->count(),
             ],
             'incidents' => $incidents->map->toSecurityArray()->values(),
-            'visitors' => $verified->map->toVisitorRowArray()->values(),
-            'pass_requests' => $pending->map->toPassRequestArray()->values(),
+            'visitors' => $visitors->map->toVisitorRowArray()->values(),
+            'pass_requests' => $requests->map->toPassRequestArray()->values(),
         ]]);
     }
 

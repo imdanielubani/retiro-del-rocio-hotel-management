@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProvisionVisitorPass;
 use App\Models\Device;
 use App\Models\VisitorPass;
-use App\Services\VisitorPassProvisioner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,15 +19,24 @@ use Illuminate\Http\Request;
 class VisitorPassController extends Controller
 {
     /**
-     * GET /visitor-passes — this room's passes, newest first.
+     * GET /visitor-passes — the passes issued during the current stay, newest first.
      *
-     * Drives the guest tablet's "Visitor History" list.
+     * Drives the guest tablet's "Visitor History" list. Scoped to the booking, not
+     * the room: the tablet stays behind when a guest checks out, and the previous
+     * guest's visitor list is their business — names, emails and phone numbers of
+     * people who came to see them. An empty room simply has no history to show.
      */
     public function index(Request $request): JsonResponse
     {
         $device = $this->guestDevice($request);
 
-        $passes = VisitorPass::where('room_unit_id', $device->room_unit_id)
+        $booking = $device->currentBooking();
+        if (! $booking) {
+            return response()->json(['data' => []]);
+        }
+
+        $passes = VisitorPass::where('booking_id', $booking->id)
+            ->where('room_unit_id', $device->room_unit_id) // belt and braces
             ->latest('id')
             ->limit(50)
             ->get();
@@ -54,14 +63,19 @@ class VisitorPassController extends Controller
             'visitor_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $unit = $device->roomUnit()->with(['room', 'booking'])->first();
-        $booking = $unit?->booking?->status === 'checked_in' ? $unit->booking : null;
+        $unit = $device->roomUnit()->with('room')->first();
+        $booking = $device->currentBooking();
+
+        // Only a guest actually staying here can invite anyone. Without a booking
+        // to own it a pass would belong to nobody: no host to name at the gate,
+        // and no stay to scope it to afterwards.
+        abort_unless($booking, 409, 'No guest is checked in to this room.');
 
         $pass = VisitorPass::create([
             'device_id' => $device->id,
             'room_unit_id' => $device->room_unit_id,
-            'booking_id' => $booking?->id,
-            'host_name' => $booking?->customer_name,
+            'booking_id' => $booking->id,
+            'host_name' => $booking->customer_name,
             'room_number' => $unit?->number,
             'suite_name' => optional($unit?->room)->name,
             'visitor_name' => $data['visitor_name'],
@@ -69,14 +83,17 @@ class VisitorPassController extends Controller
             'visitor_phone' => $data['visitor_phone'] ?? null,
             'code' => VisitorPass::generateUniqueCode(),
             'status' => VisitorPass::PENDING,
+            // The offline code is live the moment the row commits; the online
+            // (TTLock) code is still being pushed to the gates.
+            'ttlock_status' => 'pending',
         ]);
 
-        // Mint the one-time online (TTLock) code now so the guest sees it on the
-        // success screen; provisioning never throws — a lock that is offline just
-        // leaves the pass on its manual offline code. Then email the visitor.
-        $provisioner = app(VisitorPassProvisioner::class);
-        $provisioner->provision($pass);
-        $provisioner->email($pass);
+        // Minting the online code means an HTTP round trip per gate plus an SMTP
+        // hand-off — far longer than the tablet will wait, and a timeout there
+        // read to the guest as a failure even though the pass existed. So hand
+        // that work off to run once this response has been sent; the pass is
+        // already usable on its offline code either way.
+        ProvisionVisitorPass::dispatch($pass->id)->afterResponse();
 
         $device->log('visitor_pass', 'Visitor pass issued from the room tablet.', [
             'pass_id' => $pass->id,

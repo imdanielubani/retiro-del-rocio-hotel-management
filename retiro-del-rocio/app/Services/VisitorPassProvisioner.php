@@ -114,6 +114,33 @@ class VisitorPassProvisioner
     }
 
     /**
+     * Close out a departing guest's outstanding visitor passes.
+     *
+     * A pass belongs to a stay, not to a room. Once the host has checked out
+     * there is nobody for their visitor to be visiting, so leaving the codes live
+     * would let a stranger through the gate on the credentials of someone who is
+     * no longer in the building. Verified visitors are left alone — they are
+     * already inside, and the register still needs to show them.
+     *
+     * @return int passes closed
+     */
+    public function closeOutBooking(int $bookingId): int
+    {
+        $passes = VisitorPass::open()->where('booking_id', $bookingId)->get();
+
+        foreach ($passes as $pass) {
+            $this->revoke($pass);
+            $pass->forceFill([
+                'status' => VisitorPass::CANCELLED,
+                'cancelled_at' => now(),
+                'ttlock_status' => $pass->keyboard_pwd_id ? 'deleted' : $pass->ttlock_status,
+            ])->save();
+        }
+
+        return $passes->count();
+    }
+
+    /**
      * Every gate lock a visitor passcode is issued against. TTLOCK_LOCK_ID may be
      * a comma-separated list; the same code opens all of them.
      *

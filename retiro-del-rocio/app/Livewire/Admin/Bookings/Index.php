@@ -8,6 +8,7 @@ use App\Mail\BookingCancelled;
 use App\Mail\BookingReservation;
 use App\Models\Booking;
 use App\Models\Room;
+use App\Services\VisitorPassProvisioner;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -410,6 +411,9 @@ class Index extends Component
             $booking->checked_out_at = now(); // the real departure, not the policy time
             $booking->save();
         });
+
+        // The host has gone — their visitors' gate codes go with them.
+        app(VisitorPassProvisioner::class)->closeOutBooking($booking->id);
 
         $this->dispatch('toast', type: 'success', message: $booking->bookingCode().' checked out — room is now available.');
     }

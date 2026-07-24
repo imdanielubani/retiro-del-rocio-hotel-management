@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +16,11 @@ import 'package:retirodelrocioapp/features/welcome/application/weather_providers
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
 const Color _codeGreen = Color(0xFF00FF00);
+
+/// Height the two-pane body stops shrinking at and starts scrolling instead.
+/// Roughly the fixed chrome (top bar, heading, padding) plus enough of a pane to
+/// still be worth looking at — the keyboard is what pushes below this.
+const double _minBodyHeight = 440;
 
 /// Which panel the left column is showing.
 enum _Panel { intro, form, success }
@@ -94,10 +102,37 @@ class _VisitorPassScreenState extends ConsumerState<VisitorPassScreen> {
         _generated = pass;
         _panel = _Panel.success;
       });
+      unawaited(_awaitOnlineCode(pass));
     } on VisitorPassException catch (error) {
       _showError(error.message);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// The one-time gate (TTLock) code is pushed to the locks just after the pass
+  /// is committed, so it lands a beat after the success card appears. Watch for
+  /// it briefly and swap it in, instead of leaving the guest reading out the
+  /// backup code for a visitor who could have let themselves in.
+  Future<void> _awaitOnlineCode(VisitorPass pass) async {
+    if (pass.hasOnlineCode) return;
+
+    final repo = ref.read(visitorPassRepositoryProvider);
+    for (final seconds in const [2, 3, 5, 8]) {
+      await Future<void>.delayed(Duration(seconds: seconds));
+      // The guest moved on, or issued another pass — stop watching.
+      if (!mounted || _generated?.id != pass.id) return;
+
+      final passes = await repo.list(device.token);
+      if (!mounted || _generated?.id != pass.id) return;
+
+      for (final fresh in passes) {
+        if (fresh.id == pass.id && fresh.hasOnlineCode) {
+          setState(() => _generated = fresh);
+          ref.invalidate(visitorPassesProvider(device.token));
+          return;
+        }
+      }
     }
   }
 
@@ -152,39 +187,60 @@ class _VisitorPassScreenState extends ConsumerState<VisitorPassScreen> {
           Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
           const ColoredBox(color: Color.fromARGB(243, 0, 0, 0)),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(25, 24, 25, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GuestTopBar(
-                    suiteName: status.suiteName ?? 'Suite',
-                    roomNumber: status.roomNumber ?? device.roomNumber ?? '—',
-                    guestName: _guestName,
-                    weather: ref.watch(weatherProvider).value,
-                    onNotifications: () {},
-                    onProfile: () {},
-                  ),
-                  const SizedBox(height: 22),
-                  _headerRow(),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Left: the active panel (how it works / form / success).
-                        Expanded(
-                          flex: 52,
-                          child: SingleChildScrollView(child: _leftPanel()),
-                        ),
-                        const SizedBox(width: 28),
-                        // Right: the live visitor history.
-                        Expanded(flex: 48, child: _history(passes)),
-                      ],
+            // The top bar and the page heading are a fixed height, so when the
+            // keyboard opens on the invite form there is less room than the two
+            // panes need and the column overflows its last few pixels. Give the
+            // body a floor and let it scroll below that instead of overflowing:
+            // with no keyboard the box is exactly the viewport, so nothing about
+            // the layout changes.
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final height = math.max(constraints.maxHeight, _minBodyHeight);
+
+                return SingleChildScrollView(
+                  child: SizedBox(
+                    height: height,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(25, 24, 25, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GuestTopBar(
+                            suiteName: status.suiteName ?? 'Suite',
+                            roomNumber:
+                                status.roomNumber ?? device.roomNumber ?? '—',
+                            guestName: _guestName,
+                            weather: ref.watch(weatherProvider).value,
+                            onNotifications: () {},
+                            onProfile: () {},
+                          ),
+                          const SizedBox(height: 22),
+                          _headerRow(),
+                          const SizedBox(height: 20),
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left: the active panel (how it works / form /
+                                // success).
+                                Expanded(
+                                  flex: 52,
+                                  child: SingleChildScrollView(
+                                    child: _leftPanel(),
+                                  ),
+                                ),
+                                const SizedBox(width: 28),
+                                // Right: the live visitor history.
+                                Expanded(flex: 48, child: _history(passes)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],

@@ -211,7 +211,10 @@ class IncidentDetailPanel extends StatelessWidget {
   Widget _detailRow(String label, String value, {bool mono = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 11),
+      // Spacer + Flexible would halve the leftover width between them, wrapping
+      // the value early and leaving each row at a different right edge.
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
@@ -220,8 +223,8 @@ class IncidentDetailPanel extends StatelessWidget {
               fontSize: 11,
             ),
           ),
-          const Spacer(),
-          Flexible(
+          const SizedBox(width: 12),
+          Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,

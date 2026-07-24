@@ -34,9 +34,19 @@ enum _ListFilter { all, pending, verified }
 /// that logs the entry. The list follows the same 20-second poll as the rest of
 /// the security tablet, so a pass a guest just issued appears on its own.
 class VisitorVerificationScreen extends ConsumerStatefulWidget {
-  const VisitorVerificationScreen({super.key, required this.session});
+  const VisitorVerificationScreen({
+    super.key,
+    required this.session,
+    this.initialCode,
+  });
 
   final StaffSession session;
+
+  /// Pre-loaded when the officer arrives here by tapping "Verify Pass" on a
+  /// dashboard request: the visitor is already standing at the gate and their
+  /// code is already known, so re-keying six digits off the card would only
+  /// invite a typo. Left null when they walk up to the keypad cold.
+  final String? initialCode;
 
   @override
   ConsumerState<VisitorVerificationScreen> createState() =>
@@ -55,6 +65,21 @@ class _VisitorVerificationScreenState
   _ListFilter _filter = _ListFilter.all;
 
   String get _token => widget.session.token;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Arrived from a dashboard request — show the code already filled in and
+    // look it up, so the officer lands on the visitor's details ready to grant.
+    final code = widget.initialCode;
+    if (code != null && code.length == 6) {
+      _code = code;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _verify(code);
+      });
+    }
+  }
 
   Future<void> _logout() async {
     final confirmed = await showLogoutConfirmDialog(context);
@@ -749,8 +774,15 @@ class _VisitorVerificationScreenState
     ].whereType<String>().join('  ·  ');
   }
 
+  /// Label left, value hard against the right edge.
+  ///
+  /// A `Spacer` and a `Flexible` both carry flex 1, so they split the leftover
+  /// width in half: the value was being ellipsized with space to spare, and the
+  /// rows sat at different right edges because the gap moved with the value.
+  /// `Expanded` on the value alone lines every row up.
   Widget _matchRow(String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -759,8 +791,8 @@ class _VisitorVerificationScreenState
             fontSize: 12,
           ),
         ),
-        const Spacer(),
-        Flexible(
+        const SizedBox(width: 12),
+        Expanded(
           child: Text(
             value,
             maxLines: 1,

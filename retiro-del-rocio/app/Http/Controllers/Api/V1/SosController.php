@@ -26,12 +26,7 @@ class SosController extends Controller
     {
         $device = $this->guestDevice($request);
 
-        $alert = SosAlert::open()
-            ->where('room_unit_id', $device->room_unit_id)
-            ->latest('raised_at')
-            ->first();
-
-        return response()->json(['data' => $alert?->toTabletArray()]);
+        return response()->json(['data' => $this->openAlertForThisStay($device)?->toTabletArray()]);
     }
 
     /**
@@ -45,17 +40,14 @@ class SosController extends Controller
     {
         $device = $this->guestDevice($request);
 
-        $existing = SosAlert::open()
-            ->where('room_unit_id', $device->room_unit_id)
-            ->latest('raised_at')
-            ->first();
+        $existing = $this->openAlertForThisStay($device);
 
         if ($existing) {
             return response()->json(['data' => $existing->toTabletArray()], 200);
         }
 
-        $unit = $device->roomUnit()->with(['room', 'booking'])->first();
-        $booking = $unit?->booking?->status === 'checked_in' ? $unit->booking : null;
+        $unit = $device->roomUnit()->with('room')->first();
+        $booking = $device->currentBooking();
 
         $alert = SosAlert::create([
             'device_id' => $device->id,
@@ -101,6 +93,31 @@ class SosController extends Controller
         $device->log('sos', 'Emergency SOS cancelled by the guest.', ['alert_id' => $alert->id]);
 
         return response()->json(['data' => $alert->fresh()->toTabletArray()]);
+    }
+
+    /**
+     * The open alert belonging to the stay currently in the room, if any.
+     *
+     * Scoped to the booking rather than the room so a check-out never hands the
+     * next guest the last one's emergency: they would see "Help is on the way"
+     * for something that was never theirs, and — worse — pressing SOS would hand
+     * that stale alert straight back instead of raising a real one. An alert
+     * raised while the room was empty stays matched to the empty room, so an
+     * emergency is never blocked by there being no booking.
+     */
+    private function openAlertForThisStay(Device $device): ?SosAlert
+    {
+        $bookingId = $device->currentBooking()?->id;
+
+        return SosAlert::open()
+            ->where('room_unit_id', $device->room_unit_id)
+            ->when(
+                $bookingId,
+                fn ($q) => $q->where('booking_id', $bookingId),
+                fn ($q) => $q->whereNull('booking_id'),
+            )
+            ->latest('raised_at')
+            ->first();
     }
 
     /** The calling device, which must be a guest tablet bound to a room. */

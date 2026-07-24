@@ -261,6 +261,7 @@ class VisitorPass extends Model
     public function ttlockLabel(): string
     {
         return match ($this->ttlock_status) {
+            'pending' => 'Issuing…',
             'active' => 'Online',
             'offline' => 'Offline',
             'failed' => 'Failed',
@@ -350,26 +351,43 @@ class VisitorPass extends Model
         ];
     }
 
-    /** A verified visitor row for the dashboard's "Visitors Today" list. */
+    /**
+     * A visitor row for the dashboard's "Visitors Today" list.
+     *
+     * Covers the expected as well as the arrived: a pass still pending is a
+     * visitor who is simply "Not Inside" yet, which is the state Figma 257:1295
+     * draws. So neither the verified chip nor the presence pill may be assumed.
+     */
     public function toVisitorRowArray(): array
     {
         return [
             'id' => $this->id,
             'name' => $this->visitor_name,
+            // The row identifies the visit by its case number (Figma 257:1275),
+            // not by a code that is already spent by the time they are inside.
+            'reference' => $this->caseNumber(),
             'suite_name' => $this->suite_name,
             'room_number' => $this->room_number,
             'pass_code' => $this->online_code ?: $this->code,
-            'arrival_label' => optional($this->verified_at)->format('h:iA'),
+            // When they walked in, or when they were invited if they have not.
+            'arrival_label' => optional($this->verified_at ?? $this->created_at)->format('h:iA'),
             'is_inside' => $this->isInside(),
-            'is_verified' => true,
+            'is_verified' => $this->status === self::VERIFIED,
         ];
     }
 
-    /** A pending pass for the dashboard's "Visitor Pass Requests" column. */
+    /**
+     * A pass for the dashboard's "Visitor Pass Requests" column.
+     *
+     * The column is a feed of the gate's recent work, not a pending-only queue
+     * (Figma 257:1336 shows verified entries sitting alongside pending ones), so
+     * `is_verified` reflects the real status rather than being assumed.
+     */
     public function toPassRequestArray(): array
     {
         return [
             'id' => $this->id,
+            'reference' => $this->caseNumber(),
             'name' => $this->visitor_name,
             'suite_name' => $this->suite_name,
             'room_number' => $this->room_number,
@@ -379,7 +397,8 @@ class VisitorPass extends Model
             'email' => $this->visitor_email,
             'whatsapp' => $this->visitor_phone,
             'submitted_label' => optional($this->created_at)->format('h:iA'),
-            'is_verified' => false,
+            'arrival_label' => optional($this->verified_at)->format('h:iA'),
+            'is_verified' => $this->status === self::VERIFIED,
         ];
     }
 

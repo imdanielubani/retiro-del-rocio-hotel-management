@@ -147,8 +147,76 @@ class SecurityVisitorVerificationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.stats.visitors_today', 2)
             ->assertJsonPath('data.stats.verified_passes', 1)
+            // Both columns carry the whole day: the one who is in, and the one
+            // still expected — who reads as "Not Inside" rather than vanishing.
+            ->assertJsonCount(2, 'data.visitors')
+            ->assertJsonPath('data.visitors.0.is_inside', true)
+            ->assertJsonPath('data.visitors.1.is_verified', false)
+            ->assertJsonPath('data.visitors.1.is_inside', false)
+            ->assertJsonCount(2, 'data.pass_requests');
+    }
+
+    public function test_the_requests_column_keeps_showing_visitors_after_they_are_verified(): void
+    {
+        // Figma 257:1336 shows verified entries alongside pending ones — working
+        // through the queue must not blank the column.
+        $verified = $this->pass(['code' => '777777', 'visitor_name' => 'Already In']);
+        $verified->forceFill(['status' => VisitorPass::VERIFIED, 'verified_at' => now()])->save();
+        $this->pass(['code' => '888888', 'visitor_name' => 'Still Waiting']);
+
+        $data = $this->withToken($this->officerToken())
+            ->getJson('/api/v1/security/overview')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.pass_requests')
+            // Still-to-do first, so the officer's next job is at the top.
+            ->assertJsonPath('data.pass_requests.0.name', 'Still Waiting')
+            ->assertJsonPath('data.pass_requests.0.is_verified', false)
+            ->assertJsonPath('data.pass_requests.1.name', 'Already In')
+            ->assertJsonPath('data.pass_requests.1.is_verified', true)
+            ->json('data');
+
+        // The card renders a case reference beside the code (Figma 257:1358).
+        $this->assertMatchesRegularExpression('/^VP-\d{4}-\d+$/', $data['pass_requests'][0]['reference']);
+    }
+
+    public function test_visitors_today_counts_who_arrived_today_not_who_was_invited_today(): void
+    {
+        // Invited days ago, walked in this morning — belongs on today's list.
+        $arrivedToday = $this->pass(['code' => '444444', 'visitor_name' => 'Arrived Today']);
+        $arrivedToday->forceFill([
+            'created_at' => now()->subDays(3),
+            'status' => VisitorPass::VERIFIED,
+            'verified_at' => now()->subHour(),
+        ])->save();
+
+        // Invited today but verified last week — that was last week's visit.
+        $arrivedLastWeek = $this->pass(['code' => '555555', 'visitor_name' => 'Arrived Last Week']);
+        $arrivedLastWeek->forceFill([
+            'status' => VisitorPass::VERIFIED,
+            'verified_at' => now()->subDays(7),
+        ])->save();
+
+        $this->withToken($this->officerToken())
+            ->getJson('/api/v1/security/overview')
+            ->assertOk()
             ->assertJsonCount(1, 'data.visitors')
-            ->assertJsonCount(1, 'data.pass_requests');
+            ->assertJsonPath('data.visitors.0.name', 'Arrived Today')
+            ->assertJsonPath('data.stats.verified_passes', 1);
+    }
+
+    public function test_a_pass_issued_late_last_night_is_still_in_the_officers_queue(): void
+    {
+        // The visitor is walking up to the gate at 00:05 — the request column is
+        // the officer's work queue, not a calendar-day report.
+        $this->travelTo(today()->addHours(2)); // 02:00 this morning
+        $pass = $this->pass(['code' => '333333', 'visitor_name' => 'Late Visitor']);
+        $pass->forceFill(['created_at' => today()->subMinutes(30)])->save(); // 23:30 last night
+
+        $this->withToken($this->officerToken())
+            ->getJson('/api/v1/security/overview')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.pass_requests')
+            ->assertJsonPath('data.pass_requests.0.name', 'Late Visitor');
     }
 
     public function test_denying_turns_the_visitor_away(): void

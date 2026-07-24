@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Bookings;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomUnit;
+use App\Services\VisitorPassProvisioner;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -138,6 +139,9 @@ class Show extends Component
                 'checked_out_at' => now(),
             ]);
         });
+
+        // The host has gone — their visitors' gate codes go with them.
+        app(VisitorPassProvisioner::class)->closeOutBooking($this->booking->id);
 
         $this->refresh();
         $this->dispatch('toast', type: 'success', message: $this->booking->bookingCode().' checked out — room is now available.');

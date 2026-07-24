@@ -53,30 +53,53 @@ class VisitorRow extends StatelessWidget {
                 ),
               ),
             ),
-            if (visitor.isVerified) ...[
-              const SizedBox(width: 8),
-              _chip('✓ Verified', _green),
-            ],
+            const SizedBox(width: 8),
+            // A visitor who has not arrived yet is Pending, not unlabelled —
+            // dropping the chip left those rows looking like a rendering fault.
+            visitor.isVerified
+                ? _chip('✓ Verified', _green)
+                : _chip('Pending', AppColors.gold),
           ],
         ),
-        const SizedBox(height: 3),
-        Text(
-          [
-            if (visitor.suiteName != null) visitor.suiteName!,
-            if (visitor.roomNumber != null) 'Room ${visitor.roomNumber}',
-            if (visitor.arrivalLabel != null) visitor.arrivalLabel!,
-          ].join('  ·  '),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTypography.style(
-            color: Colors.white.withValues(alpha: 0.4),
-            fontSize: 12,
-          ),
+        const SizedBox(height: 2),
+        // Figma 257:1270 — suite at 12px, room/arrival a size down beside it.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            if (visitor.suiteName != null)
+              Flexible(
+                child: Text(
+                  visitor.suiteName!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            if (visitor.suiteName != null) const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                [
+                  if (visitor.roomNumber != null) 'Room ${visitor.roomNumber}',
+                  if (visitor.arrivalLabel != null) visitor.arrivalLabel!,
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.35),
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
         ),
-        if (visitor.passCode != null) ...[
+        if ((visitor.reference ?? visitor.passCode) != null) ...[
           const SizedBox(height: 4),
           Text(
-            visitor.passCode!,
+            visitor.reference ?? visitor.passCode!,
             style: AppTypography.style(
               color: Colors.white.withValues(alpha: 0.25),
               fontSize: 12,
@@ -138,33 +161,121 @@ class VisitorPassRequestCard extends StatelessWidget {
     final pending = !request.isVerified;
     final accent = pending ? AppColors.gold : _green;
 
+    // Figma 257:1337 / 257:1377 / 257:1421 — a pending request is called out with
+    // a gold left edge; an already-verified one sits back in a plain hairline.
+    //
+    // The accent edge is painted as its own bar rather than as a coloured
+    // BorderSide: Flutter refuses to paint a rounded box whose sides are
+    // different colours ("a borderRadius can only be given on borders with
+    // uniform colors"), which threw on every card and left the column blank.
+    final edge = Colors.white.withValues(alpha: 0.07);
+    final radius = BorderRadius.circular(16);
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: Stack(
+        children: [
+          Container(
+            padding: EdgeInsets.fromLTRB(pending ? 17 : 15, 15, 15, 15),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.03),
+              borderRadius: radius,
+              border: Border.all(color: edge),
+            ),
+            child: _body(pending, accent),
+          ),
+          if (pending)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 3,
+              child: ColoredBox(color: AppColors.gold),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(bool pending, Color accent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _avatar(request.initials),
+            const SizedBox(width: 12),
+            Expanded(child: _details(accent)),
+          ],
+        ),
+        // How to reach the visitor, and when they were invited (Figma
+        // 257:1359). Only worth the space while somebody still has to be let
+        // in — once verified the officer is done with them.
+        if (pending && _hasContactDetails) ...[
+          const SizedBox(height: 12),
+          _contactBlock(),
+        ],
+        if (pending) ...[
+          const SizedBox(height: 15),
+          _verifyButton(),
+        ],
+      ],
+    );
+  }
+
+  bool get _hasContactDetails =>
+      (request.email ?? '').isNotEmpty ||
+      (request.whatsapp ?? '').isNotEmpty ||
+      (request.submittedLabel ?? '').isNotEmpty;
+
+  Widget _contactBlock() {
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.only(top: 13),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
         border: Border(
-          left: BorderSide(color: accent, width: pending ? 3 : 0.8),
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.07)),
         ),
       ),
       child: Column(
+        children: [
+          if ((request.email ?? '').isNotEmpty) _contactRow('Email', request.email!),
+          if ((request.whatsapp ?? '').isNotEmpty)
+            _contactRow('WhatsApp Number', request.whatsapp!),
+          if ((request.submittedLabel ?? '').isNotEmpty)
+            _contactRow('Submitted', request.submittedLabel!),
+        ],
+      ),
+    );
+  }
+
+  Widget _contactRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _avatar(request.initials),
-              const SizedBox(width: 12),
-              Expanded(child: _details(accent)),
-            ],
+          Text(
+            label,
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.3),
+              fontSize: 11,
+            ),
           ),
-          if (pending) ...[
-            const SizedBox(height: 12),
-            _verifyButton(),
-          ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 11,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -193,34 +304,107 @@ class VisitorPassRequestCard extends StatelessWidget {
             _chip(request.isVerified ? '✓ Verified' : 'Pending', accent),
           ],
         ),
-        const SizedBox(height: 3),
-        Text(
-          [
-            if (request.suiteName != null) request.suiteName!,
-            if (request.roomNumber != null) 'Room ${request.roomNumber}',
-            if (request.submittedLabel != null) request.submittedLabel!,
-          ].join('  ·  '),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTypography.style(
-            color: Colors.white.withValues(alpha: 0.4),
-            fontSize: 12,
-          ),
+        const SizedBox(height: 2),
+        // Figma 257:1347 — the suite sits a size above the room/time, not all
+        // one flat run of dot-separated text.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            if (request.suiteName != null)
+              Flexible(
+                child: Text(
+                  request.suiteName!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            if (request.suiteName != null) const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                [
+                  if (request.roomNumber != null) 'Room ${request.roomNumber}',
+                  if (request.isVerified && (request.arrivalLabel ?? '').isNotEmpty)
+                    request.arrivalLabel!
+                  else if ((request.submittedLabel ?? '').isNotEmpty)
+                    request.submittedLabel!,
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.35),
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
         ),
         if (request.onlineCode != null || request.offlineCode != null) ...[
           const SizedBox(height: 4),
-          Text(
-            request.onlineCode != null
-                ? 'Online Code  -  ${request.onlineCode}'
-                : 'Offline Code  -  ${request.offlineCode}',
-            style: AppTypography.style(
-              color: accent,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.2,
+          _codeRow(accent),
+        ],
+      ],
+    );
+  }
+
+  /// "Online Code  -  482913  ·  VP-2401-101" (Figma 257:1351).
+  Widget _codeRow(Color accent) {
+    final online = (request.onlineCode ?? '').isNotEmpty;
+    final code = online ? request.onlineCode! : (request.offlineCode ?? '');
+
+    // A Wrap, not a Row: the code is the one thing on this card an officer has
+    // to read character for character, so it must never be ellipsized to make
+    // room for the case number. On a narrow column the reference drops to the
+    // next line instead of overflowing the card.
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 2,
+      children: [
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: online ? 'Online Code  -  ' : 'Offline Code  -  ',
+                style: AppTypography.style(color: accent, fontSize: 12),
+              ),
+              TextSpan(
+                text: code,
+                style: AppTypography.style(
+                  color: accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if ((request.reference ?? '').isNotEmpty)
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '·  ',
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    fontSize: 10,
+                  ),
+                ),
+                TextSpan(
+                  text: request.reference!,
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
       ],
     );
   }

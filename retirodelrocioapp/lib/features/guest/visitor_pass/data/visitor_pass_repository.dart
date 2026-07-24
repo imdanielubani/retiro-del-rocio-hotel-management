@@ -18,7 +18,12 @@ class VisitorPassRepository {
       : _dio = dio ??
             Dio(BaseOptions(
               connectTimeout: const Duration(seconds: 8),
-              receiveTimeout: const Duration(seconds: 8),
+              // Issuing a pass writes the row first and pushes the gate code
+              // afterwards, so this is normally instant — but a loaded server
+              // still deserves more headroom than the connect handshake, since
+              // giving up here would tell the guest the pass failed when it did not.
+              receiveTimeout: const Duration(seconds: 25),
+              sendTimeout: const Duration(seconds: 25),
             ));
 
   final Dio _dio;
@@ -88,10 +93,17 @@ class VisitorPassRepository {
     if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
-    if (error.type == DioExceptionType.connectionError ||
-        error.type == DioExceptionType.connectionTimeout) {
-      return 'No connection. Please try again.';
+    switch (error.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+        return 'No connection. Please try again.';
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        // The server may well have created the pass — say so rather than
+        // inviting the guest to issue a second one for the same visitor.
+        return 'The server is taking a while. Check Visitor History before trying again.';
+      default:
+        return 'Could not create the pass. Please try again.';
     }
-    return 'Could not create the pass. Please try again.';
   }
 }

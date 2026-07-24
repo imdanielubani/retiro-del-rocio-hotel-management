@@ -145,6 +145,58 @@ class VisitorPassTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_the_next_guest_never_sees_the_previous_guests_visitors(): void
+    {
+        // Daniel invites someone, then checks out.
+        $this->withToken($this->token)
+            ->postJson('/api/v1/visitor-passes', ['visitor_name' => 'Michael Brown'])
+            ->assertCreated();
+
+        $previous = $this->unit->booking;
+        $previous->update(['status' => 'checked_out', 'checked_out_at' => now()]);
+
+        // Between stays the tablet has nothing to show, and nothing to issue.
+        $this->withToken($this->token)->getJson('/api/v1/visitor-passes')
+            ->assertOk()->assertJsonCount(0, 'data');
+        $this->withToken($this->token)
+            ->postJson('/api/v1/visitor-passes', ['visitor_name' => 'Nobody'])
+            ->assertStatus(409);
+
+        // Reception checks the next guest into the same room.
+        $next = Booking::create([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Zara Ahmed',
+            'room_id' => $this->unit->room_id,
+            'room_name' => 'Alba Suite',
+            'room_unit_id' => $this->unit->id,
+            'check_in' => now()->toDateString(),
+            'check_out' => now()->addDays(2)->toDateString(),
+            'nights' => 2, 'guests' => 1, 'amount' => 300000,
+            'status' => 'checked_in', 'checked_in_at' => now(),
+        ]);
+        $this->unit->update(['booking_id' => $next->id]);
+
+        // Zara starts clean — Daniel's visitor is not hers to see.
+        $this->withToken($this->token)->getJson('/api/v1/visitor-passes')
+            ->assertOk()->assertJsonCount(0, 'data');
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/visitor-passes', ['visitor_name' => 'Her Own Guest'])
+            ->assertCreated()
+            ->assertJsonPath('data.visitor_name', 'Her Own Guest');
+
+        $this->withToken($this->token)->getJson('/api/v1/visitor-passes')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.visitor_name', 'Her Own Guest');
+
+        // Daniel's pass is still on file for the register — hidden, not deleted.
+        $this->assertDatabaseHas('visitor_passes', [
+            'booking_id' => $previous->id,
+            'visitor_name' => 'Michael Brown',
+        ]);
+    }
+
     public function test_generated_codes_are_unique_among_open_passes(): void
     {
         $codes = [];
