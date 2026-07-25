@@ -85,20 +85,6 @@
 
                         <div class="h-px w-full bg-white/10"></div>
 
-                        {{-- Convenience fee + taxes --}}
-                        <div class="flex flex-col gap-2 text-body">
-                            <div class="flex items-center justify-between">
-                                <span class="font-medium text-[#f38c00]">Convenience Fee:</span>
-                                <span class="font-semibold text-white" x-text="money(fee)"></span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="font-medium text-[#f38c00]">Taxes:</span>
-                                <span class="font-semibold text-white" x-text="money(taxes)"></span>
-                            </div>
-                        </div>
-
-                        <div class="h-px w-full bg-white/10"></div>
-
                         {{-- Total --}}
                         <div class="flex items-center justify-end gap-4">
                             <span class="text-title font-medium text-[#f38c00]">TOTAL</span>
@@ -208,8 +194,6 @@
                         <p class="flex justify-between gap-3"><span class="text-white/55">Room</span><span x-text="success ? success.room : ''"></span></p>
                         <p class="flex justify-between gap-3"><span class="text-white/55">Guests</span><span x-text="success ? success.guests : ''"></span></p>
                         <p class="flex justify-between gap-3"><span class="text-white/55">Food &amp; Drinks</span><span class="text-right" x-text="success ? success.snacks : ''"></span></p>
-                        <p class="flex justify-between gap-3"><span class="text-white/55">Convenience Fee</span><span x-text="success ? success.fee : ''"></span></p>
-                        <p class="flex justify-between gap-3"><span class="text-white/55">Taxes</span><span x-text="success ? success.taxes : ''"></span></p>
                         <p class="flex justify-between gap-3 border-t border-white/10 pt-2"><span class="text-white/55">Total order</span><span class="font-semibold text-white" x-text="success ? success.total : ''"></span></p>
                     </div>
 

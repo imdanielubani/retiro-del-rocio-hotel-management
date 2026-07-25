@@ -300,11 +300,6 @@
                             <div class="flex items-center justify-between"><span>Time:</span><span class="font-medium" x-text="timeLabel || '—'"></span></div>
                         </div>
 
-                        {{-- Fees & taxes --}}
-                        <div class="flex flex-col gap-1.5 border-t border-white/15 pt-4 text-body text-white">
-                            <div class="flex items-center justify-between"><span class="text-[#f38c00]">Convenience Fee:</span><span x-text="money(subtotal ? fees : 0)"></span></div>
-                            <div class="flex items-center justify-between"><span class="text-[#f38c00]">Taxes (VAT 7.5%):</span><span x-text="money(taxes)"></span></div>
-                        </div>
                     </div>
 
                     {{-- Total + Complete Reservation on one line --}}
@@ -355,10 +350,6 @@
                                     <div class="flex items-center justify-between"><span>Number of Guest:</span><span class="font-medium">{{ $spaBooking['guests'] }}</span></div>
                                     <div class="flex items-center justify-between"><span>Date:</span><span class="font-medium">{{ $spaBooking['date_label'] }}</span></div>
                                     @if ($spaBooking['time'])<div class="flex items-center justify-between"><span>Time:</span><span class="font-medium">{{ $spaBooking['time_label'] ?? $spaBooking['time'] }}</span></div>@endif
-                                </div>
-                                <div class="flex flex-col gap-1.5 border-t border-white/15 pt-3 text-body">
-                                    <div class="flex items-center justify-between"><span class="text-[#f38c00]">Convenience Fee:</span><span>{{ $spaBooking['fees_label'] }}</span></div>
-                                    <div class="flex items-center justify-between"><span class="text-[#f38c00]">Taxes (VAT 7.5%):</span><span>{{ $spaBooking['taxes_label'] }}</span></div>
                                 </div>
                                 <div class="flex items-center justify-between border-t border-white/15 pt-3"><span class="text-body-lg font-semibold text-[#f38c00]">TOTAL</span><span class="text-h3 font-semibold">{{ $spaBooking['total_label'] }}</span></div>
                             </div>

@@ -99,9 +99,7 @@ $buildBooking = function (array $b): array {
     $roomSubtotal = $pricePerNight * $nights;
     $pickupPrice = ! empty($b['pickup_price']) ? (int) preg_replace('/[^0-9]/', '', $b['pickup_price']) : 0;
     $subtotal = $roomSubtotal + $pickupPrice;
-    $vat = (int) round($subtotal * 0.075);
-    $fees = 1250;
-    $total = $subtotal + $vat + $fees;
+    $total = $subtotal;
     $naira = fn ($n) => '₦'.number_format($n);
 
     if ($checkIn->isSameMonth($checkOut) && $checkIn->year === $checkOut->year) {
@@ -128,8 +126,6 @@ $buildBooking = function (array $b): array {
         'pickup_time' => $b['pickup_time'] ?? null,
         'flight_number' => $b['flight_number'] ?? null,
         'room_subtotal_label' => $naira($roomSubtotal),
-        'vat_label' => $naira($vat),
-        'fees_label' => $naira($fees),
         'total' => $total,
         'total_label' => $naira($total),
         'total_kobo' => $total * 100,
@@ -379,9 +375,7 @@ $buildSpaBooking = function (array $data): array {
         ])->values()->all();
 
     $subtotal = collect($services)->sum('subtotal');
-    $fees = 2000;                              // convenience fee
-    $taxes = (int) round($subtotal * 0.075);   // VAT 7.5%
-    $total = $subtotal + $fees + $taxes;
+    $total = $subtotal;
     $date = ! empty($data['date']) ? Carbon::parse($data['date']) : null;
 
     // Format the chosen time to 12-hour with AM/PM, e.g. "15:00" -> "3:00 PM".
@@ -405,10 +399,6 @@ $buildSpaBooking = function (array $data): array {
         'special_request' => $data['special_request'] ?? null,
         'subtotal' => $subtotal,
         'subtotal_label' => $naira($subtotal),
-        'fees' => $fees,
-        'fees_label' => $naira($fees),
-        'taxes' => $taxes,
-        'taxes_label' => $naira($taxes),
         'total' => $total,
         'total_label' => $naira($total),
         'total_kobo' => $total * 100,
@@ -498,8 +488,8 @@ Route::get('spa-wellness/callback', function () {
                 'time' => $order['time_label'] ?? ($order['time'] ?? null),
                 'special_request' => $order['special_request'] ?? null,
                 'subtotal' => (int) $order['subtotal'],
-                'fees' => (int) $order['fees'],
-                'taxes' => (int) $order['taxes'],
+                'fees' => 0,
+                'taxes' => 0,
                 'total' => (int) $order['total'],
                 'customer_name' => $order['customer_name'] ?? null,
                 'customer_email' => $order['customer_email'] ?? null,
@@ -808,9 +798,7 @@ Route::post('cinema/book', function () {
     $roomPrice = (int) $movie->room_price;      // flat price for the whole private room
     $snacksTotal = collect($snacks)->sum(fn ($s) => $s['qty'] * $s['price']);
     $subtotal = $roomPrice + $snacksTotal;
-    $fee = 2000;                                // convenience fee (mirrors spa)
-    $taxes = (int) round($subtotal * 0.075);    // VAT 7.5%
-    $amount = $subtotal + $fee + $taxes;
+    $amount = $subtotal;
 
     // Verify the payment with Paystack before recording anything.
     try {
@@ -845,8 +833,8 @@ Route::post('cinema/book', function () {
             'seats' => [],
             'snacks' => $snacks,
             'subtotal' => $subtotal,
-            'fee' => $fee,
-            'taxes' => $taxes,
+            'fee' => 0,
+            'taxes' => 0,
             'amount' => $amount,
             'customer_name' => $data['name'],
             'customer_email' => $data['email'],
@@ -893,8 +881,6 @@ Route::post('cinema/book', function () {
             'room' => $booking->roomLabel(),
             'guests' => $booking->guestsLabel(),
             'snacks' => $booking->snacksLabel(),
-            'fee' => $booking->feeLabel(),
-            'taxes' => $booking->taxesLabel(),
             'total' => $booking->amountLabel(),
             'poster' => $movie->posterUrl(),
             'customer_name' => $booking->customer_name,
@@ -990,9 +976,11 @@ $adminRoutes->group(function () {
         Route::get('website-cms/page/{page}', App\Livewire\Admin\Cms\Edit::class)->name('cms.edit');
         Route::get('website-cms/messages', App\Livewire\Admin\Messages\Index::class)->name('messages.index');
 
-        // Airport Pickups — Vehicles (fleet shown on the website pick-up popup)
+        // Vehicle Pickups — Vehicles (fleet shown on the website pick-up popup),
+        // bookings, and the driver roster reception/admin assign from.
         Route::get('airport-pickups/vehicles', App\Livewire\Admin\Vehicles\Index::class)->name('vehicles.index');
         Route::get('airport-pickups/bookings', App\Livewire\Admin\Vehicles\Bookings::class)->name('vehicles.bookings');
+        Route::get('airport-pickups/drivers', App\Livewire\Admin\Vehicles\Drivers::class)->name('vehicles.drivers');
 
         // Spa & Wellness — services fleet + reservations
         Route::get('spa-wellness/services', App\Livewire\Admin\Spa\Services::class)->name('spa.services');

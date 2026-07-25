@@ -60,14 +60,6 @@
                                 </tr>
                                 @endif
                                 <tr>
-                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Convenience fee</td>
-                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $booking->feeLabel() }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Taxes (VAT)</td>
-                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $booking->taxesLabel() }}</td>
-                                </tr>
-                                <tr>
                                     <td style="padding:12px 16px;color:#6b7280;">Total paid</td>
                                     <td style="padding:12px 16px;font-weight:bold;color:#16a34a;">{{ $booking->amountLabel() }}</td>
                                 </tr>

@@ -6,6 +6,7 @@ import 'package:retirodelrocioapp/features/authentication/application/auth_provi
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_dashboard_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/security_dashboard_screen.dart';
 
 /// Role dashboard shown after a successful staff sign-in. Each role lands on its
@@ -24,9 +25,12 @@ class StaffDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Security has its own live dashboard; other roles get theirs in turn.
+    // Each role lands on its own live dashboard; the rest get theirs in turn.
     if (session.role == 'security') {
       return SecurityDashboardScreen(session: session);
+    }
+    if (session.role == 'reception') {
+      return ReceptionDashboardScreen(session: session);
     }
 
     return SessionGuard(

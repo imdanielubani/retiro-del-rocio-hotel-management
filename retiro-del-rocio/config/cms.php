@@ -202,7 +202,7 @@ $pages = [
             ['key' => 'spacheckout.checkout_heading', 'label' => 'Checkout heading', 'type' => 'text', 'default' => 'Complete your spa reservation securely in under 2 minutes.'],
             ['key' => 'spacheckout.customer_title', 'label' => 'Customer section heading', 'type' => 'text', 'default' => 'Customer Details'],
             ['key' => 'spacheckout.cancellation_title', 'label' => 'Cancellation policy heading', 'type' => 'text', 'default' => 'Cancellation Policy'],
-            ['key' => 'spacheckout.cancellation_text', 'label' => 'Cancellation policy text', 'type' => 'textarea', 'default' => 'Reschedule or cancel up to 24 hours before your appointment for a full refund. Within 24 hours, the convenience fee is non-refundable.'],
+            ['key' => 'spacheckout.cancellation_text', 'label' => 'Cancellation policy text', 'type' => 'textarea', 'default' => 'Reschedule or cancel up to 24 hours before your appointment for a full refund.'],
             ['key' => 'spacheckout.secure_note', 'label' => 'Secure-payment note', 'type' => 'textarea', 'default' => 'Card details are entered securely in the Paystack window.'],
             ['key' => 'spacheckout.pay_label', 'label' => 'Pay button text', 'type' => 'text', 'default' => 'Make reservation'],
 

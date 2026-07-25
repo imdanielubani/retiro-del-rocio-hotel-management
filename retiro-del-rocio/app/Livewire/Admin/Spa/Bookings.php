@@ -189,9 +189,7 @@ class Bookings extends Component
         $service = SpaService::with('category')->where('slug', $data['cServiceSlug'])->first();
         $guests = (int) $data['cGuests'];
         $subtotal = $service->price * $guests;
-        $fees = 2000;
-        $taxes = (int) round($subtotal * 0.075);
-        $total = $subtotal + $fees + $taxes;
+        $total = $subtotal;
 
         // 12-hour time label, e.g. "15:00" -> "3:00 PM".
         $timeLabel = null;
@@ -219,8 +217,8 @@ class Bookings extends Component
             'date' => $data['cDate'],
             'time' => $timeLabel,
             'subtotal' => $subtotal,
-            'fees' => $fees,
-            'taxes' => $taxes,
+            'fees' => 0,
+            'taxes' => 0,
             'total' => $total,
             'customer_name' => $data['cName'],
             'customer_email' => $data['cEmail'],

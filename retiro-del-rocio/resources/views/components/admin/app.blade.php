@@ -113,6 +113,7 @@
             ['key' => 'vehicle-pickups', 'label' => 'Vehicle Pickups', 'icon' => 'car', 'children' => [
                 ['label' => 'Vehicles', 'href' => route('admin.vehicles.index'), 'active' => request()->routeIs('admin.vehicles.index')],
                 ['label' => 'Bookings', 'href' => route('admin.vehicles.bookings'), 'active' => request()->routeIs('admin.vehicles.bookings')],
+                ['label' => 'Drivers', 'href' => route('admin.vehicles.drivers'), 'active' => request()->routeIs('admin.vehicles.drivers')],
             ]],
         ]],
         ['label' => 'Membership Management', 'items' => [

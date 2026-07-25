@@ -109,7 +109,7 @@ Dashboard + top tabs: **Dashboard · Reservations · Rooms · Guests · Billing 
 - Dashboard (arrivals, departures, occupancy, alerts)
 - Reservations: list, detail, New/walk-in reservation, Modify, Cancel
 - Check-in flow: guest details → ID scan → room assignment → key/TTLock issue → payment/deposit
-- Check-out flow: folio review → charges → payment → feedback
+- Check-out flow: folio review → charges → payment → feedback 
 - Rooms: Room rack / availability grid, Room detail & status
 - Guests: Guest list, Guest profile, Guest history/preferences
 - Billing: Folio, Post charge, Split/transfer, Payment, Refund, Invoice/reprint

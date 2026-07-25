@@ -228,6 +228,22 @@ class SosAlert extends Model
     }
 
     /**
+     * A compact alert row for the reception dashboard's "Alerts" panel: a title,
+     * a relative time and a severity so the row can be colour-coded.
+     */
+    public function toReceptionAlertArray(): array
+    {
+        $room = $this->room_number ? 'Room '.$this->room_number : ($this->suite_name ?? 'the hotel');
+
+        return [
+            'id' => $this->id,
+            'title' => 'Emergency SOS — '.$room,
+            'time_label' => optional($this->raised_at)->diffForHumans(['short' => true]) ?? '',
+            'severity' => $this->status === self::ACTIVE ? 'high' : 'medium',
+        ];
+    }
+
+    /**
      * The full incident record for the SOS Alert Logs and its detail panel —
      * every status, with the whole timeline (who acted, and when).
      */

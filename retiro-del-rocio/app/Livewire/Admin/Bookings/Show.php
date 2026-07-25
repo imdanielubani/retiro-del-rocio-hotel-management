@@ -231,11 +231,10 @@ class Show extends Component
 
         $nightly = $this->nightlyRate();
         $extraRoom = $nightly * $extraNights;
-        $extraVat = (int) round($extraRoom * 0.075);
 
         $this->booking->check_out = $newOut->toDateString();
         $this->booking->nights = (int) $this->booking->nights + $extraNights;
-        $this->booking->amount = (int) $this->booking->amount + $extraRoom + $extraVat;
+        $this->booking->amount = (int) $this->booking->amount + $extraRoom;
         // A guest who renews keeps staying — reactivate a completed stay and re-hold the room.
         if ($this->booking->status === 'checked_out') {
             $this->booking->status = 'checked_in';
@@ -260,19 +259,12 @@ class Show extends Component
         $nights = max(1, (int) $b->nights);
         $total = (int) $b->amount;
         $pickup = $b->pickup_price ? (int) preg_replace('/[^0-9]/', '', $b->pickup_price) : 0;
-        $fees = $total > 1250 ? 1250 : 0;
-        $subtotal = (int) round(max(0, $total - $fees) / 1.075);
-        $roomRate = max(0, $subtotal - $pickup);
-        $taxes = max(0, $total - $roomRate - $pickup);
-        $taxPct = ($roomRate + $pickup) > 0 ? round($taxes / ($roomRate + $pickup) * 100, 1) : 0;
+        $roomRate = max(0, $total - $pickup);
 
         $payment = [
             'room_rate' => $roomRate,
             'nights' => $nights,
             'pickup' => $pickup,
-            'taxes' => $taxes,
-            'tax_pct' => $taxPct,
-            'service' => 0,
             'total' => $total,
         ];
 

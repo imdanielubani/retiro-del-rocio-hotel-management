@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\ReceptionController;
 use App\Http\Controllers\Api\V1\SecurityController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\TabletController;
@@ -143,5 +144,37 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.security.visitors.grant');
         Route::post('security/visitors/{pass}/deny', [SecurityController::class, 'deny'])
             ->middleware('throttle:60,1')->name('api.v1.security.visitors.deny');
+
+        // --- Reception tablet (staff JWT, reception role) ---
+        // The receptionist signs in on the reception station; their JWT authorises
+        // the front-desk dashboard and the check-in / check-out actions. The role
+        // is re-checked in the controller on every call.
+        Route::get('reception/overview', [ReceptionController::class, 'overview'])
+            ->name('api.v1.reception.overview');
+
+        // The front desk's read-only views of the admin's guests and bookings.
+        Route::get('reception/guests', [ReceptionController::class, 'guests'])
+            ->name('api.v1.reception.guests');
+        Route::get('reception/guests/profile', [ReceptionController::class, 'guestProfile'])
+            ->name('api.v1.reception.guest-profile');
+        Route::get('reception/bookings', [ReceptionController::class, 'bookings'])
+            ->name('api.v1.reception.bookings');
+
+        Route::get('reception/bookings/{booking}/rooms', [ReceptionController::class, 'roomOptions'])
+            ->name('api.v1.reception.rooms');
+        Route::post('reception/bookings/{booking}/check-in', [ReceptionController::class, 'checkIn'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.check-in');
+        Route::post('reception/bookings/{booking}/check-out', [ReceptionController::class, 'checkOut'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.check-out');
+
+        // Vehicle pickup: the desk sees guests arriving by car and assigns a driver.
+        Route::get('reception/pickups', [ReceptionController::class, 'pickups'])
+            ->name('api.v1.reception.pickups');
+        Route::get('reception/drivers', [ReceptionController::class, 'drivers'])
+            ->name('api.v1.reception.drivers');
+        Route::post('reception/bookings/{booking}/assign-driver', [ReceptionController::class, 'assignDriver'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.assign-driver');
+        Route::post('reception/bookings/{booking}/pickup-complete', [ReceptionController::class, 'completePickup'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.pickup-complete');
     });
 });

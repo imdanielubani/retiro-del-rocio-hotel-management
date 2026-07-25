@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Vehicles;
 
 use App\Models\Booking;
+use App\Models\Driver;
 use Illuminate\Support\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -12,6 +13,9 @@ class Bookings extends Component
     use WithPagination;
 
     public string $search = '';
+
+    /** Driver chosen in the detail modal's assignment dropdown ('' = none). */
+    public $assignDriverId = '';
 
     // Quick date range: '' (all) | today | 7d | 30d | month | last_month
     public string $range = '';
@@ -42,11 +46,49 @@ class Bookings extends Component
     public function view(int $id): void
     {
         $this->selectedId = $id;
+        $this->assignDriverId = Booking::find($id)?->pickup_driver_id ?? '';
     }
 
     public function closeModal(): void
     {
         $this->selectedId = null;
+        $this->assignDriverId = '';
+    }
+
+    /** Assign (or clear) the driver chosen in the detail modal's dropdown. */
+    public function saveDriver(): void
+    {
+        $b = Booking::whereNotNull('pickup_vehicle')->find($this->selectedId);
+        if (! $b) {
+            return;
+        }
+
+        $driver = $this->assignDriverId !== ''
+            ? Driver::available()->find($this->assignDriverId)
+            : null;
+
+        if ($this->assignDriverId !== '' && ! $driver) {
+            $this->dispatch('toast', type: 'error', message: 'That driver is not available.');
+
+            return;
+        }
+
+        $b->assignPickupDriver($driver);
+        $this->dispatch('toast', type: 'success', message: $driver
+            ? $driver->name.' assigned to '.$b->transportCode().'.'
+            : 'Driver cleared for '.$b->transportCode().'.');
+    }
+
+    /** Mark the guest as collected once the driver has picked them up. */
+    public function markPickedUp(int $id): void
+    {
+        $b = Booking::whereNotNull('pickup_vehicle')->find($id);
+        if (! $b || $b->pickup_status !== 'assigned') {
+            return;
+        }
+
+        $b->markPickupCompleted();
+        $this->dispatch('toast', type: 'success', message: $b->transportCode().' marked as picked up.');
     }
 
     public function confirm(int $id): void
@@ -128,12 +170,13 @@ class Bookings extends Component
         $resultSum = (int) (clone $this->baseQuery())->get(['pickup_price'])->sum(fn ($b) => $b->pickupAmount());
 
         $selected = $this->selectedId
-            ? Booking::whereNotNull('pickup_vehicle')->find($this->selectedId)
+            ? Booking::with('pickupDriver')->whereNotNull('pickup_vehicle')->find($this->selectedId)
             : null;
 
         return view('admin.vehicles.bookings', [
             'bookings' => $bookings,
             'selected' => $selected,
+            'drivers' => Driver::available()->orderBy('sort_order')->orderBy('name')->get(),
             'resultCount' => $resultCount,
             'resultSum' => $resultSum,
             'stats' => [

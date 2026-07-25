@@ -138,14 +138,6 @@
                                 </div>
                             @endif
                             <div class="flex items-center justify-between gap-4 border-t border-white/10 py-4">
-                                <span class="text-body-lg font-semibold tracking-tight lg:text-h3">VAT 7.5%</span>
-                                <span class="text-body-lg font-semibold tracking-tight lg:text-h3">{{ $booking['vat_label'] }}</span>
-                            </div>
-                            <div class="flex items-center justify-between gap-4 border-t border-white/10 py-4">
-                                <span class="text-body-lg font-semibold tracking-tight lg:text-h3">Fees</span>
-                                <span class="text-body-lg font-semibold tracking-tight lg:text-h3">{{ $booking['fees_label'] }}</span>
-                            </div>
-                            <div class="flex items-center justify-between gap-4 border-t border-white/10 py-4">
                                 <span class="text-title font-semibold tracking-tight lg:text-h3">Total</span>
                                 <span class="text-h3 font-semibold tracking-tight lg:text-h2">{{ $booking['total_label'] }}</span>
                             </div>

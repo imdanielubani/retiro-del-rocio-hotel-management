@@ -20,8 +20,6 @@ import './bootstrap';
 window.spaReservation = function (config) {
     return {
         services: config.services || [],
-        fees: config.fees || 2000,
-        vatRate: 0.075,
         showModal: false,
         // step: 'select' (choose services) | 'checkout' (pay) | 'success'
         step: config.step || 'select',
@@ -72,8 +70,7 @@ window.spaReservation = function (config) {
 
         get chosen() { return this.services.filter((s) => this.selected.includes(s.slug)); },
         get subtotal() { return this.chosen.reduce((t, s) => t + s.price * Math.max(1, this.guests), 0); },
-        get taxes() { return Math.round(this.subtotal * this.vatRate); },
-        get total() { return this.subtotal ? this.subtotal + this.fees + this.taxes : 0; },
+        get total() { return this.subtotal; },
         money(n) { return '₦' + (n || 0).toLocaleString(); },
         get canSubmit() { return this.chosen.length > 0 && !!this.date; },
 
@@ -473,9 +470,7 @@ window.cinemaBooking = function (config) {
 
         get snacksTotal() { return this.snacks.reduce((t, s) => t + (this.snackQty[s.id] || 0) * s.price, 0); },
         get subtotal() { return this.roomPrice + this.snacksTotal; },
-        get fee() { return 2000; },                                  // convenience fee (mirrors spa)
-        get taxes() { return Math.round(this.subtotal * 0.075); },   // VAT 7.5%
-        get grandTotal() { return this.subtotal + this.fee + this.taxes; },
+        get grandTotal() { return this.subtotal; },
         get amountKobo() { return this.grandTotal * 100; },
         get fullName() { return (this.firstName + ' ' + this.lastName).trim(); },
         money(n) { return '₦' + (n || 0).toLocaleString(); },

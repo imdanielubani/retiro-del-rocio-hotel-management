@@ -14,9 +14,11 @@ class Booking extends Model
     protected $fillable = [
         'reference', 'room_id', 'room_name', 'guests', 'check_in', 'check_out', 'nights',
         'amount', 'customer_name', 'customer_email', 'customer_phone',
+        'id_document_type', 'id_document_number', 'id_document_public_id', 'id_document_url', 'identity_verified_at',
         'pickup_vehicle', 'pickup_price', 'pickup_passengers', 'pickup_location',
         'pickup_arrival_date', 'pickup_time', 'pickup_flight_number',
-        'status', 'payment_method', 'paid_at', 'checked_in_at', 'checked_out_at',
+        'pickup_driver_id', 'pickup_status', 'pickup_assigned_at',
+        'status', 'payment_method', 'paid_at', 'checked_in_at', 'checkin_confirmation', 'checked_out_at',
         'refund_amount', 'refund_method', 'refund_status', 'room_unit_id',
         'passcode', 'keyboard_pwd_id', 'qr_code_id', 'qr_code_link', 'ttlock_grants', 'ttlock_status', 'ttlock_error',
     ];
@@ -25,8 +27,10 @@ class Booking extends Model
         'check_in' => 'date',
         'check_out' => 'date',
         'pickup_arrival_date' => 'date',
+        'pickup_assigned_at' => 'datetime',
         'paid_at' => 'datetime',
         'checked_in_at' => 'datetime',
+        'identity_verified_at' => 'datetime',
         'checked_out_at' => 'datetime',
         'amount' => 'integer',
         'nights' => 'integer',
@@ -44,6 +48,12 @@ class Booking extends Model
     public function roomUnit()
     {
         return $this->belongsTo(RoomUnit::class);
+    }
+
+    /** The driver assigned to this booking's vehicle pickup, if any. */
+    public function pickupDriver()
+    {
+        return $this->belongsTo(Driver::class, 'pickup_driver_id');
     }
 
     /* ---------------- TTLock smart-lock access ---------------- */
@@ -254,7 +264,7 @@ class Booking extends Model
 
     public function pickupTo(): string
     {
-        return 'Hotel Del Retiro';
+        return 'Retiro Del Rocio';
     }
 
     public function pickupInitials(): string
@@ -276,6 +286,59 @@ class Booking extends Model
         };
     }
 
+    /* ---------------- Pickup driver assignment ---------------- */
+
+    public function pickupStatusLabel(): string
+    {
+        return match ($this->pickup_status) {
+            'assigned' => 'Driver Assigned',
+            'completed' => 'Picked Up',
+            default => 'Awaiting Driver',
+        };
+    }
+
+    /** Assign (or reassign) a driver to this pickup; null clears the assignment. */
+    public function assignPickupDriver(?Driver $driver): void
+    {
+        $this->forceFill([
+            'pickup_driver_id' => $driver?->id,
+            'pickup_status' => $driver ? 'assigned' : 'unassigned',
+            'pickup_assigned_at' => $driver ? now() : null,
+        ])->save();
+    }
+
+    /** Mark the guest as collected. */
+    public function markPickupCompleted(): void
+    {
+        $this->forceFill(['pickup_status' => 'completed'])->save();
+    }
+
+    /** Full pickup record for the reception Vehicle Pickup module. */
+    public function toReceptionPickupArray(): array
+    {
+        $driver = $this->relationLoaded('pickupDriver') ? $this->pickupDriver : $this->pickupDriver()->first();
+
+        return [
+            'id' => $this->id,
+            'reference' => $this->transportCode(),
+            'guest_name' => $this->customer_name,
+            'guest_phone' => $this->customer_phone,
+            'vehicle' => $this->pickup_vehicle,
+            'passengers_label' => $this->pickupPassengersLabel(),
+            'from' => $this->pickupFrom(),
+            'to' => $this->pickupTo(),
+            'number_label' => $this->pickupNumberLabel(),
+            'flight_number' => $this->pickup_flight_number,
+            'pickup_date' => optional($this->pickup_arrival_date)->format('M j, Y'),
+            'pickup_time' => $this->pickup_time,
+            'amount_label' => $this->pickupAmountLabel(),
+            'booking_status' => $this->status,
+            'pickup_status' => $this->pickup_status ?? 'unassigned',
+            'pickup_status_label' => $this->pickupStatusLabel(),
+            'driver' => $driver?->toRosterArray(),
+        ];
+    }
+
     // Transaction reference shown in the Payment module, e.g. TXN-8841.
     public function txnId(): string
     {
@@ -286,6 +349,132 @@ class Booking extends Model
     public function bookingCode(): string
     {
         return 'BK-'.str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    /* ---------------- Reception dashboard ---------------- */
+
+    /** An arriving guest for the reception dashboard's "Today's Arrivals" list. */
+    public function toReceptionArrivalArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'reference' => $this->bookingCode(),
+            'guest_name' => $this->customer_name,
+            'room_label' => $this->receptionRoomLabel(),
+            'date_label' => optional($this->check_in)->format('M j, Y'),
+            'status' => $this->status,
+            'status_label' => $this->statusLabel(),
+        ];
+    }
+
+    /** A departing guest for the reception dashboard's "Today's Departures" list. */
+    public function toReceptionDepartureArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'reference' => $this->bookingCode(),
+            'guest_name' => $this->customer_name,
+            'room_label' => $this->receptionRoomLabel(),
+            'date_label' => optional($this->check_out)->format('M j, Y'),
+            'status' => $this->status,
+            'status_label' => $this->statusLabel(),
+        ];
+    }
+
+    /** "Brisa Residence · Room 201" — the room type plus the assigned unit. */
+    protected function receptionRoomLabel(): string
+    {
+        return implode(' · ', array_filter([
+            $this->room_name,
+            $this->roomUnit ? 'Room '.$this->roomUnit->number : null,
+        ]));
+    }
+
+    /**
+     * A stable identity for the person on this booking, so the same guest groups
+     * across stays even though there is no Guest table.
+     *
+     * The identity is the guest's NAME plus their strongest contact detail — not
+     * the contact alone. Front desks routinely book many different guests under a
+     * shared contact (a reception email, a company line), and keying on the email
+     * alone collapsed every one of them into a single guest. Including the name
+     * keeps distinct people distinct, while a true repeat guest (same name and
+     * same contact) still merges into one row with a stays count.
+     */
+    public function guestKey(): string
+    {
+        $name = mb_strtolower(trim((string) $this->customer_name));
+        $email = mb_strtolower(trim((string) $this->customer_email));
+        $phone = preg_replace('/\D/', '', (string) $this->customer_phone);
+
+        $contact = match (true) {
+            $email !== '' => 'e:'.$email,
+            $phone !== '' => 'p:'.$phone,
+            default => 'n:'.$name,
+        };
+
+        return $name.'|'.$contact;
+    }
+
+    /** The human label for the identity document shown at check-in. */
+    public function identityDocumentLabel(): ?string
+    {
+        return match ($this->id_document_type) {
+            'passport' => 'International Passport',
+            'nin' => 'NIN',
+            default => null,
+        };
+    }
+
+    /** True once a scan of the guest's ID has been stored (in Cloudinary). */
+    public function hasIdentityDocument(): bool
+    {
+        return filled($this->id_document_url);
+    }
+
+    /**
+     * A stable confirmation code for the "Check-In Complete" screen, e.g.
+     * "RC-2507-137". Minted once and kept.
+     */
+    public function ensureCheckinConfirmation(): string
+    {
+        if (blank($this->checkin_confirmation)) {
+            $this->checkin_confirmation = 'RC-'.now()->format('ym').'-'.str_pad((string) $this->id, 3, '0', STR_PAD_LEFT);
+        }
+
+        return $this->checkin_confirmation;
+    }
+
+    /** The payload for the reception "Check-In Complete" screen. */
+    public function toCheckinConfirmationArray(): array
+    {
+        return [
+            'confirmation' => $this->checkin_confirmation,
+            'guest_name' => $this->customer_name,
+            'room_number' => optional($this->roomUnit)->number,
+            'room_label' => $this->receptionRoomLabel(),
+            'check_in_time' => optional($this->checked_in_at)->format('H:i'),
+            'document_label' => $this->identityDocumentLabel(),
+            'document_number' => $this->id_document_number,
+            'document_url' => $this->id_document_url,
+        ];
+    }
+
+    /** A booking row for the reception bookings list and a guest's stay history. */
+    public function toReceptionBookingRowArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'reference' => $this->bookingCode(),
+            'guest_name' => $this->customer_name,
+            'room_label' => $this->receptionRoomLabel(),
+            'check_in_label' => optional($this->check_in)->format('M j'),
+            'check_out_label' => optional($this->check_out)->format('M j, Y'),
+            'nights' => (int) $this->nights,
+            'amount_label' => $this->amountLabel(),
+            'status' => $this->status,
+            'status_label' => $this->statusLabel(),
+        ];
     }
 
     /**
@@ -457,6 +646,29 @@ class Booking extends Model
             'pending' => 'bg-[#fef3c7] text-[#d97706]',
             'checked_in' => 'bg-[#ede9fe] text-[#7c3aed]',
             'checked_out' => 'bg-[#eef2f6] text-[#475569]',
+            'cancelled' => 'bg-[#fee2e2] text-[#dc2626]',
+            default => 'bg-[#f3f4f6] text-[#6b7280]',
+        };
+    }
+
+    // Status as presented in the Vehicle Pickup module. The room-stay states
+    // (Checked In / Checked Out) are irrelevant to a transport booking, so any
+    // paid reservation reads simply as "Confirmed".
+    public function transportStatusLabel(): string
+    {
+        return match ($this->status) {
+            'paid', 'checked_in', 'checked_out' => 'Confirmed',
+            'pending' => 'Pending',
+            'cancelled' => 'Cancelled',
+            default => ucfirst((string) $this->status),
+        };
+    }
+
+    public function transportStatusBadge(): string
+    {
+        return match ($this->status) {
+            'paid', 'checked_in', 'checked_out' => 'bg-[#dcfce7] text-[#16a34a]',
+            'pending' => 'bg-[#fef3c7] text-[#d97706]',
             'cancelled' => 'bg-[#fee2e2] text-[#dc2626]',
             default => 'bg-[#f3f4f6] text-[#6b7280]',
         };

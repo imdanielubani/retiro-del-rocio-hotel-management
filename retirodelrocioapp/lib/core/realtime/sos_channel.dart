@@ -22,12 +22,20 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// re-fetches with its own token in response, and the periodic poll stays in
 /// place so a dropped socket degrades gracefully rather than going blind.
 class SosChannel {
-  SosChannel({required this.config, this.channel = 'sos'});
+  SosChannel({
+    required this.config,
+    this.channel = 'sos',
+    this.events = const {'sos.changed'},
+  });
 
   final RealtimeConfig config;
 
-  /// The Reverb channel to subscribe to — `sos` (hotel-wide) or `rooms.{id}`.
+  /// The Reverb channel to subscribe to — `sos`, `reception`, or `rooms.{id}`.
   final String channel;
+
+  /// The application event names on that channel that should fire [onChanged].
+  /// Defaults to the SOS ping; a reception subscription passes `booking.changed`.
+  final Set<String> events;
 
   WebSocketChannel? _socket;
   StreamSubscription<dynamic>? _subscription;
@@ -74,24 +82,30 @@ class SosChannel {
 
     try {
       final frame = jsonDecode(message) as Map<String, dynamic>;
-      switch (frame['event'] as String?) {
+      final event = frame['event'] as String?;
+      switch (event) {
         // The server is ready — now, and only now, subscribe.
         case 'pusher:connection_established':
           _send({
             'event': 'pusher:subscribe',
             'data': {'channel': channel},
           });
+          return;
 
         case 'pusher_internal:subscription_succeeded':
-          debugPrint('SosChannel: subscribed to $channel — incidents are live.');
+          debugPrint('SosChannel: subscribed to $channel — updates are live.');
+          return;
 
         // Reverb hangs up on a client that never answers.
         case 'pusher:ping':
           _send({'event': 'pusher:pong', 'data': {}});
+          return;
+      }
 
-        case 'sos.changed':
-          debugPrint('SosChannel: an incident changed — refreshing.');
-          onChanged();
+      // Any application event this channel cares about triggers a re-fetch.
+      if (event != null && events.contains(event)) {
+        debugPrint('SosChannel: $event on $channel — refreshing.');
+        onChanged();
       }
     } catch (error) {
       debugPrint('SosChannel: bad frame — $error');
