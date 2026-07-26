@@ -183,6 +183,40 @@ class ReceptionCheckInFlowTest extends TestCase
         $this->assertSame('12345678901', $booking->id_document_number);
     }
 
+    public function test_check_in_accepts_the_additional_id_types(): void
+    {
+        $unit = $this->unit('206');
+        $booking = $this->booking(['room_unit_id' => $unit->id]);
+
+        // A driver's licence (no scan) is now an accepted document, labelled for
+        // the admin dashboard and the completion screen alike.
+        $this->withToken($this->token())
+            ->post("/api/v1/reception/bookings/{$booking->id}/check-in", [
+                'document_type' => 'drivers_license',
+                'document_number' => 'DL-99881',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.document_label', "Driver's License");
+
+        $fresh = $booking->fresh();
+        $this->assertSame('checked_in', $fresh->status);
+        $this->assertSame('drivers_license', $fresh->id_document_type);
+        $this->assertSame('DL-99881', $fresh->id_document_number);
+    }
+
+    public function test_check_in_rejects_an_unknown_id_type(): void
+    {
+        $unit = $this->unit('207');
+        $booking = $this->booking(['room_unit_id' => $unit->id]);
+
+        $this->withToken($this->token())
+            ->postJson("/api/v1/reception/bookings/{$booking->id}/check-in", [
+                'document_type' => 'made_up',
+                'document_number' => 'X',
+            ])
+            ->assertStatus(422);
+    }
+
     public function test_room_options_include_available_rooms_of_every_type(): void
     {
         $this->unit('201'); // this booking's room type — auto-assigned to it

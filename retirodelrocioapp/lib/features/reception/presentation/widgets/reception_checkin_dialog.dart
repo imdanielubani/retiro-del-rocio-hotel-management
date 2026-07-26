@@ -42,6 +42,22 @@ class _CheckInDialog extends ConsumerStatefulWidget {
 class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
   _Step _step = _Step.identity;
 
+  /// The accepted identity documents, in the order the desk sees them. [value]
+  /// is what the API stores (and the admin dashboard labels), [label] is the
+  /// full dropdown label and [short] is the compact name used in the field
+  /// captions ("PASSPORT NUMBER", "WORK ID PHOTO").
+  static const List<({String value, String label, String short})> _docTypes = [
+    (value: 'passport', label: 'International Passport', short: 'Passport'),
+    (value: 'nin', label: 'NIN', short: 'NIN'),
+    (value: 'work_id', label: 'Work ID', short: 'Work ID'),
+    (
+      value: 'drivers_license',
+      label: "Driver's License",
+      short: "Driver's License",
+    ),
+    (value: 'voter_card', label: "Voter's Card", short: "Voter's Card"),
+  ];
+
   // Step 1 — identity.
   String _docType = 'passport';
   final _numberController = TextEditingController();
@@ -73,8 +89,10 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
     // 24px inset padding top and bottom. Cap at 720 so it stays a modal on big
     // tablets. Header, stepper, body and error scroll together; only the footer
     // is pinned, so the flow never overflows when the keyboard is up.
-    final maxHeight =
-        (media.size.height - media.viewInsets.bottom - 48).clamp(280.0, 720.0);
+    final maxHeight = (media.size.height - media.viewInsets.bottom - 48).clamp(
+      280.0,
+      720.0,
+    );
 
     return Dialog(
       backgroundColor: const Color(0xFF161616),
@@ -102,7 +120,10 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
                         const SizedBox(height: 12),
                         Text(
                           _error!,
-                          style: AppTypography.style(color: const Color(0xFFEF4444), fontSize: 13),
+                          style: AppTypography.style(
+                            color: const Color(0xFFEF4444),
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ],
@@ -192,8 +213,8 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
             color: done
                 ? _green
                 : active
-                    ? AppColors.gold
-                    : Colors.white.withValues(alpha: 0.1),
+                ? AppColors.gold
+                : Colors.white.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: done
@@ -201,7 +222,9 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
               : Text(
                   '$n',
                   style: AppTypography.style(
-                    color: active ? Colors.black : Colors.white.withValues(alpha: 0.5),
+                    color: active
+                        ? Colors.black
+                        : Colors.white.withValues(alpha: 0.5),
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
@@ -221,20 +244,20 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
   }
 
   Widget _stepConnector() => Expanded(
-        child: Container(
-          height: 1,
-          margin: const EdgeInsets.only(bottom: 20),
-          color: Colors.white.withValues(alpha: 0.1),
-        ),
-      );
+    child: Container(
+      height: 1,
+      margin: const EdgeInsets.only(bottom: 20),
+      color: Colors.white.withValues(alpha: 0.1),
+    ),
+  );
 
   // --- Body -----------------------------------------------------------------
 
   Widget _body() => switch (_step) {
-        _Step.identity => _identityStep(),
-        _Step.room => _roomStep(),
-        _Step.complete => _completeStep(),
-      };
+    _Step.identity => _identityStep(),
+    _Step.room => _roomStep(),
+    _Step.complete => _completeStep(),
+  };
 
   Widget _identityStep() {
     return Column(
@@ -244,19 +267,13 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
         const SizedBox(height: 20),
         _label('DOCUMENT TYPE'),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _docToggle('International Passport', 'passport')),
-            const SizedBox(width: 12),
-            Expanded(child: _docToggle('NIN', 'nin')),
-          ],
-        ),
+        _docTypeDropdown(),
         const SizedBox(height: 16),
-        _label(_docType == 'passport' ? 'PASSPORT NUMBER' : 'NIN NUMBER'),
+        _label('${_docShort.toUpperCase()} NUMBER'),
         const SizedBox(height: 8),
         _numberField(),
         const SizedBox(height: 16),
-        _label(_docType == 'passport' ? 'PASSPORT PHOTO' : 'NIN PHOTO'),
+        _label('${_docShort.toUpperCase()} PHOTO'),
         const SizedBox(height: 8),
         _uploadZone(),
         const SizedBox(height: 20),
@@ -268,14 +285,23 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
   Widget _bookingCard() {
     final initials = widget.booking.guestName.trim().isEmpty
         ? 'G'
-        : widget.booking.guestName.trim().split(RegExp(r'\s+')).take(2).map((p) => p[0]).join().toUpperCase();
+        : widget.booking.guestName
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((p) => p[0])
+              .join()
+              .toUpperCase();
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Row(
         children: [
@@ -283,10 +309,17 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
             width: 40,
             height: 40,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: AppColors.gold,
+              shape: BoxShape.circle,
+            ),
             child: Text(
               initials,
-              style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
+              style: AppTypography.style(
+                color: Colors.black,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -298,14 +331,21 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
                   widget.booking.guestName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.style(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   widget.booking.roomLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -324,32 +364,52 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
     );
   }
 
-  Widget _docToggle(String label, String value) {
-    final selected = _docType == value;
-    return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: _busy ? null : () => setState(() => _docType = value),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.1),
-              width: 0.8,
-            ),
+  /// The compact name of the selected document, e.g. "Passport", "Work ID".
+  String get _docShort => _docTypes
+      .firstWhere((t) => t.value == _docType, orElse: () => _docTypes.first)
+      .short;
+
+  /// The document-type picker — a dropdown so the full list of accepted IDs
+  /// (Passport, NIN, Work ID, Driver's License, Voter's Card) fits without
+  /// crowding the row.
+  Widget _docTypeDropdown() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _docType,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(12),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.gold.withValues(alpha: 0.9),
           ),
-          child: Text(
-            label,
-            style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+          onChanged: _busy
+              ? null
+              : (value) {
+                  if (value != null) setState(() => _docType = value);
+                },
+          items: [
+            for (final t in _docTypes)
+              DropdownMenuItem<String>(
+                value: t.value,
+                child: Text(
+                  t.label,
+                  style: AppTypography.style(color: Colors.white, fontSize: 14),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -366,9 +426,15 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
         isDense: true,
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
-        hintText: _docType == 'passport' ? 'Enter passport number' : 'Enter NIN number',
-        hintStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 14),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        hintText: 'Enter $_docShort number',
+        hintStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.35),
+          fontSize: 14,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: _fieldBorder(0.1),
         enabledBorder: _fieldBorder(0.1),
         focusedBorder: _fieldBorder(0.5, AppColors.gold),
@@ -377,9 +443,13 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
     );
   }
 
-  OutlineInputBorder _fieldBorder(double alpha, [Color? color]) => OutlineInputBorder(
+  OutlineInputBorder _fieldBorder(double alpha, [Color? color]) =>
+      OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: (color ?? Colors.white).withValues(alpha: alpha), width: 0.8),
+        borderSide: BorderSide(
+          color: (color ?? Colors.white).withValues(alpha: alpha),
+          width: 0.8,
+        ),
       );
 
   Widget _uploadZone() {
@@ -406,14 +476,19 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.style(
-                    color: picked ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                    color: picked
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   picked ? 'Tap to replace' : 'Photo · PDF · Scan',
-                  style: AppTypography.style(color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -424,7 +499,8 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
   }
 
   Widget _verifyButton() {
-    final canVerify = _numberController.text.trim().isNotEmpty || _document != null;
+    final canVerify =
+        _numberController.text.trim().isNotEmpty || _document != null;
 
     if (_verified) {
       return Container(
@@ -437,7 +513,11 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
         ),
         child: Text(
           'Identity Verified',
-          style: AppTypography.style(color: _green, fontSize: 14, fontWeight: FontWeight.w600),
+          style: AppTypography.style(
+            color: _green,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
@@ -446,19 +526,26 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
       color: Colors.white.withValues(alpha: 0.06),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: (canVerify && !_busy) ? () => setState(() => _verified = true) : null,
+        onTap: (canVerify && !_busy)
+            ? () => setState(() => _verified = true)
+            : null,
         borderRadius: BorderRadius.circular(10),
         child: Container(
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.12),
+              width: 0.8,
+            ),
           ),
           child: Text(
             'Mark as Verified',
             style: AppTypography.style(
-              color: canVerify ? Colors.white : Colors.white.withValues(alpha: 0.35),
+              color: canVerify
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.35),
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -482,7 +569,10 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
         child: Center(
           child: Text(
             'Could not load rooms.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
           ),
         ),
       );
@@ -496,24 +586,37 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.gold.withValues(alpha: 0.25), width: 0.8),
+            border: Border.all(
+              color: AppColors.gold.withValues(alpha: 0.25),
+              width: 0.8,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Assigned Room',
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 rooms.assigned?.number ?? '—',
-                style: AppTypography.style(color: AppColors.gold, fontSize: 26, fontWeight: FontWeight.w800),
+                style: AppTypography.style(
+                  color: AppColors.gold,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 rooms.assigned?.roomName ?? widget.booking.roomLabel,
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 13,
+                ),
               ),
               if (rooms.assigned?.hasTablet ?? false) ...[
                 const SizedBox(height: 12),
@@ -540,7 +643,13 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: _busy ? null : () => setState(() => _selectedRoomId = selected ? _rooms?.assigned?.id : option.id),
+        onTap: _busy
+            ? null
+            : () => setState(
+                () => _selectedRoomId = selected
+                    ? _rooms?.assigned?.id
+                    : option.id,
+              ),
         borderRadius: BorderRadius.circular(10),
         child: Row(
           children: [
@@ -550,7 +659,9 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.3),
+                  color: selected
+                      ? AppColors.gold
+                      : Colors.white.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
@@ -559,7 +670,10 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
                       child: Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                        decoration: const BoxDecoration(
+                          color: AppColors.gold,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     )
                   : null,
@@ -571,22 +685,26 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
                 children: [
                   Text(
                     'Room ${option.number} · ${option.roomName}',
-                    style: AppTypography.style(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: AppTypography.style(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   if ((option.priceLabel ?? '').isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       option.priceLabel!,
-                      style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            if (option.hasTablet) ...[
-              const SizedBox(width: 8),
-              _tabletChip(),
-            ],
+            if (option.hasTablet) ...[const SizedBox(width: 8), _tabletChip()],
           ],
         ),
       ),
@@ -610,7 +728,11 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
           const SizedBox(width: 5),
           Text(
             'In-room tablet',
-            style: AppTypography.style(color: _green, fontSize: 11, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: _green,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -625,13 +747,24 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
         Container(
           width: 76,
           height: 76,
-          decoration: BoxDecoration(color: _green.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: const Icon(Icons.check_circle_rounded, size: 44, color: _green),
+          decoration: BoxDecoration(
+            color: _green.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            size: 44,
+            color: _green,
+          ),
         ),
         const SizedBox(height: 18),
         Text(
           'Check-In Complete',
-          style: AppTypography.style(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+          style: AppTypography.style(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 20),
         if (c != null)
@@ -640,16 +773,25 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.8,
+              ),
             ),
             child: Column(
               children: [
                 _summaryRow('Confirmation', c.confirmation),
                 _summaryRow('Guest', c.guestName),
-                if ((c.roomNumber ?? '').isNotEmpty) _summaryRow('Room', c.roomNumber!),
-                if ((c.checkInTime ?? '').isNotEmpty) _summaryRow('Check-In Time', c.checkInTime!),
+                if ((c.roomNumber ?? '').isNotEmpty)
+                  _summaryRow('Room', c.roomNumber!),
+                if ((c.checkInTime ?? '').isNotEmpty)
+                  _summaryRow('Check-In Time', c.checkInTime!),
                 if ((c.documentLabel ?? '').isNotEmpty)
-                  _summaryRow(c.documentLabel!, c.documentNumber ?? '—', last: true),
+                  _summaryRow(
+                    c.documentLabel!,
+                    c.documentNumber ?? '—',
+                    last: true,
+                  ),
               ],
             ),
           ),
@@ -663,14 +805,22 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
       decoration: BoxDecoration(
         border: last
             ? null
-            : Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.8)),
+            : Border(
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  width: 0.8,
+                ),
+              ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -679,7 +829,11 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
               textAlign: TextAlign.right,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.style(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTypography.style(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -692,23 +846,35 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
   Widget _footer() {
     return switch (_step) {
       _Step.identity => Align(
-          alignment: Alignment.centerRight,
-          child: _primaryButton('Next', enabled: _verified, onTap: _goToRooms),
-        ),
+        alignment: Alignment.centerRight,
+        child: _primaryButton('Next', enabled: _verified, onTap: _goToRooms),
+      ),
       _Step.room => Row(
-          children: [
-            _secondaryButton('Back', () => setState(() => _step = _Step.identity)),
-            const Spacer(),
-            _primaryButton('Next', enabled: !_busy, busy: _busy, onTap: _submit),
-          ],
-        ),
+        children: [
+          _secondaryButton(
+            'Back',
+            () => setState(() => _step = _Step.identity),
+          ),
+          const Spacer(),
+          _primaryButton('Next', enabled: !_busy, busy: _busy, onTap: _submit),
+        ],
+      ),
       _Step.complete => Center(
-          child: _primaryButton('Close', enabled: true, onTap: () => Navigator.of(context).pop(true)),
+        child: _primaryButton(
+          'Close',
+          enabled: true,
+          onTap: () => Navigator.of(context).pop(true),
         ),
+      ),
     };
   }
 
-  Widget _primaryButton(String label, {required bool enabled, bool busy = false, required VoidCallback onTap}) {
+  Widget _primaryButton(
+    String label, {
+    required bool enabled,
+    bool busy = false,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: enabled ? AppColors.gold : Colors.white.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(10),
@@ -719,11 +885,20 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
           alignment: Alignment.center,
           child: busy
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.black,
+                  ),
+                )
               : Text(
                   label,
                   style: AppTypography.style(
-                    color: enabled ? Colors.black : Colors.white.withValues(alpha: 0.4),
+                    color: enabled
+                        ? Colors.black
+                        : Colors.white.withValues(alpha: 0.4),
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -744,7 +919,11 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: Text(
             label,
-            style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -752,14 +931,14 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
   }
 
   Widget _label(String text) => Text(
-        text,
-        style: AppTypography.style(
-          color: Colors.white.withValues(alpha: 0.4),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.8,
-        ),
-      );
+    text,
+    style: AppTypography.style(
+      color: Colors.white.withValues(alpha: 0.4),
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.8,
+    ),
+  );
 
   // --- Actions --------------------------------------------------------------
 
@@ -775,13 +954,25 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_rounded, color: AppColors.gold),
-              title: Text('Take a photo', style: AppTypography.style(color: Colors.white, fontSize: 15)),
+              leading: const Icon(
+                Icons.photo_camera_rounded,
+                color: AppColors.gold,
+              ),
+              title: Text(
+                'Take a photo',
+                style: AppTypography.style(color: Colors.white, fontSize: 15),
+              ),
               onTap: () => Navigator.of(context).pop(ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppColors.gold),
-              title: Text('Choose from gallery', style: AppTypography.style(color: Colors.white, fontSize: 15)),
+              leading: const Icon(
+                Icons.photo_library_rounded,
+                color: AppColors.gold,
+              ),
+              title: Text(
+                'Choose from gallery',
+                style: AppTypography.style(color: Colors.white, fontSize: 15),
+              ),
               onTap: () => Navigator.of(context).pop(ImageSource.gallery),
             ),
           ],
@@ -791,12 +982,16 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
     if (source == null) return;
 
     try {
-      final picked = await ImagePicker().pickImage(source: source, imageQuality: 80);
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 80,
+      );
       if (picked != null && mounted) {
         setState(() => _document = picked);
       }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not open the camera or gallery.');
+      if (mounted)
+        setState(() => _error = 'Could not open the camera or gallery.');
     }
   }
 
@@ -807,7 +1002,9 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
       _error = null;
     });
     try {
-      final rooms = await ref.read(receptionActionsProvider(_token)).roomOptions(widget.booking.id);
+      final rooms = await ref
+          .read(receptionActionsProvider(_token))
+          .roomOptions(widget.booking.id);
       if (!mounted) return;
       setState(() {
         _rooms = rooms;
@@ -835,7 +1032,9 @@ class _CheckInDialogState extends ConsumerState<_CheckInDialog> {
       _error = null;
     });
     try {
-      final confirmation = await ref.read(receptionActionsProvider(_token)).checkIn(
+      final confirmation = await ref
+          .read(receptionActionsProvider(_token))
+          .checkIn(
             widget.booking.id,
             documentType: _docType,
             documentNumber: _numberController.text.trim(),
@@ -873,10 +1072,7 @@ class DottedBorderBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DashedBorderPainter(),
-      child: child,
-    );
+    return CustomPaint(painter: _DashedBorderPainter(), child: child);
   }
 }
 
@@ -899,10 +1095,7 @@ class _DashedBorderPainter extends CustomPainter {
     for (final metric in path.computeMetrics()) {
       var distance = 0.0;
       while (distance < metric.length) {
-        canvas.drawPath(
-          metric.extractPath(distance, distance + dash),
-          paint,
-        );
+        canvas.drawPath(metric.extractPath(distance, distance + dash), paint);
         distance += dash + gap;
       }
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
 /// How serious an alert is, driving its accent colour on the dashboard.
 enum AlertSeverity { high, medium, low }
@@ -14,6 +15,8 @@ class ReceptionBooking {
     required this.dateLabel,
     required this.status,
     this.statusLabel = '',
+    this.isWalkIn = false,
+    this.originLabel,
   });
 
   final int id;
@@ -32,6 +35,12 @@ class ReceptionBooking {
   /// Human status, e.g. "Checked In" — shown once the desk has processed them.
   final String statusLabel;
 
+  /// True when the guest booked at the front desk (a walk-in).
+  final bool isWalkIn;
+
+  /// "Walk-in" / "Phone" for a desk booking, null for an ordinary online one.
+  final String? originLabel;
+
   factory ReceptionBooking.fromJson(Map<String, dynamic> json) =>
       ReceptionBooking(
         id: (json['id'] as num?)?.toInt() ?? 0,
@@ -41,6 +50,10 @@ class ReceptionBooking {
         dateLabel: json['date_label'] as String? ?? '',
         status: json['status'] as String? ?? '',
         statusLabel: json['status_label'] as String? ?? '',
+        isWalkIn: json['is_walk_in'] as bool? ?? false,
+        originLabel: (json['origin_label'] as String?)?.trim().isNotEmpty == true
+            ? json['origin_label'] as String
+            : null,
       );
 }
 
@@ -105,6 +118,7 @@ class ReceptionOverview {
     required this.arrivals,
     required this.departures,
     required this.alerts,
+    required this.incidents,
     required this.roomStatus,
   });
 
@@ -119,6 +133,11 @@ class ReceptionOverview {
   final List<ReceptionBooking> arrivals;
   final List<ReceptionBooking> departures;
   final List<ReceptionAlert> alerts;
+
+  /// The open SOS incidents in full incident shape — the same hotel-wide alerts
+  /// the security dashboard sees. Drives the priority SOS overlay on the desk.
+  final List<SecurityIncident> incidents;
+
   final ReceptionRoomStatus roomStatus;
 
   static const empty = ReceptionOverview(
@@ -131,6 +150,7 @@ class ReceptionOverview {
     arrivals: [],
     departures: [],
     alerts: [],
+    incidents: [],
     roomStatus: ReceptionRoomStatus(),
   );
 
@@ -155,6 +175,7 @@ class ReceptionOverview {
       arrivals: parse('arrivals', ReceptionBooking.fromJson),
       departures: parse('departures', ReceptionBooking.fromJson),
       alerts: parse('alerts', ReceptionAlert.fromJson),
+      incidents: parse('incidents', SecurityIncident.fromJson),
       roomStatus: ReceptionRoomStatus.fromJson(
         (json['room_status'] as Map?)?.cast<String, dynamic>() ?? const {},
       ),

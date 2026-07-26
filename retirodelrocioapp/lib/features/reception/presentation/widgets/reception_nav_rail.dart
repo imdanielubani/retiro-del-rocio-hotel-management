@@ -11,6 +11,7 @@ enum ReceptionNavItem {
   visitorPass,
   roomStatus,
   vehiclePickup,
+  incidentResponse,
   chat,
 }
 
@@ -50,21 +51,59 @@ class ReceptionNavRail extends StatelessWidget {
                 children: [
                   _logo(),
                   const SizedBox(height: 13),
-                  _item(ReceptionNavItem.dashboard, Icons.grid_view_rounded, 'Dashboard'),
+                  _item(
+                    ReceptionNavItem.dashboard,
+                    Icons.grid_view_rounded,
+                    'Dashboard',
+                  ),
                   const SizedBox(height: 4),
-                  _item(ReceptionNavItem.guests, Icons.people_alt_rounded, 'Guests'),
+                  _item(
+                    ReceptionNavItem.guests,
+                    Icons.people_alt_rounded,
+                    'Guests',
+                  ),
                   const SizedBox(height: 4),
-                  _item(ReceptionNavItem.bookings, Icons.calendar_month_rounded, 'Bookings'),
+                  _item(
+                    ReceptionNavItem.bookings,
+                    Icons.calendar_month_rounded,
+                    'Bookings',
+                  ),
                   const SizedBox(height: 4),
-                  _item(ReceptionNavItem.visitorPass, Icons.badge_rounded, 'Visitor\nPass'),
+                  _item(
+                    ReceptionNavItem.visitorPass,
+                    Icons.badge_rounded,
+                    'Visitor\nPass',
+                  ),
                   const SizedBox(height: 4),
-                  _item(ReceptionNavItem.roomStatus, Icons.meeting_room_rounded, 'Room\nStatus'),
+                  _item(
+                    ReceptionNavItem.roomStatus,
+                    Icons.meeting_room_rounded,
+                    'Room\nStatus',
+                  ),
                   const SizedBox(height: 4),
-                  _item(ReceptionNavItem.vehiclePickup, Icons.directions_car_rounded, 'Vehicle\nPickup'),
+                  _item(
+                    ReceptionNavItem.vehiclePickup,
+                    Icons.directions_car_rounded,
+                    'Vehicle\nPickup',
+                  ),
                   const SizedBox(height: 4),
-                  _item(ReceptionNavItem.chat, Icons.chat_bubble_outline_rounded, 'Chat'),
+                  _item(
+                    ReceptionNavItem.incidentResponse,
+                    Icons.warning_amber_rounded,
+                    'Incident\nResponse',
+                  ),
+                  const SizedBox(height: 4),
+                  _item(
+                    ReceptionNavItem.chat,
+                    Icons.chat_bubble_outline_rounded,
+                    'Chat',
+                  ),
                   const Spacer(),
-                  _NavItem(icon: Icons.logout_rounded, label: 'Logout', onTap: onLogout),
+                  _NavItem(
+                    icon: Icons.logout_rounded,
+                    label: 'Logout',
+                    onTap: onLogout,
+                  ),
                 ],
               ),
             ),
@@ -75,11 +114,11 @@ class ReceptionNavRail extends StatelessWidget {
   }
 
   Widget _item(ReceptionNavItem item, IconData icon, String label) => _NavItem(
-        icon: icon,
-        label: label,
-        active: active == item,
-        onTap: () => onSelect(item),
-      );
+    icon: icon,
+    label: label,
+    active: active == item,
+    onTap: () => onSelect(item),
+  );
 
   Widget _logo() {
     return Container(
@@ -89,9 +128,15 @@ class ReceptionNavRail extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.gold.withValues(alpha: 0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.28), width: 0.8),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.28),
+          width: 0.8,
+        ),
       ),
-      child: Image.asset('assets/icons/Rociologosetup.png', fit: BoxFit.contain),
+      child: Image.asset(
+        'assets/icons/Rociologosetup.png',
+        fit: BoxFit.contain,
+      ),
     );
   }
 }

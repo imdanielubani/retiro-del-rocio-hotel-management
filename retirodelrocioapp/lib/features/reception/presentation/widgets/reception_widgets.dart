@@ -10,6 +10,29 @@ const Color kReceptionGreen = Color(0xFF22C55E);
 const Color kReceptionRed = Color(0xFFEF4444);
 const Color kReceptionSlate = Color(0xFF94A3B8);
 
+/// A "Walk-in" / "Phone" chip flagging how a desk booking reached us. Shared by
+/// the arrivals cards and the bookings list.
+Widget receptionOriginBadge(String label) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: kReceptionBlue.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.person_pin_circle_rounded, size: 11, color: kReceptionBlue),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: AppTypography.style(color: kReceptionBlue, fontSize: 10, fontWeight: FontWeight.w700),
+        ),
+      ],
+    ),
+  );
+}
+
 /// The accent colour for a booking status, shared by pills across the module.
 Color receptionStatusColor(String status) => switch (status) {
       'paid' => kReceptionGreen,
@@ -204,6 +227,10 @@ class ReceptionBookingRowCard extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
+              if (row.originLabel != null) ...[
+                const SizedBox(width: 8),
+                receptionOriginBadge(row.originLabel!),
+              ],
               const Spacer(),
               ReceptionStatusPill(status: row.status, label: row.statusLabel),
             ],
@@ -413,17 +440,21 @@ class ReceptionBookingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              booking.reference,
-              style: AppTypography.style(
-                color: AppColors.gold,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
+          Row(
+            children: [
+              if (booking.originLabel != null)
+                receptionOriginBadge(booking.originLabel!),
+              const Spacer(),
+              Text(
+                booking.reference,
+                style: AppTypography.style(
+                  color: AppColors.gold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(

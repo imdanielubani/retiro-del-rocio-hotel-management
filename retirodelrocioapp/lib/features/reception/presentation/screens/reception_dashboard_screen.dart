@@ -14,6 +14,8 @@ import 'package:retirodelrocioapp/features/reception/presentation/widgets/recept
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_top_bar.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
+import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
+import 'package:retirodelrocioapp/features/security/presentation/dialogs/sos_alert_overlay.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The receptionist's home dashboard (Figma 299:322 / 345:14699).
@@ -37,6 +39,14 @@ class _ReceptionDashboardScreenState
     extends ConsumerState<ReceptionDashboardScreen> {
   /// The booking whose action button is mid-request, so only that one spins.
   int? _busyBookingId;
+
+  /// Incident ids already surfaced as the priority overlay, so a still-active
+  /// alert is not thrown up again on every poll — only genuinely new ones
+  /// interrupt.
+  final Set<int> _announced = {};
+
+  /// True while the priority overlay is on screen, so alerts never stack.
+  bool _presenting = false;
 
   String get _token => widget.session.token;
 
@@ -68,14 +78,18 @@ class _ReceptionDashboardScreenState
   }
 
   Future<void> _checkOut(ReceptionBooking booking) => _run(
-        booking.id,
-        () => ref.read(receptionActionsProvider(_token)).checkOut(booking.id),
-        '${booking.guestName} checked out.',
-      );
+    booking.id,
+    () => ref.read(receptionActionsProvider(_token)).checkOut(booking.id),
+    '${booking.guestName} checked out.',
+  );
 
   /// Runs a desk action with a per-card spinner, a success toast and a failure
   /// toast — the list then re-renders from the refreshed overview.
-  Future<void> _run(int bookingId, Future<void> Function() action, String ok) async {
+  Future<void> _run(
+    int bookingId,
+    Future<void> Function() action,
+    String ok,
+  ) async {
     setState(() => _busyBookingId = bookingId);
     try {
       await action();
@@ -83,7 +97,8 @@ class _ReceptionDashboardScreenState
     } on ReceptionException catch (e) {
       if (mounted) _toast(e.message, error: true);
     } catch (_) {
-      if (mounted) _toast('Something went wrong. Please try again.', error: true);
+      if (mounted)
+        _toast('Something went wrong. Please try again.', error: true);
     } finally {
       if (mounted) setState(() => _busyBookingId = null);
     }
@@ -93,7 +108,9 @@ class _ReceptionDashboardScreenState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: error ? const Color(0xFF7F1D1D) : const Color(0xFF14532D),
+        backgroundColor: error
+            ? const Color(0xFF7F1D1D)
+            : const Color(0xFF14532D),
         content: Text(
           message,
           style: AppTypography.style(color: Colors.white, fontSize: 14),
@@ -102,12 +119,71 @@ class _ReceptionDashboardScreenState
     );
   }
 
+  /// The SOS trigger: throw up the full-screen priority overlay the instant a
+  /// new unacknowledged emergency arrives. Driven off the same
+  /// [receptionOverviewProvider] the desk already watches — which the `sos`
+  /// realtime channel refreshes — so it fires within a socket round-trip, and
+  /// the poll is the backstop. Lives on the dashboard (the base reception route,
+  /// always mounted) and the overlay uses the root navigator, so it interrupts
+  /// wherever the receptionist is — including Incident Response.
+  void _maybeAnnounce(ReceptionOverview? overview) {
+    if (overview == null || _presenting || !mounted) return;
+
+    SecurityIncident? incoming;
+    for (final i in overview.incidents) {
+      if (i.isActive && !_announced.contains(i.id)) {
+        incoming = i;
+        break;
+      }
+    }
+    if (incoming == null) return;
+
+    final incident = incoming;
+    _announced.add(incident.id);
+    _presenting = true;
+
+    final receptionistName = overview.receptionistName != 'Reception'
+        ? overview.receptionistName
+        : widget.session.name;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        _presenting = false;
+        return;
+      }
+      await showSosAlertOverlay(
+        context,
+        incident: incident,
+        officerName: receptionistName,
+        activeIncidents: receptionOverviewProvider(
+          _token,
+        ).select((async) => async.whenData((o) => o.incidents)),
+        onAcknowledge: () => ref
+            .read(receptionActionsProvider(_token))
+            .respondIncident(incident.id),
+        onCallRoom: () => _toast('Room calling is coming soon.'),
+      );
+      _presenting = false;
+      // A second emergency may have arrived while this one was on screen.
+      if (mounted) {
+        _maybeAnnounce(ref.read(receptionOverviewProvider(_token)).value);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Keep the live sockets alive for as long as the dashboard is on screen —
     // one for alerts, one for booking changes (new reservations, check-ins, etc.).
     ref.watch(receptionRealtimeProvider(_token));
     ref.watch(receptionBookingsRealtimeProvider(_token));
+
+    // Surface any new unacknowledged emergency as the priority overlay. Fires on
+    // first load and on every refresh (socket or poll); the guards inside make it
+    // announce each alert exactly once.
+    ref.listen(receptionOverviewProvider(_token), (_, next) {
+      _maybeAnnounce(next.value);
+    });
 
     final overviewAsync = ref.watch(receptionOverviewProvider(_token));
     final weather = ref.watch(weatherProvider).value;
@@ -148,7 +224,9 @@ class _ReceptionDashboardScreenState
                             hasAlert: (overview?.alerts.isNotEmpty ?? false),
                           ),
                           const SizedBox(height: 20),
-                          _header(stale: overviewAsync.hasError && overview != null),
+                          _header(
+                            stale: overviewAsync.hasError && overview != null,
+                          ),
                           const SizedBox(height: 20),
                           Expanded(
                             child: overviewAsync.when(
@@ -215,12 +293,18 @@ class _ReceptionDashboardScreenState
       decoration: BoxDecoration(
         color: const Color(0xFFFF0000).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFFF0000).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFFFF0000).withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.cloud_off_rounded, size: 14, color: const Color(0xFFFF0000).withValues(alpha: 0.9)),
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 14,
+            color: const Color(0xFFFF0000).withValues(alpha: 0.9),
+          ),
           const SizedBox(width: 8),
           Text(
             'Not updating — check the connection',
@@ -358,7 +442,8 @@ class _ReceptionDashboardScreenState
                     padding: EdgeInsets.zero,
                     itemCount: data.alerts.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 16),
-                    itemBuilder: (_, i) => ReceptionAlertRow(alert: data.alerts[i]),
+                    itemBuilder: (_, i) =>
+                        ReceptionAlertRow(alert: data.alerts[i]),
                   ),
           ),
         ),
@@ -377,18 +462,29 @@ class _ReceptionDashboardScreenState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.cloud_off_rounded, size: 32, color: Colors.white.withValues(alpha: 0.4)),
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 32,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
           Text(
             'Could not load the dashboard.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => ref.invalidate(receptionOverviewProvider(_token)),
             child: Text(
               'Retry',
-              style: AppTypography.style(color: AppColors.gold, fontSize: 14, fontWeight: FontWeight.w600),
+              style: AppTypography.style(
+                color: AppColors.gold,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

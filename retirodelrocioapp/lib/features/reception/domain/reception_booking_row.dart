@@ -14,6 +14,8 @@ class ReceptionBookingRow {
     required this.amountLabel,
     required this.status,
     required this.statusLabel,
+    this.isWalkIn = false,
+    this.originLabel,
   });
 
   final int id;
@@ -31,6 +33,12 @@ class ReceptionBookingRow {
   final String status;
   final String statusLabel;
 
+  /// True when the guest booked at the front desk (a walk-in).
+  final bool isWalkIn;
+
+  /// "Walk-in" / "Phone" for a desk booking, null for an ordinary online one.
+  final String? originLabel;
+
   factory ReceptionBookingRow.fromJson(Map<String, dynamic> json) =>
       ReceptionBookingRow(
         id: (json['id'] as num?)?.toInt() ?? 0,
@@ -43,5 +51,9 @@ class ReceptionBookingRow {
         amountLabel: json['amount_label'] as String? ?? '',
         status: json['status'] as String? ?? '',
         statusLabel: json['status_label'] as String? ?? '',
+        isWalkIn: json['is_walk_in'] as bool? ?? false,
+        originLabel: (json['origin_label'] as String?)?.trim().isNotEmpty == true
+            ? json['origin_label'] as String
+            : null,
       );
 }

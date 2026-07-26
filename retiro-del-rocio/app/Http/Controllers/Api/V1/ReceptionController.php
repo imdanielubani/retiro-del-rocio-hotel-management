@@ -55,8 +55,14 @@ class ReceptionController extends Controller
             ->get();
 
         // Alerts is fed from the live SOS incidents reception should be aware of;
-        // an empty list simply renders the panel's empty state.
-        $alerts = SosAlert::open()->latest('raised_at')->limit(20)->get();
+        // an empty list simply renders the panel's empty state. The same open
+        // incidents also drive the priority SOS overlay and the dashboard's live
+        // awareness, so they are shipped in their full incident shape too.
+        $incidents = SosAlert::open()
+            ->with('acknowledgedBy:id,name')
+            ->latest('raised_at')
+            ->limit(20)
+            ->get();
 
         return response()->json(['data' => [
             'receptionist' => [
@@ -76,7 +82,8 @@ class ReceptionController extends Controller
             ],
             'arrivals' => $arrivals->map->toReceptionArrivalArray()->values(),
             'departures' => $departures->map->toReceptionDepartureArray()->values(),
-            'alerts' => $alerts->map->toReceptionAlertArray()->values(),
+            'alerts' => $incidents->map->toReceptionAlertArray()->values(),
+            'incidents' => $incidents->map->toSecurityArray()->values(),
             'room_status' => [
                 'occupied' => RoomUnit::where('status', 'occupied')->count(),
                 // Housekeeping "dirty" is not a tracked room state yet; shown for
@@ -158,7 +165,7 @@ class ReceptionController extends Controller
         abort_unless($booking->status === 'paid', 409, 'This booking is not ready for check-in.');
 
         $data = $request->validate([
-            'document_type' => ['nullable', 'in:passport,nin'],
+            'document_type' => ['nullable', 'in:passport,nin,work_id,drivers_license,voter_card'],
             'document_number' => ['nullable', 'string', 'max:60'],
             'document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:8192'],
             'room_unit_id' => ['nullable', 'integer'],
@@ -330,6 +337,64 @@ class ReceptionController extends Controller
         $booking->markPickupCompleted();
 
         return response()->json(['data' => $booking->fresh()->load('pickupDriver')->toReceptionPickupArray()]);
+    }
+
+    /* ---------------- SOS incidents ---------------- */
+
+    /**
+     * GET /reception/incidents — the SOS Alert Logs: every emergency ever raised,
+     * most recent first, with its full timeline. Optionally narrowed by
+     * `?status=` (active | acknowledged | resolved | cancelled | open).
+     *
+     * SOS alerts are hotel-wide, so reception sees the same incidents security
+     * does and can respond to them — the front desk is often the closest staffed
+     * station to a guest in trouble.
+     */
+    public function incidents(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $status = $request->query('status');
+
+        $incidents = SosAlert::query()
+            ->with(['acknowledgedBy:id,name', 'resolvedBy:id,name'])
+            ->when($status === 'open', fn ($q) => $q->open())
+            ->when(
+                in_array($status, [SosAlert::ACTIVE, SosAlert::ACKNOWLEDGED, SosAlert::RESOLVED, SosAlert::CANCELLED], true),
+                fn ($q) => $q->where('status', $status),
+            )
+            ->latest('raised_at')
+            ->limit(100)
+            ->get();
+
+        return response()->json(['data' => $incidents->map->toLogArray()->values()]);
+    }
+
+    /**
+     * POST /reception/incidents/{alert}/respond — the receptionist acknowledges an
+     * incoming SOS: the guest tablet flips to "help is on the way", and the alert
+     * moves off the ACTIVE state. A second tap (or one from security) is a no-op.
+     */
+    public function respond(Request $request, SosAlert $alert): JsonResponse
+    {
+        $receptionist = $this->receptionist($request);
+
+        $alert->acknowledge($receptionist);
+
+        return response()->json(['data' => $alert->fresh()->toSecurityArray()]);
+    }
+
+    /**
+     * POST /reception/incidents/{alert}/resolve — the incident is dealt with. Once
+     * resolved it stays resolved; a later tap is a no-op.
+     */
+    public function resolve(Request $request, SosAlert $alert): JsonResponse
+    {
+        $receptionist = $this->receptionist($request);
+
+        $alert->resolve($receptionist);
+
+        return response()->json(['data' => $alert->fresh()->toSecurityArray()]);
     }
 
     /**

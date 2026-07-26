@@ -563,7 +563,17 @@
                         @foreach ($bookings as $b)
                             <tr wire:key="bk-{{ $b->id }}" class="transition hover:bg-[#f9fafb]">
                                 <td class="px-4 py-3.5 text-[13px] font-medium text-[#f38c00]">{{ $b->bookingCode() }}</td>
-                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->customer_name ?: '—' }}</td>
+                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">
+                                    <span class="flex flex-wrap items-center gap-1.5">
+                                        {{ $b->customer_name ?: '—' }}
+                                        @if ($b->originLabel())
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-[#eff6ff] px-2 py-0.5 text-[10px] font-semibold text-[#2563eb]" title="Booked at the front desk">
+                                                <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                                {{ $b->originLabel() }}
+                                            </span>
+                                        @endif
+                                    </span>
+                                </td>
                                 <td class="px-4 py-3.5">
                                     <p class="text-[13px] font-medium text-[#1e1e1e]">{{ $b->room_name ?: '—' }}</p>
                                     @if ($b->room?->type)
@@ -571,7 +581,17 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ optional($b->check_in)->format('M j, Y') ?: '—' }}</td>
-                                <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ optional($b->check_out)->format('M j, Y') ?: '—' }}</td>
+                                <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">
+                                    <div class="flex flex-col gap-1">
+                                        <span>{{ optional($b->check_out)->format('M j, Y') ?: '—' }}</span>
+                                        @if ($b->wasExtended())
+                                            <span class="inline-flex w-fit items-center gap-1 rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2620a]" title="{{ $b->extensionSummary() }}">
+                                                <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 14v4M10 16h4"/></svg>
+                                                Extended
+                                            </span>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex items-center rounded-md border border-[#e5e7eb] px-2 py-0.5 text-[11px] text-[#6b7280]">{{ $b->nights }}n</span>
@@ -592,7 +612,15 @@
                         <div class="flex items-start justify-between gap-2">
                             <div>
                                 <span class="text-[13px] font-medium text-[#f38c00]">{{ $b->bookingCode() }}</span>
-                                <p class="text-[15px] font-bold text-[#1e1e1e]">{{ $b->customer_name ?: '—' }}</p>
+                                <p class="flex flex-wrap items-center gap-1.5 text-[15px] font-bold text-[#1e1e1e]">
+                                    {{ $b->customer_name ?: '—' }}
+                                    @if ($b->originLabel())
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-[#eff6ff] px-2 py-0.5 text-[10px] font-semibold text-[#2563eb]">
+                                            <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                            {{ $b->originLabel() }}
+                                        </span>
+                                    @endif
+                                </p>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
@@ -601,7 +629,15 @@
                         </div>
                         <p class="mt-2 text-[13px] text-[#374151]">{{ $b->room_name ?: '—' }}@if ($b->room?->type)<span class="text-[#9ca3af]"> · {{ $b->room->type }}</span>@endif</p>
                         <div class="mt-2 flex items-center justify-between text-[12px] text-[#6b7280]">
-                            <span>{{ optional($b->check_in)->format('M j') }} – {{ optional($b->check_out)->format('M j, Y') }} · {{ $b->nights }}n</span>
+                            <span class="flex items-center gap-1.5">
+                                {{ optional($b->check_in)->format('M j') }} – {{ optional($b->check_out)->format('M j, Y') }} · {{ $b->nights }}n
+                                @if ($b->wasExtended())
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2620a]" title="{{ $b->extensionSummary() }}">
+                                        <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 14v4M10 16h4"/></svg>
+                                        Extended
+                                    </span>
+                                @endif
+                            </span>
                             <span class="font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</span>
                         </div>
                     </div>
@@ -745,6 +781,17 @@
                             <option value="pending">Pending</option>
                         </select>
                     </div>
+                </div>
+
+                {{-- Booking source --}}
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#6b7280]">Booking Source</label>
+                    <select wire:model="cSource"
+                            class="h-11 rounded-xl border border-[#e5e7eb] bg-white px-3 text-[14px] text-[#1e1e1e] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
+                        <option value="walk_in">Walk-in</option>
+                        <option value="phone">Phone booking</option>
+                    </select>
+                    @error('cSource') <span class="text-[11px] text-[#dc2626]">{{ $message }}</span> @enderror
                 </div>
 
                 {{-- Actions --}}

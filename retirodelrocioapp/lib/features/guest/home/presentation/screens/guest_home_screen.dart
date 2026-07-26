@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/session/device_revocation.dart';
@@ -9,6 +11,7 @@ import 'package:retirodelrocioapp/features/guest/home/domain/guest_service.dart'
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/current_stay_card.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/quick_service_card.dart';
+import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/my_stay_screen.dart';
 import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/presentation/screens/visitor_pass_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
@@ -42,11 +45,53 @@ class GuestHomeScreen extends ConsumerStatefulWidget {
 const Color _emergencyRed = Color(0xFFFF0000);
 
 class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
-  void _open(GuestService service) {
+  /// The in-room tablet is a shared kiosk: when a guest walks away and leaves it
+  /// on the home screen, it returns to the idle welcome screen on its own after
+  /// this long with no interaction — so the next person (or a passer-by) never
+  /// finds it sitting on someone else's checked-in dashboard.
+  static const Duration _idleTimeout = Duration(minutes: 5);
+  Timer? _idleTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetIdleTimer();
+  }
+
+  @override
+  void dispose() {
+    _idleTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Restart the idle countdown from now — called on every touch, and again each
+  /// time the guest returns to the home screen from a service.
+  void _resetIdleTimer() {
+    _idleTimer?.cancel();
+    _idleTimer = Timer(_idleTimeout, _onIdle);
+  }
+
+  /// The idle timeout fired. Drop back to the welcome screen the same way a
+  /// check-out does — but only while the home screen itself is on top. If the
+  /// guest is deep in a service they may simply be reading, so we wait and
+  /// re-check rather than yanking them out mid-task.
+  void _onIdle() {
+    if (!mounted) return;
+
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) {
+      _idleTimer = Timer(_idleTimeout, _onIdle);
+      return;
+    }
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  Future<void> _open(GuestService service) async {
     // Visitor Pass is built — take the guest there rather than "coming soon".
     if (service.id == GuestServices.visitorPass.id) {
       final live = ref.read(roomStatusProvider(widget.device.token)).value;
-      Navigator.of(context).push(
+      await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => VisitorPassScreen(
             device: widget.device,
@@ -54,23 +99,41 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
           ),
         ),
       );
+      if (mounted) _resetIdleTimer();
       return;
     }
 
-    Navigator.of(context).push(
+    // My Stay is built — the reservation details and the extend-stay flow.
+    if (service.id == GuestServices.myStay.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => MyStayScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
+    await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ComingSoonScreen(title: service.title)),
     );
+    if (mounted) _resetIdleTimer();
   }
 
   /// Opens the Emergency SOS screen (Figma 113:725). The confirm step and the
   /// alert itself live there, so the guest reaches the same place whether they
   /// come from here or from an alert already in progress.
-  void _emergency() {
-    Navigator.of(context).push(
+  Future<void> _emergency() async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SosScreen(device: widget.device, status: widget.status),
       ),
     );
+    if (mounted) _resetIdleTimer();
   }
 
   @override
@@ -98,59 +161,65 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
     final weather = ref.watch(weatherProvider).value;
     final guest = status.guest!;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
-          const ColoredBox(color: Color.fromARGB(243, 0, 0, 0)),
-          SafeArea(
-            // Header, stay card and section heading stay put; the design frame
-            // is taller than the tablet, so only the service grid scrolls.
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(25, 24, 25, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GuestTopBar(
-                    suiteName: status.suiteName ?? 'Suite',
-                    roomNumber: status.roomNumber ?? '—',
-                    guestName: guest.name,
-                    weather: weather,
-                    onNotifications: () => _open(_alerts),
-                    onProfile: () => _open(GuestServices.myStay),
-                  ),
-                  const SizedBox(height: 17),
-                  _header(guest.name),
-                  const SizedBox(height: 17),
-                  CurrentStayCard(
-                    status: status,
-                    roomImageUrl: widget.device.roomImageUrl,
-                    onExtendStay: () => _open(GuestServices.myStay),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Quick Services',
-                    style: AppTypography.style(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      height: 27 / 18,
+    return Listener(
+      // Any touch counts as "in use" and restarts the idle countdown. Translucent
+      // so it observes every pointer without stealing taps from the UI beneath.
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _resetIdleTimer(),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
+            const ColoredBox(color: Color.fromARGB(243, 0, 0, 0)),
+            SafeArea(
+              // Header, stay card and section heading stay put; the design frame
+              // is taller than the tablet, so only the service grid scrolls.
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(25, 24, 25, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GuestTopBar(
+                      suiteName: status.suiteName ?? 'Suite',
+                      roomNumber: status.roomNumber ?? '—',
+                      guestName: guest.name,
+                      weather: weather,
+                      onNotifications: () => _open(_alerts),
+                      onProfile: () => _open(GuestServices.myStay),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.only(bottom: 28),
-                      child: _quickServicesGrid(),
+                    const SizedBox(height: 17),
+                    _header(guest.name),
+                    const SizedBox(height: 17),
+                    CurrentStayCard(
+                      status: status,
+                      roomImageUrl: widget.device.roomImageUrl,
+                      onExtendStay: () => _open(GuestServices.myStay),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'Quick Services',
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        height: 27 / 18,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: 28),
+                        child: _quickServicesGrid(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

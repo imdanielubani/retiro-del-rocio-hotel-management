@@ -11,6 +11,13 @@ use Illuminate\Support\Carbon;
 #[ObservedBy(BookingObserver::class)]
 class Booking extends Model
 {
+    /** How the booking reached us. @see the `source` column. */
+    public const SOURCE_ONLINE = 'online';
+
+    public const SOURCE_WALK_IN = 'walk_in';
+
+    public const SOURCE_PHONE = 'phone';
+
     protected $fillable = [
         'reference', 'room_id', 'room_name', 'guests', 'check_in', 'check_out', 'nights',
         'amount', 'customer_name', 'customer_email', 'customer_phone',
@@ -18,7 +25,7 @@ class Booking extends Model
         'pickup_vehicle', 'pickup_price', 'pickup_passengers', 'pickup_location',
         'pickup_arrival_date', 'pickup_time', 'pickup_flight_number',
         'pickup_driver_id', 'pickup_status', 'pickup_assigned_at',
-        'status', 'payment_method', 'paid_at', 'checked_in_at', 'checkin_confirmation', 'checked_out_at',
+        'status', 'source', 'payment_method', 'paid_at', 'checked_in_at', 'checkin_confirmation', 'checked_out_at',
         'refund_amount', 'refund_method', 'refund_status', 'room_unit_id',
         'passcode', 'keyboard_pwd_id', 'qr_code_id', 'qr_code_link', 'ttlock_grants', 'ttlock_status', 'ttlock_error',
     ];
@@ -54,6 +61,71 @@ class Booking extends Model
     public function pickupDriver()
     {
         return $this->belongsTo(Driver::class, 'pickup_driver_id');
+    }
+
+    /** The guest-paid stay extensions raised against this booking. */
+    public function stayExtensionPayments()
+    {
+        return $this->hasMany(StayExtensionPayment::class);
+    }
+
+    /**
+     * True when the guest has extended this stay (a paid extension exists).
+     *
+     * Uses the `extension_count` aggregate when the query eager-loaded it
+     * (via withCount) so booking lists stay N+1-free, falling back to a direct
+     * existence check otherwise.
+     */
+    public function wasExtended(): bool
+    {
+        if ($this->getAttribute('extension_count') !== null) {
+            return (int) $this->getAttribute('extension_count') > 0;
+        }
+
+        return $this->stayExtensionPayments()
+            ->where('status', StayExtensionPayment::SUCCESS)
+            ->exists();
+    }
+
+    /** Total extra nights added across all paid extensions (0 when none). */
+    public function extensionNights(): int
+    {
+        if ($this->getAttribute('extension_nights_sum') !== null) {
+            return (int) $this->getAttribute('extension_nights_sum');
+        }
+
+        return (int) $this->stayExtensionPayments()
+            ->where('status', StayExtensionPayment::SUCCESS)
+            ->sum('nights');
+    }
+
+    /** A short "Extended by 2 nights" summary for the indicator's tooltip. */
+    public function extensionSummary(): string
+    {
+        $nights = $this->extensionNights();
+
+        return 'Extended by '.$nights.' '.($nights === 1 ? 'night' : 'nights');
+    }
+
+    /* ---------------- Booking source (walk-in / phone / online) ---------------- */
+
+    /** True when a guest booked this at the front desk (a walk-in). */
+    public function isWalkIn(): bool
+    {
+        return $this->source === self::SOURCE_WALK_IN;
+    }
+
+    /**
+     * The badge label for a manually-taken booking — "Walk-in" or "Phone" — or
+     * null for an ordinary online booking, which needs no indicator.
+     */
+    public function originLabel(): ?string
+    {
+        return match ($this->source) {
+            self::SOURCE_WALK_IN => 'Walk-in',
+            self::SOURCE_PHONE => 'Phone',
+            default => null,
+        };
     }
 
     /* ---------------- TTLock smart-lock access ---------------- */
@@ -128,9 +200,9 @@ class Booking extends Model
      */
     public function accessWindow(): array
     {
-        $in = \Illuminate\Support\Carbon::parse($this->check_in)
+        $in = Carbon::parse($this->check_in)
             ->setTimeFromTimeString(config('services.ttlock.checkin_time', '14:00'));
-        $out = \Illuminate\Support\Carbon::parse($this->check_out)
+        $out = Carbon::parse($this->check_out)
             ->setTimeFromTimeString(config('services.ttlock.checkout_time', '12:00'));
 
         return [$in, $out];
@@ -364,6 +436,8 @@ class Booking extends Model
             'date_label' => optional($this->check_in)->format('M j, Y'),
             'status' => $this->status,
             'status_label' => $this->statusLabel(),
+            'is_walk_in' => $this->isWalkIn(),
+            'origin_label' => $this->originLabel(),
         ];
     }
 
@@ -422,6 +496,9 @@ class Booking extends Model
         return match ($this->id_document_type) {
             'passport' => 'International Passport',
             'nin' => 'NIN',
+            'work_id' => 'Work ID',
+            'drivers_license' => "Driver's License",
+            'voter_card' => "Voter's Card",
             default => null,
         };
     }
@@ -474,6 +551,8 @@ class Booking extends Model
             'amount_label' => $this->amountLabel(),
             'status' => $this->status,
             'status_label' => $this->statusLabel(),
+            'is_walk_in' => $this->isWalkIn(),
+            'origin_label' => $this->originLabel(),
         ];
     }
 

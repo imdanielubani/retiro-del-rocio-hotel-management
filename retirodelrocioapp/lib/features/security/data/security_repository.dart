@@ -1,14 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:retirodelrocioapp/core/config/api_config.dart';
+import 'package:retirodelrocioapp/core/error/messaged_exception.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
 import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
 
 /// Raised when a security action could not be completed, carrying a
 /// user-facing [message].
-class SecurityException implements Exception {
+class SecurityException implements MessagedException {
   SecurityException(this.message);
+  @override
   final String message;
   @override
   String toString() => message;

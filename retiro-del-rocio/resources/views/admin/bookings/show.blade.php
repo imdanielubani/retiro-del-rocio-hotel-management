@@ -182,7 +182,21 @@
                     @endforeach
                     <div class="sm:col-span-2">
                         <p class="text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">Status</p>
-                        <span class="mt-1.5 inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
+                        <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
+                            @if ($b->originLabel())
+                                <span class="inline-flex items-center gap-1 rounded-full bg-[#eff6ff] px-2.5 py-1 text-[12px] font-medium text-[#2563eb]" title="Booked at the front desk">
+                                    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    {{ $b->originLabel() }}
+                                </span>
+                            @endif
+                            @if ($b->wasExtended())
+                                <span class="inline-flex items-center gap-1 rounded-full bg-[#fff7ed] px-2.5 py-1 text-[12px] font-medium text-[#c2620a]" title="{{ $b->extensionSummary() }}">
+                                    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 14v4M10 16h4"/></svg>
+                                    {{ $b->extensionSummary() }}
+                                </span>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>

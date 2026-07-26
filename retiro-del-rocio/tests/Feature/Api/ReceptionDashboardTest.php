@@ -80,6 +80,35 @@ class ReceptionDashboardTest extends TestCase
         ], $overrides));
     }
 
+    public function test_a_walk_in_arrival_is_flagged_for_the_desk(): void
+    {
+        $unit = $this->unit('202', 'available');
+        $this->booking([
+            'customer_name' => 'Walk In Wanda',
+            'room_unit_id' => $unit->id,
+            'source' => Booking::SOURCE_WALK_IN,
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonPath('data.arrivals.0.guest_name', 'Walk In Wanda')
+            ->assertJsonPath('data.arrivals.0.is_walk_in', true)
+            ->assertJsonPath('data.arrivals.0.origin_label', 'Walk-in');
+    }
+
+    public function test_an_online_arrival_is_not_flagged(): void
+    {
+        $unit = $this->unit('203', 'available');
+        $this->booking(['customer_name' => 'Online Olivia', 'room_unit_id' => $unit->id]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonPath('data.arrivals.0.is_walk_in', false)
+            ->assertJsonPath('data.arrivals.0.origin_label', null);
+    }
+
     public function test_the_overview_reports_todays_arrivals_departures_and_counters(): void
     {
         $unit = $this->unit('201', 'available');

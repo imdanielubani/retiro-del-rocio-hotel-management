@@ -5,8 +5,8 @@ import 'package:retirodelrocioapp/features/reception/presentation/widgets/recept
 
 /// The reception dashboard's data model and cards.
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(body: SizedBox(width: 380, child: child)),
-    );
+  home: Scaffold(body: SizedBox(width: 380, child: child)),
+);
 
 void main() {
   group('ReceptionOverview.fromJson', () {
@@ -27,11 +27,29 @@ void main() {
             'room_label': 'Brisa Residence · Room 201',
             'date_label': 'Jul 24, 2026',
             'status': 'paid',
+            'is_walk_in': true,
+            'origin_label': 'Walk-in',
           },
         ],
         'departures': [],
         'alerts': [
-          {'id': 1, 'title': 'Emergency SOS — Room 102', 'time_label': '5m ago', 'severity': 'high'},
+          {
+            'id': 1,
+            'title': 'Emergency SOS — Room 102',
+            'time_label': '5m ago',
+            'severity': 'high',
+          },
+        ],
+        'incidents': [
+          {
+            'id': 1,
+            'case_no': 'SOS-2607-001',
+            'status': 'active',
+            'room_number': '102',
+            'suite_name': 'Brisa Residence',
+            'guest_name': 'Ada Lovelace',
+            'raised_at': '2026-07-25T09:00:00Z',
+          },
         ],
         'room_status': {'occupied': 5, 'dirty': 1, 'maintenance': 2},
       });
@@ -42,8 +60,14 @@ void main() {
       expect(overview.visitorPassCheckIns, 4);
       expect(overview.arrivals.single.guestName, 'Daniel Ubani');
       expect(overview.arrivals.single.reference, 'BK-0137');
+      expect(overview.arrivals.single.isWalkIn, isTrue);
+      expect(overview.arrivals.single.originLabel, 'Walk-in');
       expect(overview.departures, isEmpty);
       expect(overview.alerts.single.severity, AlertSeverity.high);
+      // The open SOS incident is parsed in full incident shape for the overlay.
+      expect(overview.incidents.single.roomNumber, '102');
+      expect(overview.incidents.single.isActive, isTrue);
+      expect(overview.incidents.single.caseNo, 'SOS-2607-001');
       expect(overview.roomStatus.occupied, 5);
       expect(overview.roomStatus.maintenance, 2);
     });
@@ -51,6 +75,7 @@ void main() {
     test('a malformed payload degrades to the empty overview shape', () {
       final overview = ReceptionOverview.fromJson(const {});
       expect(overview.arrivals, isEmpty);
+      expect(overview.incidents, isEmpty);
       expect(overview.arrivalsToday, 0);
       expect(overview.roomStatus.occupied, 0);
     });
@@ -104,7 +129,9 @@ void main() {
       expect(checkedIn, isTrue);
     });
 
-    testWidgets('an in-house guest shows Check Out and checks out', (tester) async {
+    testWidgets('an in-house guest shows Check Out and checks out', (
+      tester,
+    ) async {
       var checkedOut = false;
       await tester.pumpWidget(
         _host(
@@ -133,7 +160,9 @@ void main() {
       expect(checkedOut, isTrue);
     });
 
-    testWidgets('a departed guest shows a terminal status, no action', (tester) async {
+    testWidgets('a departed guest shows a terminal status, no action', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(
           ReceptionBookingCard(
@@ -195,7 +224,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the arrivals empty state prompts for a room number', (tester) async {
+  testWidgets('the arrivals empty state prompts for a room number', (
+    tester,
+  ) async {
     await tester.pumpWidget(_host(const ReceptionArrivalsEmpty()));
     expect(find.textContaining('Type a room number'), findsOneWidget);
   });

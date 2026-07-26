@@ -90,6 +90,14 @@ $api->group(function () {
         // The tablet's live room occupancy + checked-in guest (guest welcome).
         Route::get('tablets/room-status', [TabletController::class, 'roomStatus'])->name('api.v1.tablets.room-status');
 
+        // The checked-in guest's My Stay screen + self-service stay extension.
+        Route::get('tablets/my-stay', [TabletController::class, 'myStay'])->name('api.v1.tablets.my-stay');
+        // Paystack: price + open the charge, then verify it and move the checkout.
+        Route::post('tablets/extend-stay/initialize', [TabletController::class, 'initializeExtension'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.extend-stay.initialize');
+        Route::post('tablets/extend-stay', [TabletController::class, 'extendStay'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.extend-stay');
+
         // Emergency SOS from a guest's in-room tablet. Raising is throttled — a
         // panicking guest may hammer the button — but the endpoint is idempotent,
         // so a burst still yields exactly one alert for the room.
@@ -166,6 +174,15 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.reception.check-in');
         Route::post('reception/bookings/{booking}/check-out', [ReceptionController::class, 'checkOut'])
             ->middleware('throttle:60,1')->name('api.v1.reception.check-out');
+
+        // SOS incidents: hotel-wide emergencies. Reception sees the same alerts as
+        // security and can acknowledge / resolve them from the front desk.
+        Route::get('reception/incidents', [ReceptionController::class, 'incidents'])
+            ->name('api.v1.reception.incidents');
+        Route::post('reception/incidents/{alert}/respond', [ReceptionController::class, 'respond'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.incidents.respond');
+        Route::post('reception/incidents/{alert}/resolve', [ReceptionController::class, 'resolve'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.incidents.resolve');
 
         // Vehicle pickup: the desk sees guests arriving by car and assigns a driver.
         Route::get('reception/pickups', [ReceptionController::class, 'pickups'])

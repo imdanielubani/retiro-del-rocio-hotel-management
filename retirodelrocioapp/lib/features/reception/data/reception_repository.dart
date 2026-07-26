@@ -1,16 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:retirodelrocioapp/core/config/api_config.dart';
+import 'package:retirodelrocioapp/core/error/messaged_exception.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
 /// Raised when a reception action could not be completed, carrying a
 /// user-facing [message].
-class ReceptionException implements Exception {
+class ReceptionException implements MessagedException {
   ReceptionException(this.message);
+  @override
   final String message;
   @override
   String toString() => message;
@@ -20,18 +23,20 @@ class ReceptionException implements Exception {
 /// staff JWT — the role is enforced server-side on every call.
 class ReceptionRepository {
   ReceptionRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 8),
               receiveTimeout: const Duration(seconds: 8),
-            ));
+            ),
+          );
 
   final Dio _dio;
 
-  Options _auth(String token) => Options(headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      });
+  Options _auth(String token) => Options(
+    headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+  );
 
   /// The whole dashboard in one call. Throws [ReceptionException] on failure so
   /// the screen can offer a retry rather than a silently blank desk.
@@ -55,12 +60,20 @@ class ReceptionRepository {
 
   /// The hotel's guests, aggregated from their bookings. Failures fall back to
   /// an empty list so the list still renders.
-  Future<List<ReceptionGuestSummary>> guests(String token, {String? search}) async {
+  Future<List<ReceptionGuestSummary>> guests(
+    String token, {
+    String? search,
+  }) async {
     try {
       final uri = Uri.parse(ApiConfig.endpoint('reception/guests')).replace(
-        queryParameters: (search != null && search.isNotEmpty) ? {'search': search} : null,
+        queryParameters: (search != null && search.isNotEmpty)
+            ? {'search': search}
+            : null,
       );
-      final response = await _dio.getUri<Map<String, dynamic>>(uri, options: _auth(token));
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        uri,
+        options: _auth(token),
+      );
       final list = (response.data?['data'] as List?) ?? const [];
       return list
           .whereType<Map>()
@@ -76,9 +89,13 @@ class ReceptionRepository {
   /// profile screen can show a retry.
   Future<ReceptionGuestProfile> guestProfile(String token, String key) async {
     try {
-      final uri = Uri.parse(ApiConfig.endpoint('reception/guests/profile'))
-          .replace(queryParameters: {'key': key});
-      final response = await _dio.getUri<Map<String, dynamic>>(uri, options: _auth(token));
+      final uri = Uri.parse(
+        ApiConfig.endpoint('reception/guests/profile'),
+      ).replace(queryParameters: {'key': key});
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        uri,
+        options: _auth(token),
+      );
       return ReceptionGuestProfile.fromJson(
         (response.data!['data'] as Map).cast<String, dynamic>(),
       );
@@ -101,9 +118,13 @@ class ReceptionRepository {
         if (status != null && status.isNotEmpty) 'status': status,
         if (search != null && search.isNotEmpty) 'search': search,
       };
-      final uri = Uri.parse(ApiConfig.endpoint('reception/bookings'))
-          .replace(queryParameters: params.isEmpty ? null : params);
-      final response = await _dio.getUri<Map<String, dynamic>>(uri, options: _auth(token));
+      final uri = Uri.parse(
+        ApiConfig.endpoint('reception/bookings'),
+      ).replace(queryParameters: params.isEmpty ? null : params);
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        uri,
+        options: _auth(token),
+      );
       final list = (response.data?['data'] as List?) ?? const [];
       return list
           .whereType<Map>()
@@ -150,10 +171,14 @@ class ReceptionRepository {
     try {
       final fields = <String, dynamic>{};
       if (documentType != null) fields['document_type'] = documentType;
-      if ((documentNumber ?? '').isNotEmpty) fields['document_number'] = documentNumber;
+      if ((documentNumber ?? '').isNotEmpty)
+        fields['document_number'] = documentNumber;
       if (roomUnitId != null) fields['room_unit_id'] = roomUnitId;
       if (documentPath != null) {
-        fields['document'] = await MultipartFile.fromFile(documentPath, filename: documentName);
+        fields['document'] = await MultipartFile.fromFile(
+          documentPath,
+          filename: documentName,
+        );
       }
       final form = FormData.fromMap(fields);
 
@@ -212,10 +237,16 @@ class ReceptionRepository {
 
   /// Assign (or, with a null [driverId], clear) the driver for a pickup. Returns
   /// the updated pickup.
-  Future<PickupBooking> assignDriver(String token, int bookingId, int? driverId) async {
+  Future<PickupBooking> assignDriver(
+    String token,
+    int bookingId,
+    int? driverId,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/assign-driver')),
+        Uri.parse(
+          ApiConfig.endpoint('reception/bookings/$bookingId/assign-driver'),
+        ),
         data: {'driver_id': driverId},
         options: _auth(token),
       );
@@ -234,7 +265,9 @@ class ReceptionRepository {
   Future<PickupBooking> completePickup(String token, int bookingId) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/pickup-complete')),
+        Uri.parse(
+          ApiConfig.endpoint('reception/bookings/$bookingId/pickup-complete'),
+        ),
         options: _auth(token),
       );
       return PickupBooking.fromJson(
@@ -248,13 +281,71 @@ class ReceptionRepository {
     }
   }
 
+  /// The SOS Alert Logs — every incident, newest first. [status] optionally
+  /// narrows the list server-side (active | acknowledged | resolved | cancelled
+  /// | open). Failures fall back to an empty list so the log still renders.
+  Future<List<SecurityIncident>> incidents(
+    String token, {
+    String? status,
+  }) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('reception/incidents')).replace(
+          queryParameters: (status != null && status.isNotEmpty)
+              ? {'status': status}
+              : null,
+        ),
+        options: _auth(token),
+      );
+      final list = (response.data?['data'] as List?) ?? const [];
+      return list
+          .whereType<Map>()
+          .map((e) => SecurityIncident.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    } catch (error) {
+      debugPrint('ReceptionRepository: incidents failed — $error');
+      return const [];
+    }
+  }
+
+  /// Acknowledge an incident — the guest is told help is on the way.
+  Future<SecurityIncident> respondIncident(String token, int incidentId) =>
+      _incidentAction(token, incidentId, 'respond');
+
+  /// Resolve an incident — it is dealt with and closes.
+  Future<SecurityIncident> resolveIncident(String token, int incidentId) =>
+      _incidentAction(token, incidentId, 'resolve');
+
+  Future<SecurityIncident> _incidentAction(
+    String token,
+    int incidentId,
+    String action,
+  ) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(
+          ApiConfig.endpoint('reception/incidents/$incidentId/$action'),
+        ),
+        options: _auth(token),
+      );
+      return SecurityIncident.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw ReceptionException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('ReceptionRepository: $action incident failed — $error');
+      throw ReceptionException('Could not update the incident.');
+    }
+  }
+
   /// Close out a departing guest — the room is freed and the departure recorded.
   Future<void> checkOut(String token, int bookingId) => _bookingAction(
-        token,
-        bookingId,
-        'check-out',
-        'Could not check the guest out.',
-      );
+    token,
+    bookingId,
+    'check-out',
+    'Could not check the guest out.',
+  );
 
   Future<void> _bookingAction(
     String token,

@@ -181,7 +181,8 @@ class _SecurityDashboardScreenState
         context,
         incident: incident,
         officerName: officerName,
-        token: _token,
+        activeIncidents: securityOverviewProvider(_token)
+            .select((async) => async.whenData((o) => o.incidents)),
         onAcknowledge: () =>
             ref.read(securityActionsProvider(_token)).respond(incident.id),
         onCallRoom: () => ScaffoldMessenger.of(context).showSnackBar(

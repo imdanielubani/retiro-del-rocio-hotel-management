@@ -10,9 +10,11 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.da
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
-final receptionRepositoryProvider =
-    Provider<ReceptionRepository>((ref) => ReceptionRepository());
+final receptionRepositoryProvider = Provider<ReceptionRepository>(
+  (ref) => ReceptionRepository(),
+);
 
 /// The whole reception dashboard, keyed by the receptionist's staff token.
 ///
@@ -22,20 +24,22 @@ final receptionRepositoryProvider =
 /// alert lands without a manual refresh.
 final receptionOverviewProvider =
     FutureProvider.family<ReceptionOverview, String>((ref, token) async {
-  final repo = ref.watch(receptionRepositoryProvider);
+      final repo = ref.watch(receptionRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.overview(token);
-});
+      return repo.overview(token);
+    });
 
 /// Subscribes the tablet to the hotel-wide `sos` channel and refreshes the
 /// overview the instant any incident changes, so the Alerts panel is live. Pure
 /// accelerator: if no broadcaster is configured, or the socket drops, the
 /// 15-second poll still carries the screen.
-final receptionRealtimeProvider =
-    FutureProvider.family<void, String>((ref, token) async {
+final receptionRealtimeProvider = FutureProvider.family<void, String>((
+  ref,
+  token,
+) async {
   final config = (await ref.watch(appConfigProvider.future)).realtime;
   if (config == null) {
     debugPrint('receptionRealtime: no broadcaster configured — polling only.');
@@ -44,11 +48,29 @@ final receptionRealtimeProvider =
 
   final channel = SosChannel(config: config);
   channel.connect(
-    onChanged: () => ref.invalidate(receptionOverviewProvider(token)),
+    onChanged: () {
+      ref.invalidate(receptionOverviewProvider(token));
+      ref.invalidate(receptionIncidentLogsProvider(token));
+    },
   );
 
   ref.onDispose(channel.dispose);
 });
+
+/// The SOS Alert Logs — every incident, newest first (Incident Response). Kept
+/// unfiltered and keyed only by the receptionist's token; the screen filters by
+/// status client-side, which keeps realtime invalidation trivial. Re-polled
+/// every 15 seconds as the backstop, and refreshed live by
+/// [receptionRealtimeProvider] on any incident change.
+final receptionIncidentLogsProvider =
+    FutureProvider.family<List<SecurityIncident>, String>((ref, token) async {
+      final repo = ref.watch(receptionRepositoryProvider);
+
+      final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
+
+      return repo.incidents(token);
+    });
 
 /// Subscribes the tablet to the hotel-wide `reception` channel and refreshes the
 /// dashboard, guests and bookings lists the instant any booking is created or
@@ -56,11 +78,15 @@ final receptionRealtimeProvider =
 /// accelerator over the periodic polls: if no broadcaster is configured, or the
 /// socket drops, the polls still carry every screen. Watched by every reception
 /// screen so the subscription is live wherever the user is in the module.
-final receptionBookingsRealtimeProvider =
-    FutureProvider.family<void, String>((ref, token) async {
+final receptionBookingsRealtimeProvider = FutureProvider.family<void, String>((
+  ref,
+  token,
+) async {
   final config = (await ref.watch(appConfigProvider.future)).realtime;
   if (config == null) {
-    debugPrint('receptionBookingsRealtime: no broadcaster configured — polling only.');
+    debugPrint(
+      'receptionBookingsRealtime: no broadcaster configured — polling only.',
+    );
     return;
   }
 
@@ -69,11 +95,13 @@ final receptionBookingsRealtimeProvider =
     channel: 'reception',
     events: const {'booking.changed'},
   );
-  channel.connect(onChanged: () {
-    ref.invalidate(receptionOverviewProvider(token));
-    ref.invalidate(receptionGuestsProvider(token));
-    ref.invalidate(receptionBookingsProvider(token));
-  });
+  channel.connect(
+    onChanged: () {
+      ref.invalidate(receptionOverviewProvider(token));
+      ref.invalidate(receptionGuestsProvider(token));
+      ref.invalidate(receptionBookingsProvider(token));
+    },
+  );
 
   ref.onDispose(channel.dispose);
 });
@@ -86,47 +114,47 @@ final receptionBookingsRealtimeProvider =
 /// crucially, lets it recover: the repository returns an empty list on a failed
 /// load, so without a refetch an early failure would leave the module blank for
 /// good. The screen filters client-side and can also pull-to-refresh.
-final receptionGuestsProvider =
-    FutureProvider.autoDispose.family<List<ReceptionGuestSummary>, String>((ref, token) {
-  final repo = ref.watch(receptionRepositoryProvider);
+final receptionGuestsProvider = FutureProvider.autoDispose
+    .family<List<ReceptionGuestSummary>, String>((ref, token) {
+      final repo = ref.watch(receptionRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.guests(token);
-});
+      return repo.guests(token);
+    });
 
 /// Every room booking, keyed by the receptionist's token. Same freshness rules
 /// as the guests list — a new reservation appears without a manual refresh.
-final receptionBookingsProvider =
-    FutureProvider.autoDispose.family<List<ReceptionBookingRow>, String>((ref, token) {
-  final repo = ref.watch(receptionRepositoryProvider);
+final receptionBookingsProvider = FutureProvider.autoDispose
+    .family<List<ReceptionBookingRow>, String>((ref, token) {
+      final repo = ref.watch(receptionRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.bookings(token);
-});
+      return repo.bookings(token);
+    });
 
 /// Every guest vehicle pickup, keyed by the receptionist's token. Same freshness
 /// rules as the other lists — a new pickup or a driver change appears without a
 /// manual refresh.
-final receptionPickupsProvider =
-    FutureProvider.autoDispose.family<List<PickupBooking>, String>((ref, token) {
-  final repo = ref.watch(receptionRepositoryProvider);
+final receptionPickupsProvider = FutureProvider.autoDispose
+    .family<List<PickupBooking>, String>((ref, token) {
+      final repo = ref.watch(receptionRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.pickups(token);
-});
+      return repo.pickups(token);
+    });
 
 /// The assignable driver roster (available drivers only), for the assign-driver
 /// dialog's dropdown.
-final receptionDriversProvider =
-    FutureProvider.autoDispose.family<List<PickupDriver>, String>((ref, token) {
-  return ref.watch(receptionRepositoryProvider).drivers(token);
-});
+final receptionDriversProvider = FutureProvider.autoDispose
+    .family<List<PickupDriver>, String>((ref, token) {
+      return ref.watch(receptionRepositoryProvider).drivers(token);
+    });
 
 /// Check-in and check-out. Both refresh the overview so the desk always renders
 /// from the server — the one source of truth for occupancy.
@@ -150,7 +178,9 @@ class ReceptionActions {
     String? documentName,
     int? roomUnitId,
   }) async {
-    final confirmation = await _ref.read(receptionRepositoryProvider).checkIn(
+    final confirmation = await _ref
+        .read(receptionRepositoryProvider)
+        .checkIn(
           _token,
           bookingId,
           documentType: documentType,
@@ -168,6 +198,27 @@ class ReceptionActions {
   Future<void> checkOut(int bookingId) async {
     await _ref.read(receptionRepositoryProvider).checkOut(_token, bookingId);
     _ref.invalidate(receptionOverviewProvider(_token));
+  }
+
+  /// Acknowledge an SOS incident (help is on the way), then refresh the overview
+  /// and the alert logs so every reception screen renders from the server.
+  Future<SecurityIncident> respondIncident(int incidentId) async {
+    final incident = await _ref
+        .read(receptionRepositoryProvider)
+        .respondIncident(_token, incidentId);
+    _ref.invalidate(receptionOverviewProvider(_token));
+    _ref.invalidate(receptionIncidentLogsProvider(_token));
+    return incident;
+  }
+
+  /// Resolve an SOS incident, then refresh the overview and the alert logs.
+  Future<SecurityIncident> resolveIncident(int incidentId) async {
+    final incident = await _ref
+        .read(receptionRepositoryProvider)
+        .resolveIncident(_token, incidentId);
+    _ref.invalidate(receptionOverviewProvider(_token));
+    _ref.invalidate(receptionIncidentLogsProvider(_token));
+    return incident;
   }
 
   /// Assign (or, with a null [driverId], clear) the driver for a vehicle pickup,

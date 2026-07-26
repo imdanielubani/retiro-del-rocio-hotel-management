@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:retirodelrocioapp/core/audio/sos_alarm.dart';
+import 'package:retirodelrocioapp/core/error/messaged_exception.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/features/security/application/security_providers.dart';
-import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
 const Color _red = Color(0xFFFF0000);
@@ -23,13 +23,18 @@ const Color _greenScrim = Color(0x21036003);
 /// officer acknowledges — the green "Alert Acknowledged" confirmation with the
 /// dispatch details. Returns when the officer closes or dismisses it.
 ///
-/// [onAcknowledge] performs the real acknowledge (security respond), so the
-/// guest tablet flips to "Security is on their way" off the same action.
+/// [onAcknowledge] performs the real acknowledge (security or reception
+/// respond), so the guest tablet flips to "help is on the way" off the same
+/// action.
+///
+/// [activeIncidents] is the live source of open incidents the overlay watches to
+/// self-dismiss the instant its alert is stood down or taken by another station
+/// — security passes its dashboard overview's incidents, reception its own.
 Future<void> showSosAlertOverlay(
   BuildContext context, {
   required SecurityIncident incident,
   required String officerName,
-  required String token,
+  required ProviderListenable<AsyncValue<List<SecurityIncident>>> activeIncidents,
   required Future<void> Function() onAcknowledge,
   VoidCallback? onCallRoom,
 }) {
@@ -43,7 +48,7 @@ Future<void> showSosAlertOverlay(
     builder: (_) => _SosAlertOverlay(
       incident: incident,
       officerName: officerName,
-      token: token,
+      activeIncidents: activeIncidents,
       onAcknowledge: onAcknowledge,
       onCallRoom: onCallRoom,
     ),
@@ -54,14 +59,14 @@ class _SosAlertOverlay extends ConsumerStatefulWidget {
   const _SosAlertOverlay({
     required this.incident,
     required this.officerName,
-    required this.token,
+    required this.activeIncidents,
     required this.onAcknowledge,
     this.onCallRoom,
   });
 
   final SecurityIncident incident;
   final String officerName;
-  final String token;
+  final ProviderListenable<AsyncValue<List<SecurityIncident>>> activeIncidents;
   final Future<void> Function() onAcknowledge;
   final VoidCallback? onCallRoom;
 
@@ -112,7 +117,7 @@ class _SosAlertOverlayState extends ConsumerState<_SosAlertOverlay>
       await widget.onAcknowledge();
       await _alarm.stop(); // help is dispatched — silence the siren
       if (mounted) setState(() => _acknowledged = true);
-    } on SecurityException catch (e) {
+    } on MessagedException catch (e) {
       // Surface the real reason (e.g. session expired, no connection) rather
       // than a blanket "could not acknowledge".
       if (mounted) setState(() => _error = e.message);
@@ -128,13 +133,13 @@ class _SosAlertOverlayState extends ConsumerState<_SosAlertOverlay>
   @override
   Widget build(BuildContext context) {
     // If the emergency is no longer active — the guest stood it down, or another
-    // officer already took it — dismiss and silence the siren on our own. Only
+    // station already took it — dismiss and silence the siren on our own. Only
     // while showing the red alert (not our own green confirmation, and not while
     // our acknowledge is in flight).
-    final overview = ref.watch(securityOverviewProvider(widget.token)).value;
-    if (overview != null && !_acknowledged && !_busy && !_closing) {
+    final incidents = ref.watch(widget.activeIncidents).value;
+    if (incidents != null && !_acknowledged && !_busy && !_closing) {
       final stillActive =
-          overview.incidents.any((i) => i.id == incident.id && i.isActive);
+          incidents.any((i) => i.id == incident.id && i.isActive);
       if (!stillActive) {
         _closing = true;
         final navigator = Navigator.of(context);

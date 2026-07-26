@@ -175,7 +175,7 @@
                     </thead>
                     <tbody>
                         @foreach ($transactions as $t)
-                            <tr wire:key="txn-{{ $t->id }}" class="border-b border-[#e5e7eb] {{ $loop->even ? 'bg-[#f9fafb]' : 'bg-white' }}">
+                            <tr wire:key="txn-{{ $t->sourceLabel() }}-{{ $t->id }}" class="border-b border-[#e5e7eb] {{ $loop->even ? 'bg-[#f9fafb]' : 'bg-white' }}">
                                 <td class="px-4 py-3.5 text-[13px] font-medium text-[#f38c00]">{{ $t->txnId() }}</td>
                                 <td class="px-4 py-3.5 text-[13px] text-[#6b7280]">
                                     <span class="inline-flex items-center gap-1.5">
@@ -186,7 +186,8 @@
                                             'bg-[#fff7ed] text-[#c2620a]' => $t->sourceLabel() === 'Gym',
                                             'bg-[#fef2f2] text-[#b91c1c]' => $t->sourceLabel() === 'Restaurant',
                                             'bg-[#fef9c3] text-[#a16207]' => $t->sourceLabel() === 'Cinema',
-                                            'bg-[#e0f2fe] text-[#0369a1]' => ! in_array($t->sourceLabel(), ['Spa', 'Gym', 'Restaurant', 'Cinema'], true),
+                                            'bg-[#dcfce7] text-[#15803d]' => $t->sourceLabel() === 'Extension',
+                                            'bg-[#e0f2fe] text-[#0369a1]' => ! in_array($t->sourceLabel(), ['Spa', 'Gym', 'Restaurant', 'Cinema', 'Extension'], true),
                                         ])>{{ $t->sourceLabel() }}</span>
                                     </span>
                                 </td>
@@ -206,7 +207,7 @@
             {{-- Mobile cards --}}
             <div class="flex flex-col divide-y divide-[#e5e7eb] md:hidden">
                 @foreach ($transactions as $t)
-                    <div wire:key="txn-m-{{ $t->id }}" class="flex flex-col gap-2 px-4 py-3.5">
+                    <div wire:key="txn-m-{{ $t->sourceLabel() }}-{{ $t->id }}" class="flex flex-col gap-2 px-4 py-3.5">
                         <div class="flex items-center justify-between">
                             <span class="text-[13px] font-medium text-[#f38c00]">{{ $t->txnId() }}</span>
                             <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium {{ $t->paymentStatusBadge() }}">{{ $t->paymentStatusLabel() }}</span>

@@ -402,6 +402,31 @@ class VisitorPass extends Model
         ];
     }
 
+    /**
+     * A visitor row for the guest tablet's My Stay "Guests" card — the people
+     * this guest has invited, with a friendly, guest-facing status.
+     */
+    public function toStayVisitorArray(): array
+    {
+        $status = $this->adminStatus();
+
+        return [
+            'id' => $this->id,
+            'name' => $this->visitor_name,
+            'initials' => $this->initials(),
+            'status' => $status,
+            'status_label' => match ($status) {
+                'pending' => 'Invited',
+                'inside' => 'Inside',
+                'exited' => 'Checked out',
+                'denied' => 'Denied',
+                'cancelled' => 'Cancelled',
+                'expired' => 'Expired',
+                default => ucfirst($status),
+            },
+        ];
+    }
+
     /** The payload the guest tablet renders for a history row. */
     public function toTabletArray(): array
     {

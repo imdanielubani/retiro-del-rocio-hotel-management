@@ -3,6 +3,7 @@ import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bookings_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guests_screen.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_incident_response_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_vehicle_pickup_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 
@@ -19,7 +20,11 @@ class ReceptionNavigation {
   static const _prefix = 'reception/';
 
   /// From the dashboard: open a sub-screen (or a placeholder) on top.
-  static void open(BuildContext context, StaffSession session, ReceptionNavItem item) {
+  static void open(
+    BuildContext context,
+    StaffSession session,
+    ReceptionNavItem item,
+  ) {
     final page = _pageFor(item, session);
     if (page == null) {
       _comingSoon(context, item);
@@ -71,18 +76,28 @@ class ReceptionNavigation {
   /// Push a detail screen (e.g. a guest profile) that Back should return from.
   static Future<T?> push<T>(BuildContext context, String name, Widget page) {
     return Navigator.of(context).push<T>(
-      MaterialPageRoute<T>(builder: (_) => page, settings: RouteSettings(name: _prefix + name)),
+      MaterialPageRoute<T>(
+        builder: (_) => page,
+        settings: RouteSettings(name: _prefix + name),
+      ),
     );
   }
 
-  static Widget? _pageFor(ReceptionNavItem item, StaffSession session) => switch (item) {
+  static Widget? _pageFor(ReceptionNavItem item, StaffSession session) =>
+      switch (item) {
         ReceptionNavItem.guests => ReceptionGuestsScreen(session: session),
         ReceptionNavItem.bookings => ReceptionBookingsScreen(session: session),
-        ReceptionNavItem.vehiclePickup => ReceptionVehiclePickupScreen(session: session),
+        ReceptionNavItem.vehiclePickup => ReceptionVehiclePickupScreen(
+          session: session,
+        ),
+        ReceptionNavItem.incidentResponse => ReceptionIncidentResponseScreen(
+          session: session,
+        ),
         _ => null,
       };
 
-  static Route<void> _route(ReceptionNavItem item, Widget page) => MaterialPageRoute<void>(
+  static Route<void> _route(ReceptionNavItem item, Widget page) =>
+      MaterialPageRoute<void>(
         builder: (_) => page,
         settings: RouteSettings(name: _prefix + item.name),
       );
@@ -94,10 +109,11 @@ class ReceptionNavigation {
   }
 
   static String _label(ReceptionNavItem item) => switch (item) {
-        ReceptionNavItem.visitorPass => 'Visitor Pass',
-        ReceptionNavItem.roomStatus => 'Room Status',
-        ReceptionNavItem.vehiclePickup => 'Vehicle Pickup',
-        ReceptionNavItem.chat => 'Chat',
-        _ => 'Coming soon',
-      };
+    ReceptionNavItem.visitorPass => 'Visitor Pass',
+    ReceptionNavItem.roomStatus => 'Room Status',
+    ReceptionNavItem.vehiclePickup => 'Vehicle Pickup',
+    ReceptionNavItem.incidentResponse => 'Incident Response',
+    ReceptionNavItem.chat => 'Chat',
+    _ => 'Coming soon',
+  };
 }
