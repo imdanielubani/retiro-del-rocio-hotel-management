@@ -4,7 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\Booking;
 use App\Models\Room;
-use App\Models\RoomUnit;
 use App\Models\User;
 use App\Services\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,7 +65,7 @@ class ReceptionGuestsBookingsTest extends TestCase
     {
         // Ada has two stays under the same email — one grouped guest.
         $this->booking(['check_in' => today()->subDays(30)->toDateString(), 'status' => 'checked_out']);
-        $this->booking(['status' => 'checked_in']);
+        $active = $this->booking(['status' => 'checked_in']);
         // A different guest.
         $this->booking(['customer_name' => 'Grace Hopper', 'customer_email' => 'grace@mail.com']);
 
@@ -79,6 +78,12 @@ class ReceptionGuestsBookingsTest extends TestCase
         $ada = collect($data)->firstWhere('name', 'Ada Lovelace');
         $this->assertSame(2, $ada['stays']);
         $this->assertTrue($ada['in_house']); // one booking is checked_in
+        // The list can check her out directly, without opening her profile.
+        $this->assertSame($active->id, $ada['active_booking_id']);
+
+        $grace = collect($data)->firstWhere('name', 'Grace Hopper');
+        $this->assertFalse($grace['in_house']);
+        $this->assertNull($grace['active_booking_id']);
     }
 
     public function test_distinct_guests_sharing_one_contact_are_listed_separately(): void
@@ -128,12 +133,26 @@ class ReceptionGuestsBookingsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.name', 'Ada Lovelace')
             ->assertJsonPath('data.in_house', true)
+            // The desk can check her out from her profile, whatever her checkout
+            // date — the same booking that made her in_house true.
+            ->assertJsonPath('data.active_booking_id', $ada->id)
             ->assertJsonPath('data.stats.total_stays', 2)
             ->assertJsonPath('data.stats.total_nights', 5)
             ->assertJsonPath('data.preferences.favourite_room', 'Brisa Residence')
             ->assertJsonPath('data.preferences.usual_party_size', 2)
             ->assertJsonPath('data.preferences.uses_airport_pickup', true)
             ->assertJsonCount(2, 'data.history');
+    }
+
+    public function test_a_guest_not_in_house_has_no_active_booking(): void
+    {
+        $ada = $this->booking(['status' => 'checked_out']);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/guests/profile?key='.urlencode($ada->guestKey()))
+            ->assertOk()
+            ->assertJsonPath('data.in_house', false)
+            ->assertJsonPath('data.active_booking_id', null);
     }
 
     public function test_an_unknown_guest_key_is_not_found(): void

@@ -11,6 +11,7 @@ import 'package:retirodelrocioapp/features/guest/my_stay/domain/guest_stay.dart'
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/paystack_checkout_screen.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/widgets/extend_calendar.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/widgets/extend_stay_dialogs.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// 2.6a — Extend Stay (Figma 137:1157 → 137:1437). The guest picks a new
@@ -157,6 +158,9 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: () {},
                     onProfile: () {},
+                    hasUnreadNotifications:
+                        ref.watch(guestUnreadNotificationsProvider(_token)) >
+                        0,
                   ),
                   const SizedBox(height: 20),
                   _header(),

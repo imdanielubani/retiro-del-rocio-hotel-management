@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
+import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
+import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guest_profile_screen.dart';
@@ -27,6 +29,9 @@ class ReceptionGuestsScreen extends ConsumerStatefulWidget {
 class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
   String _search = '';
 
+  /// The guest whose check-out is mid-request, so only that one card spins.
+  String? _checkingOutKey;
+
   String get _token => widget.session.token;
 
   Future<void> _logout() async {
@@ -34,6 +39,42 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
     if (!confirmed) return;
     await ref.read(authControllerProvider.notifier).logout();
     if (mounted) ReceptionNavigation.afterLogout(context);
+  }
+
+  /// Check a guest out straight from the list — no need to open their profile
+  /// first. Only called when [ReceptionGuestSummary.activeBookingId] is set.
+  Future<void> _checkOut(ReceptionGuestSummary guest) async {
+    final bookingId = guest.activeBookingId;
+    if (bookingId == null) return;
+
+    setState(() => _checkingOutKey = guest.key);
+    try {
+      await ref.read(receptionActionsProvider(_token)).checkOut(bookingId);
+      if (mounted) _toast('${guest.name} checked out.');
+    } on ReceptionException catch (e) {
+      if (mounted) _toast(e.message, error: true);
+    } catch (_) {
+      if (mounted) {
+        _toast('Something went wrong. Please try again.', error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _checkingOutKey = null);
+    }
+  }
+
+  void _toast(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: error
+            ? const Color(0xFF7F1D1D)
+            : const Color(0xFF14532D),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
+      ),
+    );
   }
 
   List<ReceptionGuestSummary> _filter(List<ReceptionGuestSummary> all) {
@@ -96,10 +137,17 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
                 mainAxisSpacing: 14,
               ),
               itemCount: guests.length,
-              itemBuilder: (_, i) => ReceptionGuestCard(
-                guest: guests[i],
-                onTap: () => _openProfile(guests[i]),
-              ),
+              itemBuilder: (_, i) {
+                final guest = guests[i];
+                return ReceptionGuestCard(
+                  guest: guest,
+                  onTap: () => _openProfile(guest),
+                  checkingOut: _checkingOutKey == guest.key,
+                  onCheckOut: guest.activeBookingId != null
+                      ? () => _checkOut(guest)
+                      : null,
+                );
+              },
             ),
           );
         },

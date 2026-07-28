@@ -48,6 +48,10 @@ class _ReceptionDashboardScreenState
   /// True while the priority overlay is on screen, so alerts never stack.
   bool _presenting = false;
 
+  /// Booking ids already toasted as newly overdue, so the same guest doesn't
+  /// re-announce on every 15s poll — only the moment they first cross over.
+  final Set<int> _announcedOverdue = {};
+
   String get _token => widget.session.token;
 
   Future<void> _logout() async {
@@ -171,6 +175,33 @@ class _ReceptionDashboardScreenState
     });
   }
 
+  /// The overdue-departure push: a one-time toast the moment a guest first
+  /// crosses into "overdue", so it's not left as a passive badge the desk has
+  /// to notice on their own. Deliberately a toast, not the blocking SOS
+  /// overlay — this is an operational reminder, not a life-safety emergency,
+  /// and hijacking that overlay would dilute its urgency. Batches multiple
+  /// newly-overdue guests into one message so a burst (e.g. midnight rollover)
+  /// doesn't spam the desk.
+  void _maybeToastOverdue(ReceptionOverview? overview) {
+    if (overview == null || !mounted) return;
+
+    final newlyOverdue = overview.departures
+        .where((b) => b.isOverdue && !_announcedOverdue.contains(b.id))
+        .toList();
+    if (newlyOverdue.isEmpty) return;
+
+    for (final b in newlyOverdue) {
+      _announcedOverdue.add(b.id);
+    }
+
+    final message = newlyOverdue.length == 1
+        ? '${newlyOverdue.first.guestName} is now overdue for checkout.'
+        : '${newlyOverdue.length} guests are now overdue for checkout.';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _toast(message, error: true);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Keep the live sockets alive for as long as the dashboard is on screen —
@@ -183,6 +214,7 @@ class _ReceptionDashboardScreenState
     // announce each alert exactly once.
     ref.listen(receptionOverviewProvider(_token), (_, next) {
       _maybeAnnounce(next.value);
+      _maybeToastOverdue(next.value);
     });
 
     final overviewAsync = ref.watch(receptionOverviewProvider(_token));
@@ -373,6 +405,14 @@ class _ReceptionDashboardScreenState
             label: 'VISITORS PASS CHECK IN',
             value: data.visitorPassCheckIns,
             accent: kReceptionGreen,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ReceptionStatCard(
+            label: 'OVERDUE DEPARTURES',
+            value: data.overdueDepartures,
+            accent: kReceptionRed,
           ),
         ),
       ],

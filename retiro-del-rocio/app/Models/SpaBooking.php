@@ -8,7 +8,7 @@ class SpaBooking extends Model
 {
     protected $fillable = [
         'reference', 'services', 'guests', 'date', 'time', 'special_request',
-        'subtotal', 'fees', 'taxes', 'total',
+        'subtotal', 'fees', 'taxes', 'vat', 'total',
         'customer_name', 'customer_email', 'customer_phone',
         'status', 'payment_status', 'payment_method', 'paid_at',
     ];
@@ -20,9 +20,22 @@ class SpaBooking extends Model
         'subtotal' => 'integer',
         'fees' => 'integer',
         'taxes' => 'integer',
+        'vat' => 'integer',
         'total' => 'integer',
         'paid_at' => 'datetime',
     ];
+
+    /** VAT (7.5%) charged on top of the total at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the total plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->total + (int) $this->vat);
+    }
 
     /** Human session code shown in the admin table, e.g. "SP-1041". */
     public function sessionCode(): string

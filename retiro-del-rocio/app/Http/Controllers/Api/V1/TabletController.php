@@ -11,6 +11,7 @@ use App\Http\Resources\DeviceResource;
 use App\Jobs\SendStayExtensionReceipt;
 use App\Models\Booking;
 use App\Models\Device;
+use App\Models\GuestNotification;
 use App\Models\RoomUnit;
 use App\Models\StayExtensionPayment;
 use App\Models\User;
@@ -260,6 +261,51 @@ class TabletController extends Controller
     }
 
     /**
+     * GET /tablets/notifications — the checked-in guest's notification feed for
+     * this stay, newest first. Scoped to the active booking (not just the room)
+     * so a new guest never sees the previous occupant's notifications.
+     */
+    public function notifications(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+
+        $notifications = GuestNotification::where('booking_id', $booking->id)
+            ->latest()
+            ->get();
+
+        return response()->json(['data' => $notifications->map->toGuestArray()->values()]);
+    }
+
+    /** POST /tablets/notifications/{notification}/read — mark one as read. */
+    public function markNotificationRead(Request $request, int $notification): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+
+        $record = GuestNotification::where('id', $notification)
+            ->where('booking_id', $booking->id)
+            ->first();
+        abort_unless($record, 404, 'Notification not found.');
+
+        if (! $record->read_at) {
+            $record->update(['read_at' => now()]);
+        }
+
+        return response()->json(['data' => $record->toGuestArray()]);
+    }
+
+    /** POST /tablets/notifications/read-all — "Mark all read". */
+    public function markAllNotificationsRead(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+
+        GuestNotification::where('booking_id', $booking->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
      * VAT charged on a stay extension, added at payment time (Paystack) but not
      * onto the room folio — it is a tax line, remitted, not room revenue.
      */
@@ -397,9 +443,21 @@ class TabletController extends Controller
             'payment_method' => data_get($body, 'data.channel'),
         ]);
 
-        // Email the guest their receipt off the request path. This sits after the
-        // idempotent early-return above, so a repeated verify never re-sends it.
-        SendStayExtensionReceipt::dispatch($payment->id)->afterResponse();
+        // Email the guest their receipt. Sent synchronously (and guarded) rather
+        // than after-response: moving the checkout re-issues the gate code via its
+        // own afterResponse job, and if that throws (e.g. a lock is offline) it
+        // aborts the whole terminating-callback chain — which silently skipped the
+        // receipt. This sits after the idempotent early-return, so a repeated
+        // verify never re-sends it.
+        SendStayExtensionReceipt::dispatchSync($payment->id);
+
+        GuestNotification::notify(
+            $booking,
+            $unit,
+            'payment',
+            'Stay Extended',
+            'Your stay has been extended to '.Carbon::parse($booking->check_out)->format('F j, Y').'.',
+        );
 
         return response()->json(['data' => $this->extensionPayload($booking, $unit, $payment)]);
     }

@@ -19,7 +19,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// and hangs up on a client that never pongs.
 ///
 /// The server sends a *signal only* — never guest data — so the tablet reacts by
-/// re-fetching `room-status` with its own token.
+/// re-fetching `room-status` with its own token. The same channel also carries
+/// a `notification.created` signal when a new guest notification lands, for
+/// the same reason: the tablet re-fetches `notifications` with its own token
+/// rather than the payload ever crossing the public socket.
 ///
 /// This is an accelerator, not a dependency: the periodic poll stays in place,
 /// so a Reverb that is down (or hotel Wi-Fi that dropped) degrades to the old
@@ -37,13 +40,15 @@ class RoomChannel {
 
   String get _channel => 'rooms.$roomUnitId';
 
-  /// Calls [onChanged] whenever this room's occupancy changes.
-  void connect({required VoidCallback onChanged}) {
+  /// Calls [onChanged] whenever this room's occupancy changes, and
+  /// [onNotification] whenever a new guest notification lands for this room
+  /// (defaults to a no-op for callers that don't care, e.g. staff tablets).
+  void connect({required VoidCallback onChanged, VoidCallback? onNotification}) {
     _closed = false;
-    unawaited(_open(onChanged));
+    unawaited(_open(onChanged, onNotification ?? () {}));
   }
 
-  Future<void> _open(VoidCallback onChanged) async {
+  Future<void> _open(VoidCallback onChanged, VoidCallback onNotification) async {
     if (_closed) return;
 
     try {
@@ -51,14 +56,14 @@ class RoomChannel {
       _socket = socket;
 
       _subscription = socket.stream.listen(
-        (message) => _onMessage(message, onChanged),
+        (message) => _onMessage(message, onChanged, onNotification),
         onError: (Object error) {
           debugPrint('RoomChannel: socket error — $error');
-          _scheduleReconnect(onChanged);
+          _scheduleReconnect(onChanged, onNotification);
         },
         onDone: () {
           debugPrint('RoomChannel: socket closed — will retry.');
-          _scheduleReconnect(onChanged);
+          _scheduleReconnect(onChanged, onNotification);
         },
         cancelOnError: true,
       );
@@ -68,11 +73,15 @@ class RoomChannel {
       debugPrint('RoomChannel: connected to ${config.socketUri.host} — awaiting handshake.');
     } catch (error) {
       debugPrint('RoomChannel: connect failed — $error');
-      _scheduleReconnect(onChanged);
+      _scheduleReconnect(onChanged, onNotification);
     }
   }
 
-  void _onMessage(dynamic message, VoidCallback onChanged) {
+  void _onMessage(
+    dynamic message,
+    VoidCallback onChanged,
+    VoidCallback onNotification,
+  ) {
     if (message is! String) return;
 
     try {
@@ -97,6 +106,10 @@ class RoomChannel {
         case 'room.status.changed':
           debugPrint('RoomChannel: $_channel changed — refreshing.');
           onChanged();
+
+        case 'notification.created':
+          debugPrint('RoomChannel: $_channel got a new notification.');
+          onNotification();
       }
     } catch (error) {
       debugPrint('RoomChannel: bad frame — $error');
@@ -107,13 +120,13 @@ class RoomChannel {
     _socket?.sink.add(jsonEncode(frame));
   }
 
-  void _scheduleReconnect(VoidCallback onChanged) {
+  void _scheduleReconnect(VoidCallback onChanged, VoidCallback onNotification) {
     if (_closed || _reconnect != null) return;
 
     _teardownSocket();
     _reconnect = Timer(const Duration(seconds: 10), () {
       _reconnect = null;
-      unawaited(_open(onChanged));
+      unawaited(_open(onChanged, onNotification));
     });
   }
 

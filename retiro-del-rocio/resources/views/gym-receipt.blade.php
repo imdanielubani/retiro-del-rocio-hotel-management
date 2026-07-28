@@ -43,7 +43,9 @@
                 <tr><td class="k">Valid until</td><td class="v">{{ optional($m->ends_at)->format('M j, Y') ?: '—' }}</td></tr>
                 <tr><td class="k">Payment method</td><td class="v">{{ $m->methodLabel() }}</td></tr>
                 @if ($m->reference)<tr><td class="k">Reference</td><td class="v">{{ $m->reference }}</td></tr>@endif
-                <tr class="total"><td class="k">Amount</td><td class="v">{{ $m->priceLabel() }} / {{ $m->periodShort() }}</td></tr>
+                <tr><td class="k">Plan price</td><td class="v">{{ $m->priceLabel() }}</td></tr>
+                <tr><td class="k">VAT (7.5%)</td><td class="v">{{ $m->vatLabel() }}</td></tr>
+                <tr class="total"><td class="k">Amount Paid</td><td class="v">{{ $m->totalWithVatLabel() }} / {{ $m->periodShort() }}</td></tr>
             </table>
             <div class="noprint" style="text-align:center;">
                 <button class="print" onclick="window.print()">Download / Print Receipt</button>

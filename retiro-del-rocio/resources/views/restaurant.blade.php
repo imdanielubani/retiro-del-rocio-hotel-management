@@ -328,9 +328,13 @@
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Date</span><span x-text="prettyDate"></span></p>
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Time</span><span x-text="prettyTime"></span></p>
                                 </div>
-                                <div class="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-                                    <span class="text-body text-white/60">Refundable reservation fee</span>
-                                    <span class="text-h3 font-semibold text-white" x-text="money(fee)"></span>
+                                <div class="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-4 text-body">
+                                    <div class="flex items-center justify-between"><span class="text-white/60">Refundable reservation fee</span><span class="font-medium text-white" x-text="money(fee)"></span></div>
+                                    <div class="flex items-center justify-between"><span class="text-white/60">VAT (7.5%)</span><span class="font-medium text-white" x-text="money(vat)"></span></div>
+                                </div>
+                                <div class="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+                                    <span class="text-body text-white/60">Total</span>
+                                    <span class="text-h3 font-semibold text-white" x-text="money(total)"></span>
                                 </div>
                             </div>
                         </div>
@@ -416,9 +420,13 @@
                                 <div class="flex items-center justify-between"><span>Time:</span><span class="font-medium" x-text="success ? success.time : ''"></span></div>
                             </div>
 
+                            <div class="flex flex-col gap-2 border-t border-white/15 pt-5 text-body lg:text-body-lg">
+                                <div class="flex items-center justify-between"><span class="text-white/60">Refundable reservation fee</span><span class="font-medium" x-text="success ? success.fee_label : ''"></span></div>
+                                <div class="flex items-center justify-between"><span class="text-white/60">VAT (7.5%)</span><span class="font-medium" x-text="success ? success.vat_label : ''"></span></div>
+                            </div>
                             <div class="flex items-center justify-between border-t border-white/15 pt-5">
-                                <span class="text-body-lg font-medium text-[#f38c00]">Refundable reservation fee</span>
-                                <span class="text-h3 font-semibold tracking-tight lg:text-h2" x-text="success ? success.fee_label : ''"></span>
+                                <span class="text-body-lg font-medium text-[#f38c00]">Total</span>
+                                <span class="text-h3 font-semibold tracking-tight lg:text-h2" x-text="success ? success.total_label : ''"></span>
                             </div>
                         </div>
 

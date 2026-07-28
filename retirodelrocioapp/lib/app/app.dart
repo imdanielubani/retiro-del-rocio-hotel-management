@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/app/app_router.dart';
 import 'package:retirodelrocioapp/core/media/ambient_video_scope.dart';
+import 'package:retirodelrocioapp/core/navigation/root_messenger.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 
@@ -15,6 +16,7 @@ class RocioTabletApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Retiro Del Rocio',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,

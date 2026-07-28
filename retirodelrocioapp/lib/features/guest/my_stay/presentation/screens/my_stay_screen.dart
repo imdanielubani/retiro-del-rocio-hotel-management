@@ -6,6 +6,7 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/application/my_stay_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/domain/guest_stay.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/extend_stay_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
@@ -59,6 +60,9 @@ class MyStayScreen extends ConsumerWidget {
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: () {},
                     onProfile: () {},
+                    hasUnreadNotifications:
+                        ref.watch(guestUnreadNotificationsProvider(_token)) >
+                        0,
                   ),
                   const SizedBox(height: 20),
                   _header(context, stay),

@@ -4,6 +4,7 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/sos/application/sos_providers.dart';
 import 'package:retirodelrocioapp/features/guest/sos/data/sos_repository.dart';
 import 'package:retirodelrocioapp/features/guest/sos/domain/sos_alert.dart';
@@ -115,6 +116,13 @@ class _SosScreenState extends ConsumerState<SosScreen> {
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: () {},
                     onProfile: () {},
+                    hasUnreadNotifications:
+                        ref.watch(
+                          guestUnreadNotificationsProvider(
+                            widget.device.token,
+                          ),
+                        ) >
+                        0,
                   ),
                   const SizedBox(height: 27),
                   // Back to the guest home (Figma 113:725). Sits in the screen's

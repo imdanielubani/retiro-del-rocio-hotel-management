@@ -5,6 +5,7 @@ import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_devic
 import 'package:retirodelrocioapp/features/guest/home/presentation/screens/guest_home_screen.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/current_stay_card.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/quick_service_card.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
@@ -43,6 +44,7 @@ void main() {
       ProviderScope(
         overrides: [
           roomStatusProvider.overrideWith((ref, token) async => status),
+          guestNotificationsProvider.overrideWith((ref, token) async => []),
           weatherProvider.overrideWith(
             (ref) async => const Weather(
               temperatureC: 34,
@@ -99,6 +101,18 @@ void main() {
     expect(tester.getTopLeft(hotelInfo).dy, lessThan(tileBefore.dy));
     expect(tester.getTopLeft(find.byType(CurrentStayCard)), stayCardBefore);
     expect(tester.getTopLeft(find.text('Quick Services')), headingBefore);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the notification bell opens the Notifications screen', (
+    tester,
+  ) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byIcon(Icons.notifications_none_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notification'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

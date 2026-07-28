@@ -237,6 +237,7 @@ class SosAlert extends Model
 
         return [
             'id' => $this->id,
+            'type' => 'sos',
             'title' => 'Emergency SOS — '.$room,
             'time_label' => optional($this->raised_at)->diffForHumans(['short' => true]) ?? '',
             'severity' => $this->status === self::ACTIVE ? 'high' : 'medium',

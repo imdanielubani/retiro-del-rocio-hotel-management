@@ -6,6 +6,7 @@ import 'package:retirodelrocioapp/features/authentication/application/auth_provi
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
+import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
@@ -33,6 +34,10 @@ class _ReceptionGuestProfileScreenState
     extends ConsumerState<ReceptionGuestProfileScreen> {
   late Future<ReceptionGuestProfile> _future;
 
+  /// True while a check-out request from this screen is in flight, so the
+  /// button shows a spinner and can't be double-tapped.
+  bool _checkingOut = false;
+
   String get _token => widget.session.token;
 
   @override
@@ -45,6 +50,43 @@ class _ReceptionGuestProfileScreenState
       ref.read(receptionRepositoryProvider).guestProfile(_token, widget.guestKey);
 
   void _retry() => setState(() => _future = _load());
+
+  /// Check the guest out from their profile — the only path that works
+  /// however their stay is shaped: overdue, extended, or simply leaving
+  /// early. Reloads the profile on success so the button disappears once
+  /// `in_house` flips to false.
+  Future<void> _checkOutGuest(int bookingId, String guestName) async {
+    setState(() => _checkingOut = true);
+    try {
+      await ref.read(receptionActionsProvider(_token)).checkOut(bookingId);
+      if (!mounted) return;
+      _toast('$guestName checked out.');
+      _retry();
+    } on ReceptionException catch (e) {
+      if (mounted) _toast(e.message, error: true);
+    } catch (_) {
+      if (mounted) {
+        _toast('Something went wrong. Please try again.', error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _checkingOut = false);
+    }
+  }
+
+  void _toast(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: error
+            ? const Color(0xFF7F1D1D)
+            : const Color(0xFF14532D),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
+      ),
+    );
+  }
 
   Future<void> _logout() async {
     final confirmed = await showLogoutConfirmDialog(context);
@@ -139,50 +181,100 @@ class _ReceptionGuestProfileScreenState
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ReceptionAvatar(initials: p.initials, size: 60),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ReceptionAvatar(initials: p.initials, size: 60),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Flexible(
-                      child: Text(
-                        p.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            p.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.style(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (p.inHouse) ...[
+                          const SizedBox(width: 10),
+                          const ReceptionStatusPill(status: 'checked_in', label: 'In-House'),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (final c in contact) ...[
+                      Text(
+                        c,
                         style: AppTypography.style(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 13,
                         ),
                       ),
-                    ),
-                    if (p.inHouse) ...[
-                      const SizedBox(width: 10),
-                      const ReceptionStatusPill(status: 'checked_in', label: 'In-House'),
+                      const SizedBox(height: 2),
                     ],
                   ],
                 ),
-                const SizedBox(height: 8),
-                for (final c in contact) ...[
-                  Text(
-                    c,
-                    style: AppTypography.style(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
+          // Lets the desk check this guest out from their profile — the only
+          // path that works whatever their stay looks like (overdue, extended,
+          // or an early departure), not just when they're due out today.
+          if (p.inHouse && p.activeBookingId != null) ...[
+            const SizedBox(height: 16),
+            _checkOutButton(p.activeBookingId!, p.name),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _checkOutButton(int bookingId, String guestName) {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: _checkingOut ? null : () => _checkOutGuest(bookingId, guestName),
+          borderRadius: BorderRadius.circular(10),
+          child: Center(
+            child: _checkingOut
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.logout_rounded, size: 16, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Check Out Guest',
+                        style: AppTypography.style(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
       ),
     );
   }

@@ -17,6 +17,8 @@ class ReceptionBooking {
     this.statusLabel = '',
     this.isWalkIn = false,
     this.originLabel,
+    this.isOverdue = false,
+    this.overdueLabel,
   });
 
   final int id;
@@ -41,6 +43,13 @@ class ReceptionBooking {
   /// "Walk-in" / "Phone" for a desk booking, null for an ordinary online one.
   final String? originLabel;
 
+  /// True for a still-checked-in guest whose checkout date has passed — a
+  /// departure the desk must act on, not just one due later today.
+  final bool isOverdue;
+
+  /// "Overdue by 2 days", present only when [isOverdue] is true.
+  final String? overdueLabel;
+
   factory ReceptionBooking.fromJson(Map<String, dynamic> json) =>
       ReceptionBooking(
         id: (json['id'] as num?)?.toInt() ?? 0,
@@ -54,6 +63,10 @@ class ReceptionBooking {
         originLabel: (json['origin_label'] as String?)?.trim().isNotEmpty == true
             ? json['origin_label'] as String
             : null,
+        isOverdue: json['is_overdue'] as bool? ?? false,
+        overdueLabel: (json['overdue_label'] as String?)?.trim().isNotEmpty == true
+            ? json['overdue_label'] as String
+            : null,
       );
 }
 
@@ -62,18 +75,24 @@ class ReceptionBooking {
 class ReceptionAlert {
   const ReceptionAlert({
     required this.id,
+    required this.type,
     required this.title,
     required this.timeLabel,
     required this.severity,
   });
 
   final int id;
+
+  /// 'sos' or 'overdue_departure' — `id` alone can collide across types since
+  /// each is a different table's primary key, so dedup keys must use both.
+  final String type;
   final String title;
   final String timeLabel;
   final AlertSeverity severity;
 
   factory ReceptionAlert.fromJson(Map<String, dynamic> json) => ReceptionAlert(
         id: (json['id'] as num?)?.toInt() ?? 0,
+        type: json['type'] as String? ?? 'sos',
         title: json['title'] as String? ?? 'Alert',
         timeLabel: json['time_label'] as String? ?? '',
         severity: switch (json['severity'] as String?) {
@@ -115,6 +134,7 @@ class ReceptionOverview {
     required this.checkInsToday,
     required this.checkOutsToday,
     required this.visitorPassCheckIns,
+    this.overdueDepartures = 0,
     required this.arrivals,
     required this.departures,
     required this.alerts,
@@ -129,6 +149,10 @@ class ReceptionOverview {
   final int checkInsToday;
   final int checkOutsToday;
   final int visitorPassCheckIns;
+
+  /// Still checked in with a checkout date already in the past — a departure
+  /// the desk must catch up on, not just one due later today.
+  final int overdueDepartures;
 
   final List<ReceptionBooking> arrivals;
   final List<ReceptionBooking> departures;
@@ -147,6 +171,7 @@ class ReceptionOverview {
     checkInsToday: 0,
     checkOutsToday: 0,
     visitorPassCheckIns: 0,
+    overdueDepartures: 0,
     arrivals: [],
     departures: [],
     alerts: [],
@@ -172,6 +197,7 @@ class ReceptionOverview {
       checkInsToday: (stats['check_ins_today'] as num?)?.toInt() ?? 0,
       checkOutsToday: (stats['check_outs_today'] as num?)?.toInt() ?? 0,
       visitorPassCheckIns: (stats['visitor_pass_check_ins'] as num?)?.toInt() ?? 0,
+      overdueDepartures: (stats['overdue_departures'] as num?)?.toInt() ?? 0,
       arrivals: parse('arrivals', ReceptionBooking.fromJson),
       departures: parse('departures', ReceptionBooking.fromJson),
       alerts: parse('alerts', ReceptionAlert.fromJson),

@@ -49,8 +49,16 @@
                                     <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ optional($reservation->reserved_date)->format('l, M j, Y') }}@if ($reservation->reserved_time) · {{ $reservation->timeLabel() }}@endif</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:12px 16px;color:#6b7280;">Refundable fee paid</td>
-                                    <td style="padding:12px 16px;font-weight:bold;color:#16a34a;">{{ $reservation->feeLabel() }}</td>
+                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Refundable reservation fee</td>
+                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $reservation->feeLabel() }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">VAT (7.5%)</td>
+                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $reservation->vatLabel() }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px 16px;color:#6b7280;">Total paid</td>
+                                    <td style="padding:12px 16px;font-weight:bold;color:#16a34a;">{{ $reservation->totalWithVatLabel() }}</td>
                                 </tr>
                             </table>
 

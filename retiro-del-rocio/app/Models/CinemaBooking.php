@@ -10,7 +10,7 @@ class CinemaBooking extends Model
     protected $fillable = [
         'code', 'reference', 'movie_id', 'movie_title', 'show_date', 'show_time',
         'room', 'guests', 'seats', 'adult_tickets', 'child_tickets', 'snacks',
-        'subtotal', 'fee', 'taxes', 'amount',
+        'subtotal', 'fee', 'taxes', 'vat', 'amount',
         'customer_name', 'customer_email', 'customer_phone',
         'status', 'payment_status', 'payment_method', 'paid_at',
     ];
@@ -25,6 +25,7 @@ class CinemaBooking extends Model
         'subtotal' => 'integer',
         'fee' => 'integer',
         'taxes' => 'integer',
+        'vat' => 'integer',
         'amount' => 'integer',
         'paid_at' => 'datetime',
     ];
@@ -47,6 +48,18 @@ class CinemaBooking extends Model
     public function amountLabel(): string
     {
         return '₦'.number_format($this->amount);
+    }
+
+    /** VAT (7.5%) charged on top of the booking total at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the booking amount plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->amount + (int) $this->vat);
     }
 
     public function subtotalLabel(): string

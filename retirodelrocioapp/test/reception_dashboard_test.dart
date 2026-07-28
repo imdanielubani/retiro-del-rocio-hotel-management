@@ -18,6 +18,7 @@ void main() {
           'check_ins_today': 0,
           'check_outs_today': 1,
           'visitor_pass_check_ins': 4,
+          'overdue_departures': 3,
         },
         'arrivals': [
           {
@@ -31,12 +32,32 @@ void main() {
             'origin_label': 'Walk-in',
           },
         ],
-        'departures': [],
+        'departures': [
+          {
+            'id': 201,
+            'reference': 'BK-0201',
+            'guest_name': 'Overdue Olu',
+            'room_label': 'Brisa Residence · Room 202',
+            'date_label': 'Jul 22, 2026',
+            'status': 'checked_in',
+            'status_label': 'Checked In',
+            'is_overdue': true,
+            'overdue_label': 'Overdue by 2 days',
+          },
+        ],
         'alerts': [
           {
             'id': 1,
+            'type': 'sos',
             'title': 'Emergency SOS — Room 102',
             'time_label': '5m ago',
+            'severity': 'high',
+          },
+          {
+            'id': 201,
+            'type': 'overdue_departure',
+            'title': 'Overdue Checkout — Overdue Olu (Brisa Residence · Room 202)',
+            'time_label': 'Overdue by 2 days',
             'severity': 'high',
           },
         ],
@@ -58,12 +79,19 @@ void main() {
       expect(overview.arrivalsToday, 2);
       expect(overview.checkOutsToday, 1);
       expect(overview.visitorPassCheckIns, 4);
+      expect(overview.overdueDepartures, 3);
       expect(overview.arrivals.single.guestName, 'Daniel Ubani');
       expect(overview.arrivals.single.reference, 'BK-0137');
       expect(overview.arrivals.single.isWalkIn, isTrue);
       expect(overview.arrivals.single.originLabel, 'Walk-in');
-      expect(overview.departures, isEmpty);
-      expect(overview.alerts.single.severity, AlertSeverity.high);
+      expect(overview.departures.single.guestName, 'Overdue Olu');
+      expect(overview.departures.single.isOverdue, isTrue);
+      expect(overview.departures.single.overdueLabel, 'Overdue by 2 days');
+      expect(overview.alerts, hasLength(2));
+      expect(overview.alerts.first.severity, AlertSeverity.high);
+      expect(overview.alerts.first.type, 'sos');
+      expect(overview.alerts.last.type, 'overdue_departure');
+      expect(overview.alerts.last.title, contains('Overdue Checkout'));
       // The open SOS incident is parsed in full incident shape for the overlay.
       expect(overview.incidents.single.roomNumber, '102');
       expect(overview.incidents.single.isActive, isTrue);
@@ -77,6 +105,7 @@ void main() {
       expect(overview.arrivals, isEmpty);
       expect(overview.incidents, isEmpty);
       expect(overview.arrivalsToday, 0);
+      expect(overview.overdueDepartures, 0);
       expect(overview.roomStatus.occupied, 0);
     });
   });
@@ -155,6 +184,40 @@ void main() {
       // The same guest, now in-house, offers Check Out — reception drives both.
       expect(find.text('Check Out'), findsOneWidget);
       expect(find.text('Check In'), findsNothing);
+      await tester.tap(find.text('Check Out'));
+      await tester.pump();
+      expect(checkedOut, isTrue);
+    });
+
+    testWidgets('an overdue in-house guest is flagged and still checks out', (
+      tester,
+    ) async {
+      var checkedOut = false;
+      await tester.pumpWidget(
+        _host(
+          ReceptionBookingCard(
+            booking: const ReceptionBooking(
+              id: 201,
+              reference: 'BK-0201',
+              guestName: 'Overdue Olu',
+              roomLabel: 'Brisa Residence · Room 202',
+              dateLabel: 'Jul 22, 2026',
+              status: 'checked_in',
+              statusLabel: 'Checked In',
+              isOverdue: true,
+              overdueLabel: 'Overdue by 2 days',
+            ),
+            busy: false,
+            onCheckIn: () {},
+            onCheckOut: () => checkedOut = true,
+          ),
+        ),
+      );
+
+      // Still checked in → the desk can still act, unlike a "today only" list.
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.textContaining('Overdue by 2 days'), findsOneWidget);
+      expect(find.text('Check Out'), findsOneWidget);
       await tester.tap(find.text('Check Out'));
       await tester.pump();
       expect(checkedOut, isTrue);

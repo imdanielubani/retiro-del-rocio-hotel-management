@@ -13,7 +13,9 @@ Guests: {{ $booking->guests }}
 @if ($booking->isPickup())
 Vehicle pickup: {{ $booking->pickup_vehicle }} ({{ $booking->pickupAmountLabel() }})
 @endif
-Total paid: {{ $booking->amountLabel() }}
+Subtotal: {{ $booking->amountLabel() }}
+VAT (7.5%): {{ $booking->vatLabel() }}
+Total paid: {{ $booking->totalWithVatLabel() }}
 @unless ($booking->roomUnit)
 
 Your room number will be confirmed at check-in.

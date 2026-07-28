@@ -12,6 +12,8 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/curre
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/quick_service_card.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/my_stay_screen.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
 import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/presentation/screens/visitor_pass_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
@@ -88,6 +90,21 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
   }
 
   Future<void> _open(GuestService service) async {
+    // Notifications is built — take the guest there rather than "coming soon".
+    if (service.id == _alerts.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GuestNotificationScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
     // Visitor Pass is built — take the guest there rather than "coming soon".
     if (service.id == GuestServices.visitorPass.id) {
       final live = ref.read(roomStatusProvider(widget.device.token)).value;
@@ -188,6 +205,13 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
                       weather: weather,
                       onNotifications: () => _open(_alerts),
                       onProfile: () => _open(GuestServices.myStay),
+                      hasUnreadNotifications:
+                          ref.watch(
+                            guestUnreadNotificationsProvider(
+                              widget.device.token,
+                            ),
+                          ) >
+                          0,
                     ),
                     const SizedBox(height: 17),
                     _header(guest.name),

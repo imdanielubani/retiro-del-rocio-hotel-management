@@ -10,6 +10,7 @@ use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Models\StayExtensionPayment;
+use App\Services\PaystackRefundService;
 use App\Services\VisitorPassProvisioner;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -241,16 +242,38 @@ class Index extends Component
         }
     }
 
-    public function issueRefund(int $id): void
+    public function issueRefund(int $id, PaystackRefundService $paystack): void
     {
         $booking = Booking::find($id);
         if (! $booking) {
             return;
         }
-        $booking->refund_amount = max(0, (int) $this->refundAmount);
-        $booking->refund_method = $this->refundMethod;
-        $booking->refund_status = 'completed';
-        $booking->save();
+
+        $amount = max(0, (int) $this->refundAmount);
+
+        // A card reversal is an actual money movement — send it to Paystack. Only
+        // mark the refund completed once Paystack accepts it; otherwise leave it
+        // pending so the desk can retry rather than telling the guest it is done.
+        if ($this->refundMethod === 'card_reversal') {
+            $result = $paystack->refund($booking, $amount);
+            if (! $result['ok']) {
+                $booking->forceFill([
+                    'refund_amount' => $amount,
+                    'refund_method' => $this->refundMethod,
+                    'refund_status' => 'pending',
+                ])->save();
+
+                $this->dispatch('toast', type: 'error', message: $result['message']);
+
+                return;
+            }
+        }
+
+        $booking->forceFill([
+            'refund_amount' => $amount,
+            'refund_method' => $this->refundMethod,
+            'refund_status' => 'completed',
+        ])->save();
 
         $this->dispatch('toast', type: 'success', message: 'Refund of '.$booking->refundLabel().' issued for '.$booking->cancellationCode().'.');
     }

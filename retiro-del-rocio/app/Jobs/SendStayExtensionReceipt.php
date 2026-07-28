@@ -10,14 +10,14 @@ use Throwable;
 
 /**
  * Emails the guest their stay-extension receipt once the Paystack charge is
- * verified — off the tablet's request path.
+ * verified.
  *
- * Sending is an SMTP hand-off that would otherwise make the guest wait on the
- * "Pay" tap, so the controller stamps the payment and hands the email to this
- * job, dispatched after the response has been sent.
- *
- * Deliberately not a queued job (like {@see ProvisionVisitorPass}): it runs with
- * ->afterResponse() so a receipt still goes out without a worker being up.
+ * Dispatched synchronously ({@see TabletController::extendStay()} via
+ * dispatchSync) rather than after-response: the checkout move re-issues the gate
+ * code through its own afterResponse job, and a failure there aborts the whole
+ * terminating-callback chain — which was silently dropping this receipt. Running
+ * inline keeps delivery independent of that chain and of a queue worker; the send
+ * is guarded so a mail failure never breaks the (already committed) extension.
  */
 class SendStayExtensionReceipt
 {

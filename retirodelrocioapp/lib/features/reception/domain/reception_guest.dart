@@ -12,6 +12,7 @@ class ReceptionGuestSummary {
     this.stays = 0,
     this.lastStayLabel,
     this.inHouse = false,
+    this.activeBookingId,
   });
 
   /// Stable identity used to open the profile, e.g. "email:ada@mail.com".
@@ -24,6 +25,10 @@ class ReceptionGuestSummary {
 
   /// True while any of the guest's bookings is currently checked in.
   final bool inHouse;
+
+  /// The booking to check out when [inHouse] is true — lets the list check
+  /// this guest out in one tap, without opening their profile first.
+  final int? activeBookingId;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -40,6 +45,7 @@ class ReceptionGuestSummary {
         stays: (json['stays'] as num?)?.toInt() ?? 0,
         lastStayLabel: json['last_stay_label'] as String?,
         inHouse: json['in_house'] as bool? ?? false,
+        activeBookingId: (json['active_booking_id'] as num?)?.toInt(),
       );
 }
 
@@ -97,6 +103,7 @@ class ReceptionGuestProfile {
     this.email,
     this.phone,
     this.inHouse = false,
+    this.activeBookingId,
     this.stats = const GuestStats(),
     this.preferences = const GuestPreferences(),
     this.history = const [],
@@ -107,6 +114,12 @@ class ReceptionGuestProfile {
   final String? email;
   final String? phone;
   final bool inHouse;
+
+  /// The booking to check out when [inHouse] is true — whatever its checkout
+  /// date, so the desk can check a guest out early or catch up on one that's
+  /// overdue, straight from their profile.
+  final int? activeBookingId;
+
   final GuestStats stats;
   final GuestPreferences preferences;
   final List<ReceptionBookingRow> history;
@@ -124,6 +137,7 @@ class ReceptionGuestProfile {
         email: json['email'] as String?,
         phone: json['phone'] as String?,
         inHouse: json['in_house'] as bool? ?? false,
+        activeBookingId: (json['active_booking_id'] as num?)?.toInt(),
         stats: GuestStats.fromJson(
           (json['stats'] as Map?)?.cast<String, dynamic>() ?? const {},
         ),

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\SecurityController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\TabletController;
 use App\Http\Controllers\Api\V1\VisitorPassController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,7 +47,7 @@ $api->group(function () {
         ->name('api.v1.app.config');
 
     // Staff session check — authenticated by the staff JWT (not the device token).
-    Route::get('staff/me', function (\Illuminate\Http\Request $request) {
+    Route::get('staff/me', function (Request $request) {
         $user = $request->user();
 
         return response()->json(['data' => [
@@ -97,6 +98,14 @@ $api->group(function () {
             ->middleware('throttle:20,1')->name('api.v1.tablets.extend-stay.initialize');
         Route::post('tablets/extend-stay', [TabletController::class, 'extendStay'])
             ->middleware('throttle:20,1')->name('api.v1.tablets.extend-stay');
+
+        // The checked-in guest's Notifications feed.
+        Route::get('tablets/notifications', [TabletController::class, 'notifications'])
+            ->name('api.v1.tablets.notifications');
+        Route::post('tablets/notifications/read-all', [TabletController::class, 'markAllNotificationsRead'])
+            ->name('api.v1.tablets.notifications.read-all');
+        Route::post('tablets/notifications/{notification}/read', [TabletController::class, 'markNotificationRead'])
+            ->whereNumber('notification')->name('api.v1.tablets.notifications.read');
 
         // Emergency SOS from a guest's in-room tablet. Raising is throttled — a
         // panicking guest may hammer the button — but the endpoint is idempotent,

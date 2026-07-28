@@ -45,6 +45,7 @@
             step: @js($spaStep),
             paystackKey: @js($paystackKey),
             callbackUrl: @js(route('spa.checkout.callback')),
+            resetUrl: @js(route('spa.checkout.reset')),
             bookingKobo: {{ (int) ($spaBooking['total_kobo'] ?? 0) }},
             bookingServices: @js($spaBooking ? collect($spaBooking['services'])->pluck('name')->implode(', ') : ''),
             bookingDateLabel: @js($spaBooking['date_label'] ?? ''),
@@ -302,6 +303,12 @@
 
                     </div>
 
+                    {{-- VAT --}}
+                    <div class="flex items-center justify-between gap-4 border-t border-white/15 pt-4 text-body text-white">
+                        <span>VAT (7.5%)</span>
+                        <span class="font-semibold" x-text="money(vat)"></span>
+                    </div>
+
                     {{-- Total + Complete Reservation on one line --}}
                     <div class="flex flex-wrap items-center justify-between gap-5 border-t border-white/15 pt-5">
                         <div class="flex items-baseline gap-3">
@@ -351,6 +358,7 @@
                                     <div class="flex items-center justify-between"><span>Date:</span><span class="font-medium">{{ $spaBooking['date_label'] }}</span></div>
                                     @if ($spaBooking['time'])<div class="flex items-center justify-between"><span>Time:</span><span class="font-medium">{{ $spaBooking['time_label'] ?? $spaBooking['time'] }}</span></div>@endif
                                 </div>
+                                <div class="flex items-center justify-between border-t border-white/15 pt-3 text-body"><span>VAT ({{ $spaBooking['vat_rate_label'] ?? '7.5%' }})</span><span class="font-semibold">{{ $spaBooking['vat_label'] ?? '' }}</span></div>
                                 <div class="flex items-center justify-between border-t border-white/15 pt-3"><span class="text-body-lg font-semibold text-[#f38c00]">TOTAL</span><span class="text-h3 font-semibold">{{ $spaBooking['total_label'] }}</span></div>
                             </div>
                         </div>
@@ -420,6 +428,10 @@
                                 @if ($spaOrder['time'])<div class="flex items-center justify-between"><span>Time:</span><span class="font-medium">{{ $spaOrder['time_label'] ?? $spaOrder['time'] }}</span></div>@endif
                             </div>
 
+                            <div class="flex items-center justify-end gap-4 border-t border-white/15 pt-5 text-body lg:text-body-lg">
+                                <span>VAT ({{ $spaOrder['vat_rate_label'] ?? '7.5%' }})</span>
+                                <span class="font-semibold">{{ $spaOrder['vat_label'] ?? '' }}</span>
+                            </div>
                             <div class="flex items-center justify-end gap-4 border-t border-white/15 pt-5">
                                 <span class="text-body-lg font-medium text-[#f38c00]">TOTAL</span>
                                 <span class="text-h3 font-semibold tracking-tight lg:text-h2">{{ $spaOrder['total_label'] }}</span>

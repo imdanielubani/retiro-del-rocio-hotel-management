@@ -17,6 +17,7 @@ void main() {
         'email': 'ada@mail.com',
         'phone': '+44 7700 900111',
         'in_house': true,
+        'active_booking_id': 42,
         'stats': {
           'total_stays': 3,
           'total_nights': 8,
@@ -46,6 +47,7 @@ void main() {
 
       expect(profile.name, 'Ada Lovelace');
       expect(profile.inHouse, isTrue);
+      expect(profile.activeBookingId, 42);
       expect(profile.stats.totalStays, 3);
       expect(profile.preferences.favouriteRoom, 'Brisa Residence');
       expect(profile.preferences.usualPartySize, 2);
@@ -58,6 +60,28 @@ void main() {
       expect(g.stays, 0);
       expect(g.inHouse, isFalse);
       expect(g.email, isNull);
+      expect(g.activeBookingId, isNull);
+    });
+
+    test('ReceptionGuestSummary parses the active booking id', () {
+      final g = ReceptionGuestSummary.fromJson({
+        'key': 'email:ada@mail.com',
+        'name': 'Ada Lovelace',
+        'in_house': true,
+        'active_booking_id': 7,
+      });
+      expect(g.inHouse, isTrue);
+      expect(g.activeBookingId, 7);
+    });
+
+    test('a guest with no active booking has a null activeBookingId', () {
+      final profile = ReceptionGuestProfile.fromJson({
+        'key': 'name:jo',
+        'name': 'Jo',
+        'in_house': false,
+      });
+      expect(profile.inHouse, isFalse);
+      expect(profile.activeBookingId, isNull);
     });
   });
 
@@ -82,6 +106,79 @@ void main() {
     await tester.tap(find.byType(InkWell));
     await tester.pump();
     expect(tapped, isTrue);
+  });
+
+  testWidgets(
+    'an in-house guest can be checked out from the list without opening their profile',
+    (tester) async {
+      var openedProfile = false;
+      var checkedOut = false;
+      await tester.pumpWidget(
+        _host(
+          ReceptionGuestCard(
+            guest: guest, // inHouse: true
+            onTap: () => openedProfile = true,
+            onCheckOut: () => checkedOut = true,
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.logout_rounded));
+      await tester.pump();
+
+      // Only the check-out action fires — tapping it must not also open the
+      // profile, since both live on the same card.
+      expect(checkedOut, isTrue);
+      expect(openedProfile, isFalse);
+    },
+  );
+
+  testWidgets('no check-out button without an onCheckOut callback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_host(ReceptionGuestCard(guest: guest, onTap: () {})));
+    expect(find.byIcon(Icons.logout_rounded), findsNothing);
+  });
+
+  testWidgets('no check-out button for a guest who is not in-house', (
+    tester,
+  ) async {
+    const notInHouse = ReceptionGuestSummary(
+      key: 'email:jo@mail.com',
+      name: 'Jo',
+      inHouse: false,
+    );
+    await tester.pumpWidget(
+      _host(
+        ReceptionGuestCard(guest: notInHouse, onTap: () {}, onCheckOut: () {}),
+      ),
+    );
+    expect(find.byIcon(Icons.logout_rounded), findsNothing);
+  });
+
+  testWidgets('a busy check-out button shows a spinner and ignores taps', (
+    tester,
+  ) async {
+    var checkedOut = false;
+    await tester.pumpWidget(
+      _host(
+        ReceptionGuestCard(
+          guest: guest,
+          onTap: () {},
+          onCheckOut: () => checkedOut = true,
+          checkingOut: true,
+        ),
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byIcon(Icons.logout_rounded), findsNothing);
+
+    await tester.tap(find.byType(InkWell).last);
+    await tester.pump();
+    expect(checkedOut, isFalse);
   });
 
   testWidgets('a booking row shows the reference, status pill and stay span', (tester) async {

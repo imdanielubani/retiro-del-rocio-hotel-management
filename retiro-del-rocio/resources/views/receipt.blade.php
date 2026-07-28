@@ -95,6 +95,7 @@
                 @if ($order['pickup_price'])
                     <tr><td class="label">Vehicle pickup</td><td class="value">{{ $order['pickup_price'] }}</td></tr>
                 @endif
+                <tr><td class="label">VAT ({{ $order['vat_rate_label'] ?? '7.5%' }})</td><td class="value">{{ $order['vat_label'] ?? '' }}</td></tr>
                 <tr class="total"><td class="label" style="color:#1e1e1e;font-weight:bold;">Total paid</td><td class="value">{{ $order['total_label'] }}</td></tr>
             </table>
         </div>

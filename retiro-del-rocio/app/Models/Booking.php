@@ -7,6 +7,7 @@ use App\Support\HotelSettings;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 #[ObservedBy(BookingObserver::class)]
 class Booking extends Model
@@ -20,7 +21,7 @@ class Booking extends Model
 
     protected $fillable = [
         'reference', 'room_id', 'room_name', 'guests', 'check_in', 'check_out', 'nights',
-        'amount', 'customer_name', 'customer_email', 'customer_phone',
+        'amount', 'vat', 'customer_name', 'customer_email', 'customer_phone',
         'id_document_type', 'id_document_number', 'id_document_public_id', 'id_document_url', 'identity_verified_at',
         'pickup_vehicle', 'pickup_price', 'pickup_passengers', 'pickup_location',
         'pickup_arrival_date', 'pickup_time', 'pickup_flight_number',
@@ -40,6 +41,7 @@ class Booking extends Model
         'identity_verified_at' => 'datetime',
         'checked_out_at' => 'datetime',
         'amount' => 'integer',
+        'vat' => 'integer',
         'nights' => 'integer',
         'guests' => 'integer',
         'pickup_passengers' => 'integer',
@@ -234,6 +236,18 @@ class Booking extends Model
     public function amountLabel(): string
     {
         return '₦'.number_format($this->amount);
+    }
+
+    /** VAT (7.5%) charged on top of the folio at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the folio amount plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->amount + (int) $this->vat);
     }
 
     /**
@@ -444,6 +458,8 @@ class Booking extends Model
     /** A departing guest for the reception dashboard's "Today's Departures" list. */
     public function toReceptionDepartureArray(): array
     {
+        $overdueDays = $this->overdueDays();
+
         return [
             'id' => $this->id,
             'reference' => $this->bookingCode(),
@@ -452,7 +468,42 @@ class Booking extends Model
             'date_label' => optional($this->check_out)->format('M j, Y'),
             'status' => $this->status,
             'status_label' => $this->statusLabel(),
+            'is_overdue' => $overdueDays > 0,
+            'overdue_label' => $overdueDays > 0
+                ? 'Overdue by '.$overdueDays.' '.Str::plural('day', $overdueDays)
+                : null,
         ];
+    }
+
+    /**
+     * A compact alert row for the reception dashboard's "Alerts" panel, mirroring
+     * SosAlert::toReceptionAlertArray() so an overdue checkout is pushed to the
+     * desk the same way an SOS incident is, not left as a passive list badge.
+     */
+    public function toReceptionAlertArray(): array
+    {
+        $overdueDays = $this->overdueDays();
+
+        return [
+            'id' => $this->id,
+            'type' => 'overdue_departure',
+            'title' => 'Overdue Checkout — '.$this->customer_name.' ('.$this->receptionRoomLabel().')',
+            'time_label' => 'Overdue by '.$overdueDays.' '.Str::plural('day', $overdueDays),
+            'severity' => $overdueDays >= 2 ? 'high' : 'medium',
+        ];
+    }
+
+    /**
+     * Days past checkout a still-checked-in guest is, or 0 when they are not
+     * overdue (checked out already, or their checkout date is today or later).
+     */
+    public function overdueDays(): int
+    {
+        if ($this->status !== 'checked_in' || ! $this->check_out) {
+            return 0;
+        }
+
+        return max(0, (int) $this->check_out->diffInDays(Carbon::today(), false));
     }
 
     /** "Brisa Residence · Room 201" — the room type plus the assigned unit. */

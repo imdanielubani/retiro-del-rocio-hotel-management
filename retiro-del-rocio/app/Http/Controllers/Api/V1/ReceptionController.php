@@ -27,8 +27,9 @@ class ReceptionController extends Controller
 {
     /**
      * GET /reception/overview — everything the dashboard renders in one call: the
-     * headline counters, today's arrivals still to be checked in, today's
-     * departures still to be checked out, open alerts and the room-status tally.
+     * headline counters, today's arrivals still to be checked in, departures due
+     * today or overdue (still checked in, whatever their checkout date), open
+     * alerts and the room-status tally.
      */
     public function overview(Request $request): JsonResponse
     {
@@ -47,9 +48,15 @@ class ReceptionController extends Controller
             ->orderBy('check_in')
             ->get();
 
+        // A checked-in guest never disappears from this list just because the
+        // calendar rolled past their checkout date — an overdue departure is
+        // still a departure the desk must act on, and often the more urgent one.
+        // Already-checked-out guests stay scoped to today, so the list doesn't
+        // balloon with all-time history.
         $departures = Booking::with('roomUnit')
-            ->whereDate('check_out', $today)
-            ->whereIn('status', ['checked_in', 'checked_out'])
+            ->where(fn ($q) => $q
+                ->where(fn ($q2) => $q2->where('status', 'checked_in')->whereDate('check_out', '<=', $today))
+                ->orWhere(fn ($q2) => $q2->where('status', 'checked_out')->whereDate('check_out', $today)))
             ->orderByRaw("CASE status WHEN 'checked_in' THEN 0 ELSE 1 END")
             ->orderBy('check_out')
             ->get();
@@ -63,6 +70,16 @@ class ReceptionController extends Controller
             ->latest('raised_at')
             ->limit(20)
             ->get();
+
+        // Overdue checkouts are pushed into the same Alerts panel as SOS, not
+        // left as a passive badge on the departures list — the desk shouldn't
+        // have to notice a stale date on their own. Reused straight off
+        // $departures (already the right rows, already sorted worst-first) so
+        // there's no extra query. SOS always sorts first — a real emergency
+        // outranks an operational reminder.
+        $overdueBookings = $departures->filter(
+            fn (Booking $booking) => $booking->status === 'checked_in' && $booking->overdueDays() > 0
+        );
 
         return response()->json(['data' => [
             'receptionist' => [
@@ -79,10 +96,17 @@ class ReceptionController extends Controller
                 // Visitors admitted at the gate today (verified passes).
                 'visitor_pass_check_ins' => VisitorPass::where('status', VisitorPass::VERIFIED)
                     ->whereDate('verified_at', $today)->count(),
+                // Still checked in with a checkout date already in the past —
+                // strictly before today, so a guest merely due out today isn't
+                // counted as overdue yet.
+                'overdue_departures' => Booking::where('status', 'checked_in')
+                    ->whereDate('check_out', '<', $today)->count(),
             ],
             'arrivals' => $arrivals->map->toReceptionArrivalArray()->values(),
             'departures' => $departures->map->toReceptionDepartureArray()->values(),
-            'alerts' => $incidents->map->toReceptionAlertArray()->values(),
+            'alerts' => $incidents->map->toReceptionAlertArray()
+                ->concat($overdueBookings->map->toReceptionAlertArray())
+                ->values(),
             'incidents' => $incidents->map->toSecurityArray()->values(),
             'room_status' => [
                 'occupied' => RoomUnit::where('status', 'occupied')->count(),
@@ -451,6 +475,7 @@ class ReceptionController extends Controller
             ->map(function ($group) {
                 $latest = $group->first(); // ordered newest-first
                 $stays = $group->whereIn('status', ['paid', 'checked_in', 'checked_out']);
+                $activeBooking = $group->firstWhere('status', 'checked_in');
 
                 return [
                     'key' => $latest->guestKey(),
@@ -459,7 +484,10 @@ class ReceptionController extends Controller
                     'phone' => $latest->customer_phone,
                     'stays' => $stays->count(),
                     'last_stay_label' => optional($latest->check_in)->format('M j, Y'),
-                    'in_house' => $group->contains(fn (Booking $b) => $b->status === 'checked_in'),
+                    'in_house' => $activeBooking !== null,
+                    // Lets the list check the guest out in one tap, no need to
+                    // open their profile first.
+                    'active_booking_id' => $activeBooking?->id,
                 ];
             })
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
@@ -491,6 +519,7 @@ class ReceptionController extends Controller
 
         $latest = $bookings->first();
         $stays = $bookings->whereIn('status', ['paid', 'checked_in', 'checked_out']);
+        $activeBooking = $bookings->firstWhere('status', 'checked_in');
 
         // Favourite room and usual party size are simply the most frequent ones.
         $favouriteRoom = $stays->groupBy('room_name')->map->count()->sortDesc()->keys()->first();
@@ -502,7 +531,11 @@ class ReceptionController extends Controller
             'name' => $latest->customer_name,
             'email' => $latest->customer_email,
             'phone' => $latest->customer_phone,
-            'in_house' => $bookings->contains(fn (Booking $b) => $b->status === 'checked_in'),
+            'in_house' => $activeBooking !== null,
+            // The booking to check out when the guest is in-house — lets the desk
+            // check them out from their profile even if their departure isn't
+            // "today" (an extended stay, or one due later that's leaving early).
+            'active_booking_id' => $activeBooking?->id,
             'stats' => [
                 'total_stays' => $stays->count(),
                 'total_nights' => (int) $stays->sum('nights'),

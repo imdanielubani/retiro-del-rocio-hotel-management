@@ -256,6 +256,10 @@
                             </template>
                         </div>
                     </template>
+                    <div class="flex items-center justify-between border-t border-white/15 pt-4 text-body text-white/80">
+                        <span>VAT (7.5%)</span>
+                        <span class="font-medium text-white" x-text="money(vat)"></span>
+                    </div>
                     <div class="flex items-center justify-between border-t border-white/15 pt-4">
                         <span class="text-body-lg font-medium text-[#f38c00]">TOTAL</span>
                         <span class="text-h3 font-semibold tracking-tight text-white" x-text="money(grandTotal)"></span>

@@ -18,6 +18,7 @@ class GuestTopBar extends StatelessWidget {
     required this.weather,
     required this.onNotifications,
     required this.onProfile,
+    this.hasUnreadNotifications = false,
   });
 
   final String suiteName;
@@ -26,6 +27,9 @@ class GuestTopBar extends StatelessWidget {
   final Weather? weather;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
+
+  /// Lights up the gold dot on the bell — real unread state, not decoration.
+  final bool hasUnreadNotifications;
 
   String get _initials {
     final parts = guestName.trim().split(RegExp(r'\s+'));
@@ -198,20 +202,21 @@ class GuestTopBar extends StatelessWidget {
               ),
             ),
           ),
-          const Positioned(
-            right: 6,
-            top: 5,
-            child: SizedBox(
-              width: 6,
-              height: 6,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.gold,
-                  shape: BoxShape.circle,
+          if (hasUnreadNotifications)
+            const Positioned(
+              right: 6,
+              top: 5,
+              child: SizedBox(
+                width: 6,
+                height: 6,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

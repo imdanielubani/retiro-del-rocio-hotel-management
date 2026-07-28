@@ -17,6 +17,14 @@ class Index extends Component
 {
     use WithPagination;
 
+    /**
+     * A room booking counts as paid revenue once its payment lands and stays so
+     * through the guest's whole stay: `paid` on arrival day, `checked_in` while
+     * in-house, `checked_out` afterwards. Filtering on `paid` alone dropped every
+     * guest the moment reception checked them in, zeroing the revenue cards.
+     */
+    private const PAID_BOOKING_STATUSES = ['paid', 'checked_in', 'checked_out'];
+
     public string $search = '';
 
     // Quick date filter: '' | today | 7d | 30d | month | last_month
@@ -62,6 +70,32 @@ class Index extends Component
         $this->resetPage();
     }
 
+    /**
+     * Constrain a room-booking query to the status the ledger should show. With
+     * no explicit filter (and for 'paid') it shows real payments — a booking is
+     * paid through its whole stay (paid → checked in → checked out). 'pending'
+     * and 'cancelled' are only shown when the admin asks for them, so cancelled
+     * and never-paid bookings don't inflate the revenue totals.
+     */
+    protected function applyRoomStatus($q): void
+    {
+        match ($this->status) {
+            'pending' => $q->where('status', 'pending'),
+            'cancelled' => $q->where('status', 'cancelled'),
+            default => $q->whereIn('status', self::PAID_BOOKING_STATUSES),
+        };
+    }
+
+    /** The same idea for the spa/gym/restaurant/cinema `payment_status` column. */
+    protected function applyPaymentStatus($q): void
+    {
+        match ($this->status) {
+            'pending' => $q->where('payment_status', 'pending'),
+            'cancelled' => $q->where('payment_status', 'refunded'),
+            default => $q->where('payment_status', 'paid'),
+        };
+    }
+
     // Room bookings, filtered. Date column = paid_at.
     protected function roomQuery()
     {
@@ -74,7 +108,7 @@ class Index extends Component
                 ->orWhere('customer_email', 'like', "%{$this->search}%")
                 ->orWhere('room_name', 'like', "%{$this->search}%")
                 ->orWhere('id', 'like', "%{$this->search}%")))
-            ->when($this->status, fn ($q) => $q->where('status', $this->status))
+            ->tap(fn ($q) => $this->applyRoomStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
             ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
             ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
@@ -94,17 +128,13 @@ class Index extends Component
     {
         $dateCol = 'paid_at';
 
-        // Map the shared status filter (paid|pending|cancelled) onto the spa
-        // payment_status (paid|pending|refunded) so both tables agree.
-        $statusMap = ['paid' => 'paid', 'pending' => 'pending', 'cancelled' => 'refunded'];
-
         return SpaBooking::query()
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('reference', 'like', "%{$this->search}%")
                 ->orWhere('customer_name', 'like', "%{$this->search}%")
                 ->orWhere('customer_email', 'like', "%{$this->search}%")
                 ->orWhere('id', 'like', "%{$this->search}%")))
-            ->when($this->status, fn ($q) => $q->where('payment_status', $statusMap[$this->status] ?? $this->status))
+            ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
             ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
             ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
@@ -124,8 +154,6 @@ class Index extends Component
     {
         $dateCol = 'paid_at';
 
-        $statusMap = ['paid' => 'paid', 'pending' => 'pending', 'cancelled' => 'refunded'];
-
         return GymMembership::query()
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('code', 'like', "%{$this->search}%")
@@ -133,7 +161,7 @@ class Index extends Component
                 ->orWhere('customer_email', 'like', "%{$this->search}%")
                 ->orWhere('plan_name', 'like', "%{$this->search}%")
                 ->orWhere('id', 'like', "%{$this->search}%")))
-            ->when($this->status, fn ($q) => $q->where('payment_status', $statusMap[$this->status] ?? $this->status))
+            ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
             ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
             ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
@@ -153,8 +181,6 @@ class Index extends Component
     {
         $dateCol = 'paid_at';
 
-        $statusMap = ['paid' => 'paid', 'pending' => 'pending', 'cancelled' => 'refunded'];
-
         return RestaurantReservation::query()
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('code', 'like', "%{$this->search}%")
@@ -162,7 +188,7 @@ class Index extends Component
                 ->orWhere('customer_email', 'like', "%{$this->search}%")
                 ->orWhere('table_label', 'like', "%{$this->search}%")
                 ->orWhere('id', 'like', "%{$this->search}%")))
-            ->when($this->status, fn ($q) => $q->where('payment_status', $statusMap[$this->status] ?? $this->status))
+            ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
             ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
             ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
@@ -182,8 +208,6 @@ class Index extends Component
     {
         $dateCol = 'paid_at';
 
-        $statusMap = ['paid' => 'paid', 'pending' => 'pending', 'cancelled' => 'refunded'];
-
         return CinemaBooking::query()
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('code', 'like', "%{$this->search}%")
@@ -191,7 +215,7 @@ class Index extends Component
                 ->orWhere('customer_email', 'like', "%{$this->search}%")
                 ->orWhere('movie_title', 'like', "%{$this->search}%")
                 ->orWhere('id', 'like', "%{$this->search}%")))
-            ->when($this->status, fn ($q) => $q->where('payment_status', $statusMap[$this->status] ?? $this->status))
+            ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
             ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
             ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
@@ -253,6 +277,70 @@ class Index extends Component
         };
     }
 
+    /**
+     * The date window the four headline cards report on — driven by the same
+     * Year / Month / Day / Custom Range / quick-range filters as the
+     * transaction table below, so picking a month scopes both together. With
+     * nothing selected it defaults to the current calendar month.
+     */
+    protected function statsBounds(): array
+    {
+        $now = Carbon::now();
+
+        if ($this->range) {
+            [$start, $end] = $this->rangeBounds();
+        } elseif ($this->from || $this->to) {
+            $start = $this->from ? Carbon::parse($this->from)->startOfDay() : Carbon::createFromDate(2000, 1, 1)->startOfDay();
+            $end = $this->to ? Carbon::parse($this->to)->endOfDay() : $now->copy()->endOfDay();
+        } elseif ($this->year && $this->month) {
+            $start = Carbon::createFromDate((int) $this->year, (int) $this->month, 1)->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+        } elseif ($this->year) {
+            $start = Carbon::createFromDate((int) $this->year, 1, 1)->startOfYear();
+            $end = $start->copy()->endOfYear();
+        } elseif ($this->month) {
+            $start = Carbon::createFromDate($now->year, (int) $this->month, 1)->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+        } else {
+            $start = $now->copy()->startOfMonth();
+            $end = $now->copy()->endOfMonth();
+        }
+
+        // A Day filter narrows a single-month window down to that exact date;
+        // it's ignored otherwise (e.g. "every 15th ever" isn't a real period).
+        if ($this->day && $start->isSameMonth($end)) {
+            $onDay = $start->copy()->day(min((int) $this->day, $start->daysInMonth));
+            $start = $onDay->copy()->startOfDay();
+            $end = $onDay->copy()->endOfDay();
+        }
+
+        return [$start, $end];
+    }
+
+    /** "July 2026" / "2026" / "Today" / "Jul 1 – Jul 15, 2026" — for the card headers. */
+    protected function statsPeriodLabel(array $bounds): string
+    {
+        if (in_array($this->range, ['today', '7d', '30d'], true)) {
+            return match ($this->range) {
+                'today' => 'Today',
+                '7d' => 'Last 7 Days',
+                '30d' => 'Last 30 Days',
+            };
+        }
+
+        [$start, $end] = $bounds;
+
+        if ($start->isSameDay($start->copy()->startOfYear()) && $end->isSameDay($end->copy()->endOfYear())) {
+            return $start->format('Y');
+        }
+
+        if ($start->isSameMonth($end) && $start->isSameDay($start->copy()->startOfMonth()) && $end->isSameDay($end->copy()->endOfMonth())) {
+            return $start->format('F Y');
+        }
+
+        return $start->format('M j, Y').' – '.$end->format('M j, Y');
+    }
+
     // ₦4.2M / ₦622,000 style.
     protected function naira(int $n): string
     {
@@ -266,75 +354,127 @@ class Index extends Component
     public function render()
     {
         $now = Carbon::now();
-        $monthStart = $now->copy()->startOfMonth();
-        $monthEnd = $now->copy()->endOfMonth();
-        $lastStart = $now->copy()->subMonthNoOverflow()->startOfMonth();
-        $lastEnd = $now->copy()->subMonthNoOverflow()->endOfMonth();
 
-        // ---- Stat cards (room + spa combined) ----
-        $monthRevenue = (int) Booking::where('status', 'paid')->whereBetween('paid_at', [$monthStart, $monthEnd])->sum('amount')
-            + (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$monthStart, $monthEnd])->sum('total')
-            + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$monthStart, $monthEnd])->sum('price')
-            + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$monthStart, $monthEnd])->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$monthStart, $monthEnd])->sum('amount');
+        // ---- The window every headline card reports on — the same Year /
+        // Month / Day / Custom Range / quick-range filters used below, so
+        // picking "July" scopes the cards and the transaction table together.
+        [$periodStart, $periodEnd] = $this->statsBounds();
+        $periodLabel = $this->statsPeriodLabel([$periodStart, $periodEnd]);
 
-        $lastMonthRevenue = (int) Booking::where('status', 'paid')->whereBetween('paid_at', [$lastStart, $lastEnd])->sum('amount')
-            + (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$lastStart, $lastEnd])->sum('total')
-            + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$lastStart, $lastEnd])->sum('price')
-            + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$lastStart, $lastEnd])->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$lastStart, $lastEnd])->sum('amount');
+        // The equal-length window immediately before it, for the "vs previous
+        // period" comparison — works for a month, a year, a custom range, etc.
+        $periodSeconds = $periodStart->diffInSeconds($periodEnd) + 1;
+        $prevEnd = $periodStart->copy()->subSecond();
+        $prevStart = $prevEnd->copy()->subSeconds($periodSeconds - 1);
 
-        $revenueDelta = $lastMonthRevenue > 0
-            ? (int) round((($monthRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100)
-            : ($monthRevenue > 0 ? 100 : 0);
+        // ---- Revenue by department (selected period) — the headline card and the breakdown ----
+        $periodByDept = [
+            'Rooms' => (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
+            'Spa' => (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('total'),
+            'Gym' => (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('price'),
+            'Restaurant' => (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('fee'),
+            'Cinema' => (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
+        ];
+        $periodRevenue = array_sum($periodByDept);
 
-        $totalTransactions = Booking::count() + SpaBooking::count() + GymMembership::count() + RestaurantReservation::count() + CinemaBooking::count();
+        // VAT (7.5%) collected in the selected period — tracked separately from revenue.
+        $vatCollected = (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat');
 
-        $pendingAmount = (int) Booking::where('status', 'pending')->sum('amount')
-            + (int) SpaBooking::where('payment_status', 'pending')->sum('total')
-            + (int) GymMembership::where('payment_status', 'pending')->sum('price')
-            + (int) RestaurantReservation::where('payment_status', 'pending')->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'pending')->sum('amount');
-        $pendingCount = Booking::where('status', 'pending')->count()
-            + SpaBooking::where('payment_status', 'pending')->count()
-            + GymMembership::where('payment_status', 'pending')->count()
-            + RestaurantReservation::where('payment_status', 'pending')->count()
-            + CinemaBooking::where('payment_status', 'pending')->count();
+        $prevRevenue = (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount')
+            + (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('total')
+            + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('price')
+            + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('fee')
+            + (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount');
 
-        $refundsAmount = (int) Booking::where('status', 'cancelled')->sum('amount')
-            + (int) SpaBooking::where('payment_status', 'refunded')->sum('total')
-            + (int) GymMembership::where('payment_status', 'refunded')->sum('price')
-            + (int) RestaurantReservation::where('payment_status', 'refunded')->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'refunded')->sum('amount');
-        $refundsThisMonth = Booking::where('status', 'cancelled')->whereBetween('updated_at', [$monthStart, $monthEnd])->count()
-            + SpaBooking::where('payment_status', 'refunded')->whereBetween('updated_at', [$monthStart, $monthEnd])->count()
-            + GymMembership::where('payment_status', 'refunded')->whereBetween('updated_at', [$monthStart, $monthEnd])->count()
-            + RestaurantReservation::where('payment_status', 'refunded')->whereBetween('updated_at', [$monthStart, $monthEnd])->count()
-            + CinemaBooking::where('payment_status', 'refunded')->whereBetween('updated_at', [$monthStart, $monthEnd])->count();
+        $revenueDelta = $prevRevenue > 0
+            ? (int) round((($periodRevenue - $prevRevenue) / $prevRevenue) * 100)
+            : ($periodRevenue > 0 ? 100 : 0);
+
+        // A calendar month gets a friendly "from Jun" comparison; anything else
+        // (a year, a custom range, a quick filter) reads as "vs previous period".
+        $isCalendarMonth = $periodStart->isSameMonth($periodEnd)
+            && $periodStart->isSameDay($periodStart->copy()->startOfMonth())
+            && $periodEnd->isSameDay($periodEnd->copy()->endOfMonth());
+        $revenueDeltaLabel = $isCalendarMonth
+            ? 'from '.$prevStart->format('M')
+            : 'vs previous period';
+
+        $deptColors = ['Rooms' => '#f38c00', 'Spa' => '#7c3aed', 'Gym' => '#c2620a', 'Restaurant' => '#b91c1c', 'Cinema' => '#a16207'];
+        $departments = collect($periodByDept)
+            ->map(fn (int $amt, string $label) => [
+                'label' => $label,
+                'value' => $this->naira($amt),
+                'pct' => $periodRevenue > 0 ? (int) round($amt / $periodRevenue * 100) : 0,
+                'color' => $deptColors[$label],
+            ])
+            ->sortByDesc(fn ($d) => $d['pct'])
+            ->values()
+            ->all();
+
+        // Total transactions = successful payments in the period (pending/cancelled excluded).
+        $totalTransactions = Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->count();
+
+        // Pending has no paid_at yet, so it's scoped by when it was initiated.
+        $pendingAmount = (int) Booking::where('status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount')
+            + (int) SpaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total')
+            + (int) GymMembership::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('price')
+            + (int) RestaurantReservation::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('fee')
+            + (int) CinemaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount');
+        $pendingCount = Booking::where('status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
+            + SpaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
+            + GymMembership::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
+            + RestaurantReservation::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
+            + CinemaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count();
+
+        // Refunds = money actually returned. For rooms that is the completed
+        // refund_amount, not the full value of every cancelled booking (many
+        // cancellations are never refunded, or only refunded in part). There's
+        // no dedicated "refunded at" column, so `updated_at` is the best proxy
+        // for when the refund was processed.
+        $refundsAmount = (int) Booking::where('refund_status', 'completed')->whereBetween('updated_at', [$periodStart, $periodEnd])->sum('refund_amount')
+            + (int) SpaBooking::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->sum('total')
+            + (int) GymMembership::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->sum('price')
+            + (int) RestaurantReservation::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->sum('fee')
+            + (int) CinemaBooking::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->sum('amount');
+        $refundsCount = Booking::where('refund_status', 'completed')->whereBetween('updated_at', [$periodStart, $periodEnd])->count()
+            + SpaBooking::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->count()
+            + GymMembership::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->count()
+            + RestaurantReservation::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->count()
+            + CinemaBooking::where('payment_status', 'refunded')->whereBetween('updated_at', [$periodStart, $periodEnd])->count();
 
         $stats = [
             'revenue' => [
-                'label' => 'Monthly Revenue',
-                'value' => $this->naira($monthRevenue),
-                'sub' => ($revenueDelta >= 0 ? '↑ ' : '↓ ').abs($revenueDelta).'% from '.$now->copy()->subMonthNoOverflow()->format('M'),
+                'label' => $periodLabel.' Revenue',
+                'value' => $this->naira($periodRevenue),
+                'sub' => ($revenueDelta >= 0 ? '↑ ' : '↓ ').abs($revenueDelta).'% '.$revenueDeltaLabel,
                 'accent' => '#f38c00',
             ],
             'transactions' => [
                 'label' => 'Total Transactions',
                 'value' => number_format($totalTransactions),
-                'sub' => $now->format('F Y'),
+                'sub' => 'Successful payments · '.$periodLabel,
                 'accent' => '#16a34a',
             ],
             'pending' => [
                 'label' => 'Pending Payments',
                 'value' => $this->naira($pendingAmount),
-                'sub' => $pendingCount.' transaction'.($pendingCount === 1 ? '' : 's'),
+                'sub' => $pendingCount.' transaction'.($pendingCount === 1 ? '' : 's').' · '.$periodLabel,
                 'accent' => '#d97706',
             ],
             'refunds' => [
                 'label' => 'Refunds Issued',
                 'value' => $this->naira($refundsAmount),
-                'sub' => $refundsThisMonth.' this month',
+                'sub' => $refundsCount.' · '.$periodLabel,
                 'accent' => '#dc2626',
             ],
         ];
@@ -395,6 +535,10 @@ class Index extends Component
         return view('admin.payment.index', [
             'transactions' => $transactions,
             'stats' => $stats,
+            'departments' => $departments,
+            'periodLabel' => $periodLabel,
+            'monthRevenueLabel' => $this->naira($periodRevenue),
+            'vatCollectedLabel' => $this->naira($vatCollected),
             'summaryCount' => $summaryCount,
             'summaryAmount' => '₦'.number_format($summaryAmount),
             'hasFilters' => $hasFilters,

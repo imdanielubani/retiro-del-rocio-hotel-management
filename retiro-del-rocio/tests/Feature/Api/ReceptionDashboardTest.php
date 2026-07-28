@@ -153,6 +153,7 @@ class ReceptionDashboardTest extends TestCase
             ->assertJsonPath('data.stats.check_ins_today', 0)
             ->assertJsonPath('data.stats.check_outs_today', 0)
             ->assertJsonPath('data.stats.visitor_pass_check_ins', 1)
+            ->assertJsonPath('data.stats.overdue_departures', 0)
             ->assertJsonCount(1, 'data.arrivals')
             ->assertJsonPath('data.arrivals.0.guest_name', 'Ada Lovelace')
             ->assertJsonPath('data.arrivals.0.room_label', 'Brisa Residence · Room 201')
@@ -160,9 +161,106 @@ class ReceptionDashboardTest extends TestCase
             ->assertJsonPath('data.departures.0.guest_name', 'Grace Hopper')
             ->assertJsonCount(1, 'data.alerts')
             ->assertJsonPath('data.alerts.0.severity', 'high')
+            ->assertJsonPath('data.alerts.0.type', 'sos')
             ->assertJsonPath('data.room_status.occupied', 1)
             ->assertJsonPath('data.room_status.dirty', 0)
             ->assertJsonPath('data.room_status.maintenance', 1);
+    }
+
+    public function test_an_overdue_checked_in_guest_still_appears_in_departures(): void
+    {
+        // Checked in 5 nights ago, was due to leave 2 days ago, never checked out.
+        $unit = $this->unit('204', 'occupied');
+        $this->booking([
+            'customer_name' => 'Overdue Olu',
+            'room_unit_id' => $unit->id,
+            'check_in' => today()->subDays(5)->toDateString(),
+            'check_out' => today()->subDays(2)->toDateString(),
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDays(5),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.departures')
+            ->assertJsonPath('data.departures.0.guest_name', 'Overdue Olu')
+            ->assertJsonPath('data.departures.0.is_overdue', true)
+            ->assertJsonPath('data.departures.0.overdue_label', 'Overdue by 2 days')
+            ->assertJsonPath('data.stats.overdue_departures', 1)
+            // The overdue checkout is also pushed into the Alerts panel, the
+            // same way an SOS incident is — not left as a passive list badge.
+            ->assertJsonCount(1, 'data.alerts')
+            ->assertJsonPath('data.alerts.0.type', 'overdue_departure')
+            ->assertJsonPath('data.alerts.0.severity', 'high')
+            ->assertJsonPath('data.alerts.0.title', 'Overdue Checkout — Overdue Olu (Brisa Residence · Room 204)')
+            ->assertJsonPath('data.alerts.0.time_label', 'Overdue by 2 days');
+    }
+
+    public function test_an_sos_alert_sorts_before_an_overdue_departure_alert(): void
+    {
+        $unit = $this->unit('207', 'occupied');
+        $this->booking([
+            'customer_name' => 'Overdue Olu',
+            'room_unit_id' => $unit->id,
+            'check_in' => today()->subDays(5)->toDateString(),
+            'check_out' => today()->subDays(2)->toDateString(),
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDays(5),
+        ]);
+
+        SosAlert::create([
+            'room_number' => '104',
+            'status' => SosAlert::ACTIVE,
+            'raised_at' => now()->subMinutes(5),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.alerts')
+            ->assertJsonPath('data.alerts.0.type', 'sos')
+            ->assertJsonPath('data.alerts.1.type', 'overdue_departure');
+    }
+
+    public function test_a_guest_departing_today_is_not_flagged_overdue(): void
+    {
+        $unit = $this->unit('205', 'occupied');
+        $this->booking([
+            'customer_name' => 'On Time Tade',
+            'room_unit_id' => $unit->id,
+            'check_in' => today()->subDays(2)->toDateString(),
+            'check_out' => today()->toDateString(),
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDays(2),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.departures')
+            ->assertJsonPath('data.departures.0.is_overdue', false)
+            ->assertJsonPath('data.departures.0.overdue_label', null)
+            // Due today is not overdue yet — the stat must not count it.
+            ->assertJsonPath('data.stats.overdue_departures', 0);
+    }
+
+    public function test_a_guest_not_due_to_leave_yet_does_not_appear_in_departures(): void
+    {
+        $unit = $this->unit('206', 'occupied');
+        $this->booking([
+            'customer_name' => 'Future Fola',
+            'room_unit_id' => $unit->id,
+            'check_in' => today()->toDateString(),
+            'check_out' => today()->addDays(3)->toDateString(),
+            'status' => 'checked_in',
+            'checked_in_at' => now(),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.departures');
     }
 
     public function test_checking_a_guest_in_occupies_the_room_and_records_the_arrival(): void

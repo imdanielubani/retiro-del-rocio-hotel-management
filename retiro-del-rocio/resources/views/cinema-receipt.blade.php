@@ -45,7 +45,9 @@
                 @if ($b->snacksLabel() !== '—')<tr><td class="k">Snacks</td><td class="v">{{ $b->snacksLabel() }}</td></tr>@endif
                 <tr><td class="k">Payment method</td><td class="v">{{ $b->methodLabel() }}</td></tr>
                 @if ($b->reference)<tr><td class="k">Reference</td><td class="v">{{ $b->reference }}</td></tr>@endif
-                <tr class="total"><td class="k">Total paid</td><td class="v">{{ $b->amountLabel() }}</td></tr>
+                <tr><td class="k">Subtotal</td><td class="v">{{ $b->amountLabel() }}</td></tr>
+                <tr><td class="k">VAT (7.5%)</td><td class="v">{{ $b->vatLabel() }}</td></tr>
+                <tr class="total"><td class="k">Total paid</td><td class="v">{{ $b->totalWithVatLabel() }}</td></tr>
             </table>
             <div class="noprint" style="text-align:center;">
                 <button class="print" onclick="window.print()">Download / Print Ticket</button>

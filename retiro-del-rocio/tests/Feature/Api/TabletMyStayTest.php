@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\GenerateTtlockAccess;
 use App\Jobs\SendStayExtensionReceipt;
+use App\Mail\StayExtensionReceipt;
 use App\Models\Booking;
 use App\Models\Device;
 use App\Models\DeviceType;
@@ -13,6 +15,7 @@ use App\Models\VisitorPass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -227,8 +230,32 @@ class TabletMyStayTest extends TestCase
         $this->assertNotNull($payment->paid_at);
         $this->assertSame('card', $payment->payment_method);
 
-        // The guest is emailed their receipt off the request path.
-        Bus::assertDispatchedAfterResponse(SendStayExtensionReceipt::class);
+        // The guest is emailed their receipt inline (not after-response, so a
+        // failing gate-code re-issue can't skip it).
+        Bus::assertDispatchedSync(SendStayExtensionReceipt::class);
+    }
+
+    public function test_the_receipt_is_emailed_even_when_the_gate_reissue_would_fail(): void
+    {
+        // Reproduces the bug: moving the checkout queues a gate-code re-issue that
+        // can throw (offline lock). Stub only that job so it "runs"; the receipt
+        // must still reach the guest because it now sends inline, not after-response.
+        Bus::fake([GenerateTtlockAccess::class]);
+        Mail::fake();
+        $this->fakePaystack();
+        $this->booking->update(['customer_email' => 'guest@example.test']);
+
+        $newCheckout = now()->addDays(6)->toDateString();
+        $reference = $this->initExtension($newCheckout)['reference'];
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/extend-stay', ['check_out' => $newCheckout, 'reference' => $reference])
+            ->assertOk();
+
+        Mail::assertSent(
+            StayExtensionReceipt::class,
+            fn (StayExtensionReceipt $m) => $m->hasTo('guest@example.test'),
+        );
     }
 
     public function test_verifying_the_same_reference_twice_is_idempotent(): void
@@ -244,7 +271,7 @@ class TabletMyStayTest extends TestCase
         // The extension was applied exactly once.
         $this->assertSame(7, (int) $this->booking->fresh()->nights);
         // And the receipt emailed exactly once, not on the repeated verify.
-        Bus::assertDispatchedAfterResponseTimes(SendStayExtensionReceipt::class, 1);
+        Bus::assertDispatchedSyncTimes(SendStayExtensionReceipt::class, 1);
     }
 
     public function test_extension_is_not_applied_when_the_payment_did_not_succeed(): void
@@ -269,7 +296,7 @@ class TabletMyStayTest extends TestCase
 
         $this->assertSame(5, (int) $this->booking->fresh()->nights);
         // No charge, no receipt.
-        Bus::assertNotDispatchedAfterResponse(SendStayExtensionReceipt::class);
+        Bus::assertNotDispatchedSync(SendStayExtensionReceipt::class);
     }
 
     public function test_a_new_checkout_before_the_current_one_is_rejected(): void

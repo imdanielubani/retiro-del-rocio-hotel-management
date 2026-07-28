@@ -101,10 +101,23 @@ class ReceptionAvatar extends StatelessWidget {
 
 /// One guest in the Guests list — avatar, name, contact and a stays/in-house tag.
 class ReceptionGuestCard extends StatelessWidget {
-  const ReceptionGuestCard({super.key, required this.guest, required this.onTap});
+  const ReceptionGuestCard({
+    super.key,
+    required this.guest,
+    required this.onTap,
+    this.onCheckOut,
+    this.checkingOut = false,
+  });
 
   final ReceptionGuestSummary guest;
   final VoidCallback onTap;
+
+  /// Checks this guest out in one tap, without opening their profile — only
+  /// shown when [ReceptionGuestSummary.inHouse] is true.
+  final VoidCallback? onCheckOut;
+
+  /// True while this card's check-out request is in flight.
+  final bool checkingOut;
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +203,41 @@ class ReceptionGuestCard extends StatelessWidget {
                   ),
                 ],
               ),
+              if (guest.inHouse && onCheckOut != null) ...[
+                const SizedBox(width: 10),
+                _checkOutButton(),
+              ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _checkOutButton() {
+    return Tooltip(
+      message: 'Check Out',
+      child: Material(
+        color: kReceptionRed.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: checkingOut ? null : onCheckOut,
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Center(
+              child: checkingOut
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: kReceptionRed,
+                      ),
+                    )
+                  : Icon(Icons.logout_rounded, size: 18, color: kReceptionRed),
+            ),
           ),
         ),
       ),
@@ -442,8 +489,11 @@ class ReceptionBookingCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (booking.originLabel != null)
+              if (booking.originLabel != null) ...[
                 receptionOriginBadge(booking.originLabel!),
+                const SizedBox(width: 6),
+              ],
+              if (booking.isOverdue) _overdueBadge(),
               const Spacer(),
               Text(
                 booking.reference,
@@ -479,14 +529,44 @@ class ReceptionBookingCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            booking.dateLabel,
+            booking.isOverdue && booking.overdueLabel != null
+                ? '${booking.dateLabel} · ${booking.overdueLabel}'
+                : booking.dateLabel,
             style: AppTypography.style(
-              color: Colors.white.withValues(alpha: 0.35),
+              color: booking.isOverdue
+                  ? kReceptionRed.withValues(alpha: 0.85)
+                  : Colors.white.withValues(alpha: 0.35),
               fontSize: 12,
+              fontWeight: booking.isOverdue ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
           const SizedBox(height: 14),
           _footer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _overdueBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: kReceptionRed.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_rounded, size: 11, color: kReceptionRed),
+          const SizedBox(width: 4),
+          Text(
+            'Overdue',
+            style: AppTypography.style(
+              color: kReceptionRed,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -497,7 +577,14 @@ class ReceptionBookingCard extends StatelessWidget {
       case 'paid':
         return _button('Check In', filled: true, onTap: onCheckIn);
       case 'checked_in':
-        return _button('Check Out', filled: false, onTap: onCheckOut);
+        // Overdue checkouts are the more urgent action — a filled red button
+        // makes it visually stand out on the departures list.
+        return _button(
+          'Check Out',
+          filled: booking.isOverdue,
+          filledColor: kReceptionRed,
+          onTap: onCheckOut,
+        );
       default:
         // Checked out or otherwise closed — nothing left for the desk to do.
         return Align(
@@ -510,9 +597,20 @@ class ReceptionBookingCard extends StatelessWidget {
     }
   }
 
-  Widget _button(String label, {required bool filled, required VoidCallback? onTap}) {
-    final bg = filled ? AppColors.gold : Colors.white.withValues(alpha: 0.08);
-    final fg = filled ? Colors.black : Colors.white;
+  Widget _button(
+    String label, {
+    required bool filled,
+    required VoidCallback? onTap,
+    Color? filledColor,
+  }) {
+    final bg = filled
+        ? (filledColor ?? AppColors.gold)
+        : Colors.white.withValues(alpha: 0.08);
+    // Gold pairs with black text (matches every other gold button in the app);
+    // any other filled colour (e.g. the overdue red) reads better with white.
+    final fg = !filled
+        ? Colors.white
+        : (filledColor == null ? Colors.black : Colors.white);
 
     return SizedBox(
       width: double.infinity,

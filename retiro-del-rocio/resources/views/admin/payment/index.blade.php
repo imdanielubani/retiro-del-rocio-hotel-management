@@ -24,6 +24,34 @@
         @endforeach
     </div>
 
+    {{-- ===== Revenue by department (this month) ===== --}}
+    <div class="rounded-2xl border border-[#e5e7eb] bg-white px-5 py-4">
+        <div class="flex items-center justify-between">
+            <p class="text-[13px] font-semibold text-[#1e1e1e]">Revenue by Department</p>
+            <p class="text-[11px] text-[#6b7280]">{{ $periodLabel }} · Revenue <span class="font-bold text-[#1e1e1e]">{{ $monthRevenueLabel }}</span> · VAT (7.5%) <span class="font-bold text-[#16a34a]">{{ $vatCollectedLabel }}</span></p>
+        </div>
+        {{-- Proportional bar --}}
+        <div class="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-[#f1f1ee]">
+            @foreach ($departments as $d)
+                @if ($d['pct'] > 0)
+                    <div class="h-full" style="width: {{ $d['pct'] }}%; background: {{ $d['color'] }}" title="{{ $d['label'] }} · {{ $d['value'] }}"></div>
+                @endif
+            @endforeach
+        </div>
+        {{-- Legend --}}
+        <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 xl:grid-cols-5">
+            @foreach ($departments as $d)
+                <div class="flex items-center gap-2">
+                    <span class="size-2.5 shrink-0 rounded-full" style="background: {{ $d['color'] }}"></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[12px] font-medium text-[#1e1e1e]">{{ $d['label'] }}</p>
+                        <p class="text-[11px] text-[#6b7280]">{{ $d['value'] }} · {{ $d['pct'] }}%</p>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
     {{-- ===== Filter bar ===== --}}
     <div class="flex flex-col gap-3 rounded-2xl border border-[#e5e7eb] bg-white px-5 py-4">
         <div class="flex flex-wrap items-center gap-3">

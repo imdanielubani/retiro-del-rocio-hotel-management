@@ -197,7 +197,12 @@ class ReceptionActions {
 
   Future<void> checkOut(int bookingId) async {
     await _ref.read(receptionRepositoryProvider).checkOut(_token, bookingId);
+    // Checking out moves the room to "available" and drops the guest's
+    // in-house flag, so every list that shows either must refresh — not just
+    // the dashboard (a checkout can be triggered from the guest profile too).
     _ref.invalidate(receptionOverviewProvider(_token));
+    _ref.invalidate(receptionGuestsProvider(_token));
+    _ref.invalidate(receptionBookingsProvider(_token));
   }
 
   /// Acknowledge an SOS incident (help is on the way), then refresh the overview

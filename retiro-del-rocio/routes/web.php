@@ -2,29 +2,51 @@
 
 use App\Events\BookingConfirmed;
 use App\Http\Controllers\Admin\Auth\LogoutController;
+use App\Livewire\Admin\Access\Roles;
+use App\Livewire\Admin\Access\Users;
 use App\Livewire\Admin\Auth\ForgotPassword;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\Auth\ResetSuccess;
 use App\Livewire\Admin\Auth\SetNewPassword;
 use App\Livewire\Admin\Auth\VerifyCode;
+use App\Livewire\Admin\Bookings\Show;
+use App\Livewire\Admin\Cinema\Movies;
+use App\Livewire\Admin\Cinema\Snacks;
+use App\Livewire\Admin\Devices\Dashboard;
+use App\Livewire\Admin\Devices\SmartTvs;
+use App\Livewire\Admin\Devices\Tablets;
+use App\Livewire\Admin\Gym\Memberships;
+use App\Livewire\Admin\Gym\Plans;
+use App\Livewire\Admin\Restaurant\Lounge;
+use App\Livewire\Admin\Restaurant\Reservations;
+use App\Livewire\Admin\Restaurant\Tables;
+use App\Livewire\Admin\Rooms\Calendar;
 use App\Livewire\Admin\Rooms\Edit;
 use App\Livewire\Admin\Rooms\Index;
+use App\Livewire\Admin\Security\Incidents;
+use App\Livewire\Admin\Security\VisitorAccessLog;
+use App\Livewire\Admin\Security\VisitorPasses;
+use App\Livewire\Admin\Spa\Services;
+use App\Livewire\Admin\Ttlock\Locks;
+use App\Livewire\Admin\Vehicles\Bookings;
+use App\Livewire\Admin\Vehicles\Drivers;
 use App\Mail\BookingRequest;
 use App\Mail\BookingReservation;
+use App\Mail\CinemaBookingCancelled;
+use App\Mail\CinemaBookingConfirmation;
 use App\Mail\ContactAcknowledgement;
 use App\Mail\ContactEnquiry;
 use App\Mail\GymMembershipConfirmation;
 use App\Mail\PickupConfirmation;
+use App\Mail\RestaurantReservationConfirmation;
 use App\Mail\SpaReservation;
 use App\Models\Booking;
-use App\Mail\CinemaBookingConfirmation;
-use App\Mail\RestaurantReservationConfirmation;
 use App\Models\CinemaBooking;
 use App\Models\CinemaSeatHold;
 use App\Models\CinemaSnack;
+use App\Models\ContactMessage;
 use App\Models\GymMembership;
 use App\Models\GymPlan;
-use App\Models\ContactMessage;
 use App\Models\Movie;
 use App\Models\RestaurantReservation;
 use App\Models\RestaurantTable;
@@ -38,10 +60,11 @@ use App\Notifications\GymMembershipReceived;
 use App\Notifications\MessageReceived;
 use App\Notifications\RestaurantReservationReceived;
 use App\Notifications\SpaBookingReceived;
-use Illuminate\Support\Facades\Notification;
+use App\Support\Vat;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 
@@ -80,6 +103,19 @@ Route::get('rooms-apartment/{room:slug}/availability', function (Room $room) {
     ]);
 })->name('rooms.availability');
 
+/**
+ * Every Paystack callback below verifies the transaction succeeded, then must
+ * also confirm the amount Paystack actually charged (`data.amount`, in kobo —
+ * sourced from Paystack, not the client) matches what the server priced the
+ * item at. Without this, a tampered client could send a manipulated amount to
+ * Paystack's checkout widget (e.g. pay ₦100 for a ₦50,000 membership) and the
+ * server would still record the booking as fully paid, since only the payment
+ * *status* was being checked, never the *amount*.
+ */
+$paidAmountMatches = function (array $body, int $expectedKobo): bool {
+    return (int) data_get($body, 'data.amount') === $expectedKobo;
+};
+
 /*
 |--------------------------------------------------------------------------
 | Checkout flow (Paystack)
@@ -99,7 +135,10 @@ $buildBooking = function (array $b): array {
     $roomSubtotal = $pricePerNight * $nights;
     $pickupPrice = ! empty($b['pickup_price']) ? (int) preg_replace('/[^0-9]/', '', $b['pickup_price']) : 0;
     $subtotal = $roomSubtotal + $pickupPrice;
-    $total = $subtotal;
+    // VAT (7.5%) is added on top at payment time and remitted — it is not room
+    // revenue, so the folio keeps the subtotal and VAT is tracked separately.
+    $vat = Vat::on($subtotal);
+    $total = $subtotal + $vat;
     $naira = fn ($n) => '₦'.number_format($n);
 
     if ($checkIn->isSameMonth($checkOut) && $checkIn->year === $checkOut->year) {
@@ -126,6 +165,11 @@ $buildBooking = function (array $b): array {
         'pickup_time' => $b['pickup_time'] ?? null,
         'flight_number' => $b['flight_number'] ?? null,
         'room_subtotal_label' => $naira($roomSubtotal),
+        'subtotal' => $subtotal,
+        'subtotal_label' => $naira($subtotal),
+        'vat' => $vat,
+        'vat_label' => $naira($vat),
+        'vat_rate_label' => Vat::rateLabel(),
         'total' => $total,
         'total_label' => $naira($total),
         'total_kobo' => $total * 100,
@@ -181,7 +225,7 @@ Route::get('checkout', function () {
 })->name('checkout');
 
 // Step 3 — Paystack redirects/JS sends the user here after payment to verify.
-Route::get('checkout/callback', function () {
+Route::get('checkout/callback', function () use ($paidAmountMatches) {
     $reference = request('reference');
     $booking = session('booking');
 
@@ -202,6 +246,15 @@ Route::get('checkout/callback', function () {
             return redirect()->route('checkout')->with('toast', [
                 'type' => 'error',
                 'message' => 'We could not verify your payment. If you were charged, please contact us with your reference: '.$reference,
+            ]);
+        }
+
+        if (! $paidAmountMatches($body, (int) ($booking['total_kobo'] ?? 0))) {
+            report(new RuntimeException("Paystack amount mismatch for {$reference}: expected {$booking['total_kobo']} kobo, got ".data_get($body, 'data.amount').' kobo'));
+
+            return redirect()->route('checkout')->with('toast', [
+                'type' => 'error',
+                'message' => 'The amount charged did not match your booking total. Please contact us with your reference: '.$reference,
             ]);
         }
     } catch (Throwable $e) {
@@ -239,7 +292,9 @@ Route::get('checkout/callback', function () {
                 'check_in' => $order['check_in'] ?? null,
                 'check_out' => $order['check_out'] ?? null,
                 'nights' => (int) ($order['nights'] ?? 1),
-                'amount' => (int) ($order['total'] ?? 0),
+                // Folio holds the net charge; VAT is stored on its own line.
+                'amount' => (int) ($order['subtotal'] ?? $order['total'] ?? 0),
+                'vat' => (int) ($order['vat'] ?? 0),
                 'customer_name' => $order['customer_name'] ?? null,
                 'customer_email' => $order['customer_email'] ?? null,
                 'customer_phone' => $order['customer_phone'] ?? null,
@@ -375,7 +430,8 @@ $buildSpaBooking = function (array $data): array {
         ])->values()->all();
 
     $subtotal = collect($services)->sum('subtotal');
-    $total = $subtotal;
+    $vat = Vat::on($subtotal);
+    $total = $subtotal + $vat;
     $date = ! empty($data['date']) ? Carbon::parse($data['date']) : null;
 
     // Format the chosen time to 12-hour with AM/PM, e.g. "15:00" -> "3:00 PM".
@@ -399,6 +455,9 @@ $buildSpaBooking = function (array $data): array {
         'special_request' => $data['special_request'] ?? null,
         'subtotal' => $subtotal,
         'subtotal_label' => $naira($subtotal),
+        'vat' => $vat,
+        'vat_label' => $naira($vat),
+        'vat_rate_label' => Vat::rateLabel(),
         'total' => $total,
         'total_label' => $naira($total),
         'total_kobo' => $total * 100,
@@ -428,15 +487,23 @@ Route::post('spa-wellness/reserve', function () use ($buildSpaBooking) {
     return redirect()->route('spa');
 })->name('spa.checkout.start');
 
-// Clear an in-progress booking (e.g. "Edit selection" / start over).
+// Clear an in-progress booking (e.g. "Edit selection" / start over, or the
+// guest dismissing the checkout popup — see spaReservation.close() in app.js,
+// which fires this in the background so a stale booking can't reopen checkout
+// on a later page load). JSON for that background call; a redirect for any
+// direct visit.
 Route::get('spa-wellness/reset', function () {
     session()->forget(['spa_booking', 'spa_order']);
+
+    if (request()->wantsJson()) {
+        return response()->json(['ok' => true]);
+    }
 
     return redirect()->route('spa');
 })->name('spa.checkout.reset');
 
 // Step 3 — Paystack verification + persist the spa booking.
-Route::get('spa-wellness/callback', function () {
+Route::get('spa-wellness/callback', function () use ($paidAmountMatches) {
     $reference = request('reference');
     $booking = session('spa_booking');
 
@@ -455,6 +522,15 @@ Route::get('spa-wellness/callback', function () {
             return redirect()->route('spa')->with('toast', [
                 'type' => 'error',
                 'message' => 'We could not verify your payment. If you were charged, contact us with reference: '.$reference,
+            ]);
+        }
+
+        if (! $paidAmountMatches($body, (int) ($booking['total_kobo'] ?? 0))) {
+            report(new RuntimeException("Paystack amount mismatch for {$reference}: expected {$booking['total_kobo']} kobo, got ".data_get($body, 'data.amount').' kobo'));
+
+            return redirect()->route('spa')->with('toast', [
+                'type' => 'error',
+                'message' => 'The amount charged did not match your reservation total. Please contact us with reference: '.$reference,
             ]);
         }
     } catch (Throwable $e) {
@@ -490,7 +566,9 @@ Route::get('spa-wellness/callback', function () {
                 'subtotal' => (int) $order['subtotal'],
                 'fees' => 0,
                 'taxes' => 0,
-                'total' => (int) $order['total'],
+                // VAT is charged on top (Paystack) but kept off the revenue total.
+                'vat' => (int) ($order['vat'] ?? 0),
+                'total' => (int) ($order['subtotal'] ?? $order['total']),
                 'customer_name' => $order['customer_name'] ?? null,
                 'customer_email' => $order['customer_email'] ?? null,
                 'customer_phone' => $order['customer_phone'] ?? null,
@@ -526,7 +604,7 @@ Route::get('spa-wellness/callback', function () {
 Route::view('gym', 'gym')->name('gym');
 
 // Subscribe / renew — called via a hidden POST after a successful Paystack charge.
-Route::post('gym/subscribe', function () {
+Route::post('gym/subscribe', function () use ($paidAmountMatches) {
     $data = request()->validate([
         'reference' => ['required', 'string', 'max:190'],
         'plan' => ['required', 'string', 'exists:gym_plans,slug'],
@@ -539,6 +617,7 @@ Route::post('gym/subscribe', function () {
     ]);
 
     $plan = GymPlan::where('slug', $data['plan'])->first();
+    $expectedKobo = Vat::total((int) $plan->price) * 100;
 
     // Verify the payment with Paystack before recording anything.
     try {
@@ -550,6 +629,15 @@ Route::post('gym/subscribe', function () {
             return redirect()->route('gym')->with('toast', [
                 'type' => 'error',
                 'message' => 'We could not verify your payment. If you were charged, contact us with reference: '.$data['reference'],
+            ]);
+        }
+
+        if (! $paidAmountMatches($body, $expectedKobo)) {
+            report(new RuntimeException("Paystack amount mismatch for {$data['reference']}: expected {$expectedKobo} kobo, got ".data_get($body, 'data.amount').' kobo'));
+
+            return redirect()->route('gym')->with('toast', [
+                'type' => 'error',
+                'message' => 'The amount charged did not match the plan price. Please contact us with reference: '.$data['reference'],
             ]);
         }
     } catch (Throwable $e) {
@@ -567,6 +655,7 @@ Route::post('gym/subscribe', function () {
             'gym_plan_id' => $plan->id,
             'plan_name' => $plan->name,
             'price' => $plan->price,
+            'vat' => Vat::on((int) $plan->price),
             'period' => $plan->period,
             'type' => $data['type'],
             'customer_name' => $data['name'],
@@ -593,6 +682,9 @@ Route::post('gym/subscribe', function () {
             'customer_email' => $membership->customer_email,
             'customer_phone' => $membership->customer_phone,
             'ends_at' => optional($membership->ends_at)->format('M j, Y'),
+            'price_label' => $membership->priceLabel(),
+            'vat_label' => $membership->vatLabel(),
+            'total_label' => $membership->totalWithVatLabel(),
         ]]);
     } catch (Throwable $e) {
         report($e);
@@ -615,7 +707,7 @@ Route::permanentRedirect('restaurant', 'restaurant-bar');
 Route::view('restaurant-bar', 'restaurant')->name('restaurant');
 
 // Reserve — called via a hidden POST after a successful Paystack charge.
-Route::post('restaurant-bar/reserve', function () {
+Route::post('restaurant-bar/reserve', function () use ($paidAmountMatches) {
     $data = request()->validate([
         'reference' => ['required', 'string', 'max:190'],
         'area' => ['required', 'in:dining,lounge'],
@@ -639,6 +731,7 @@ Route::post('restaurant-bar/reserve', function () {
 
     $table = ! empty($data['table_id']) ? RestaurantTable::find($data['table_id']) : null;
     $fee = (int) preg_replace('/[^0-9]/', '', cms('restaurant.reservation_fee')) ?: 10000;
+    $expectedKobo = Vat::total($fee) * 100;
 
     // Verify the payment with Paystack before recording anything.
     try {
@@ -650,6 +743,15 @@ Route::post('restaurant-bar/reserve', function () {
             return redirect()->route('restaurant')->with('toast', [
                 'type' => 'error',
                 'message' => 'We could not verify your payment. If you were charged, contact us with reference: '.$data['reference'],
+            ]);
+        }
+
+        if (! $paidAmountMatches($body, $expectedKobo)) {
+            report(new RuntimeException("Paystack amount mismatch for {$data['reference']}: expected {$expectedKobo} kobo, got ".data_get($body, 'data.amount').' kobo'));
+
+            return redirect()->route('restaurant')->with('toast', [
+                'type' => 'error',
+                'message' => 'The amount charged did not match the reservation fee. Please contact us with reference: '.$data['reference'],
             ]);
         }
     } catch (Throwable $e) {
@@ -680,6 +782,7 @@ Route::post('restaurant-bar/reserve', function () {
             'status' => 'confirmed',
             'payment_status' => 'paid',
             'fee' => $fee,
+            'vat' => Vat::on((int) $fee),
             'payment_method' => data_get($body, 'data.channel'),
             'paid_at' => data_get($body, 'data.paid_at') ?? now(),
         ]);
@@ -700,6 +803,8 @@ Route::post('restaurant-bar/reserve', function () {
             'date' => optional($reservation->reserved_date)->format('M j, Y'),
             'time' => $reservation->timeLabel(),
             'fee_label' => $reservation->feeLabel(),
+            'vat_label' => $reservation->vatLabel(),
+            'total_label' => $reservation->totalWithVatLabel(),
             'customer_name' => $reservation->customer_name,
             'customer_email' => $reservation->customer_email,
             'customer_phone' => $reservation->customer_phone,
@@ -775,7 +880,7 @@ Route::post('cinema/release', function () {
 })->name('cinema.release');
 
 // Book — called via a hidden POST after a successful Paystack charge.
-Route::post('cinema/book', function () {
+Route::post('cinema/book', function () use ($paidAmountMatches) {
     $data = request()->validate([
         'reference' => ['required', 'string', 'max:190'],
         'movie' => ['required', 'string', 'exists:movies,slug'],
@@ -799,6 +904,7 @@ Route::post('cinema/book', function () {
     $snacksTotal = collect($snacks)->sum(fn ($s) => $s['qty'] * $s['price']);
     $subtotal = $roomPrice + $snacksTotal;
     $amount = $subtotal;
+    $expectedKobo = Vat::total($subtotal) * 100;
 
     // Verify the payment with Paystack before recording anything.
     try {
@@ -810,6 +916,15 @@ Route::post('cinema/book', function () {
             return redirect()->route('cinema.movie', $movie)->with('toast', [
                 'type' => 'error',
                 'message' => 'We could not verify your payment. If you were charged, contact us with reference: '.$data['reference'],
+            ]);
+        }
+
+        if (! $paidAmountMatches($body, $expectedKobo)) {
+            report(new RuntimeException("Paystack amount mismatch for {$data['reference']}: expected {$expectedKobo} kobo, got ".data_get($body, 'data.amount').' kobo'));
+
+            return redirect()->route('cinema.movie', $movie)->with('toast', [
+                'type' => 'error',
+                'message' => 'The amount charged did not match the booking total. Please contact us with reference: '.$data['reference'],
             ]);
         }
     } catch (Throwable $e) {
@@ -835,6 +950,7 @@ Route::post('cinema/book', function () {
             'subtotal' => $subtotal,
             'fee' => 0,
             'taxes' => 0,
+            'vat' => Vat::on((int) $amount),
             'amount' => $amount,
             'customer_name' => $data['name'],
             'customer_email' => $data['email'],
@@ -848,24 +964,23 @@ Route::post('cinema/book', function () {
         // Lock the private room to this booking (the hold was placed before payment).
         // If the room was lost in the rare hold-expiry race, refund + notify rather
         // than double-book it.
-        {
-            $secured = CinemaSeatHold::claimForBooking($movie->id, $data['date'], $data['time'], [$data['room']], $data['reference'], $booking);
 
-            if (! in_array($data['room'], $secured, true)) {
-                $booking->update(['status' => 'cancelled', 'payment_status' => 'refunded']);
-                if ($booking->customer_email) {
-                    try {
-                        Mail::to($booking->customer_email)->send(new \App\Mail\CinemaBookingCancelled($booking->fresh()));
-                    } catch (Throwable $e) {
-                        report($e);
-                    }
+        $secured = CinemaSeatHold::claimForBooking($movie->id, $data['date'], $data['time'], [$data['room']], $data['reference'], $booking);
+
+        if (! in_array($data['room'], $secured, true)) {
+            $booking->update(['status' => 'cancelled', 'payment_status' => 'refunded']);
+            if ($booking->customer_email) {
+                try {
+                    Mail::to($booking->customer_email)->send(new CinemaBookingCancelled($booking->fresh()));
+                } catch (Throwable $e) {
+                    report($e);
                 }
-
-                return redirect()->route('cinema.movie', $movie)->with('toast', [
-                    'type' => 'error',
-                    'message' => 'Sorry, '.$data['room'].' was just booked for that showtime. Your payment will be refunded within 24 hours.',
-                ]);
             }
+
+            return redirect()->route('cinema.movie', $movie)->with('toast', [
+                'type' => 'error',
+                'message' => 'Sorry, '.$data['room'].' was just booked for that showtime. Your payment will be refunded within 24 hours.',
+            ]);
         }
 
         if ($booking->customer_email) {
@@ -881,7 +996,9 @@ Route::post('cinema/book', function () {
             'room' => $booking->roomLabel(),
             'guests' => $booking->guestsLabel(),
             'snacks' => $booking->snacksLabel(),
-            'total' => $booking->amountLabel(),
+            'subtotal_label' => $booking->amountLabel(),
+            'vat_label' => $booking->vatLabel(),
+            'total' => $booking->totalWithVatLabel(),
             'poster' => $movie->posterUrl(),
             'customer_name' => $booking->customer_name,
             'customer_email' => $booking->customer_email,
@@ -965,11 +1082,15 @@ $adminRoutes->group(function () {
         Route::get('apartments/rooms', Index::class)->name('rooms.index');
         Route::get('apartments/rooms/create', Edit::class)->name('rooms.create');
         Route::get('apartments/rooms/{room}/edit', Edit::class)->name('rooms.edit');
-        Route::get('apartments/rooms/{room}/calendar', \App\Livewire\Admin\Rooms\Calendar::class)->name('rooms.calendar');
+        Route::get('apartments/rooms/{room}/calendar', Calendar::class)->name('rooms.calendar');
 
         // Apartments — Bookings
         Route::get('apartments/bookings', App\Livewire\Admin\Bookings\Index::class)->name('bookings.index');
-        Route::get('apartments/bookings/{booking}', App\Livewire\Admin\Bookings\Show::class)->name('bookings.show');
+        Route::get('apartments/bookings/{booking}', Show::class)->name('bookings.show');
+
+        // Guest Management — guests (people who have booked) & their stay history
+        Route::get('guests', App\Livewire\Admin\Guests\Index::class)->name('guests.index');
+        Route::get('stay-history', App\Livewire\Admin\StayHistory\Index::class)->name('stay-history.index');
 
         // Website CMS — page hub + per-page editor + contact messages
         Route::get('website-cms', App\Livewire\Admin\Cms\Index::class)->name('cms.index');
@@ -979,31 +1100,31 @@ $adminRoutes->group(function () {
         // Vehicle Pickups — Vehicles (fleet shown on the website pick-up popup),
         // bookings, and the driver roster reception/admin assign from.
         Route::get('airport-pickups/vehicles', App\Livewire\Admin\Vehicles\Index::class)->name('vehicles.index');
-        Route::get('airport-pickups/bookings', App\Livewire\Admin\Vehicles\Bookings::class)->name('vehicles.bookings');
-        Route::get('airport-pickups/drivers', App\Livewire\Admin\Vehicles\Drivers::class)->name('vehicles.drivers');
+        Route::get('airport-pickups/bookings', Bookings::class)->name('vehicles.bookings');
+        Route::get('airport-pickups/drivers', Drivers::class)->name('vehicles.drivers');
 
         // Spa & Wellness — services fleet + reservations
-        Route::get('spa-wellness/services', App\Livewire\Admin\Spa\Services::class)->name('spa.services');
+        Route::get('spa-wellness/services', Services::class)->name('spa.services');
         Route::get('spa-wellness/bookings', App\Livewire\Admin\Spa\Bookings::class)->name('spa.bookings');
 
         // Gym & Fitness — plans + memberships
-        Route::get('gym/plans', App\Livewire\Admin\Gym\Plans::class)->name('gym.plans');
-        Route::get('gym/memberships', App\Livewire\Admin\Gym\Memberships::class)->name('gym.memberships');
+        Route::get('gym/plans', Plans::class)->name('gym.plans');
+        Route::get('gym/memberships', Memberships::class)->name('gym.memberships');
         Route::get('gym/memberships/{membership}/receipt', function (GymMembership $membership) {
             return view('gym-receipt', ['m' => $membership]);
         })->name('gym.receipt');
 
         // Restaurant — tables, lounge + reservations
-        Route::get('restaurant/tables', App\Livewire\Admin\Restaurant\Tables::class)->name('restaurant.tables');
-        Route::get('restaurant/lounge', App\Livewire\Admin\Restaurant\Lounge::class)->name('restaurant.lounge');
-        Route::get('restaurant/reservations', App\Livewire\Admin\Restaurant\Reservations::class)->name('restaurant.reservations');
+        Route::get('restaurant/tables', Tables::class)->name('restaurant.tables');
+        Route::get('restaurant/lounge', Lounge::class)->name('restaurant.lounge');
+        Route::get('restaurant/reservations', Reservations::class)->name('restaurant.reservations');
         Route::get('restaurant/reservations/{reservation}/receipt', function (RestaurantReservation $reservation) {
             return view('restaurant-receipt', ['r' => $reservation]);
         })->name('restaurant.receipt');
 
         // Cinema — movies, snacks + ticket bookings
-        Route::get('cinema/movies', App\Livewire\Admin\Cinema\Movies::class)->name('cinema.movies');
-        Route::get('cinema/snacks', App\Livewire\Admin\Cinema\Snacks::class)->name('cinema.snacks');
+        Route::get('cinema/movies', Movies::class)->name('cinema.movies');
+        Route::get('cinema/snacks', Snacks::class)->name('cinema.snacks');
         Route::get('cinema/bookings', App\Livewire\Admin\Cinema\Bookings::class)->name('cinema.bookings');
         Route::get('cinema/bookings/{booking}/receipt', function (CinemaBooking $booking) {
             return view('cinema-receipt', ['b' => $booking]);
@@ -1013,27 +1134,27 @@ $adminRoutes->group(function () {
         Route::get('payment', App\Livewire\Admin\Payment\Index::class)->name('payment.index');
 
         // Access Control — TTLock smart locks (lock mapping + passcode dashboard)
-        Route::get('access-control/ttlock', App\Livewire\Admin\Ttlock\Locks::class)->name('ttlock.locks');
+        Route::get('access-control/ttlock', Locks::class)->name('ttlock.locks');
 
         // Device Management — tablets, smart TVs + fleet dashboard
-        Route::get('devices', App\Livewire\Admin\Devices\Dashboard::class)->middleware('permission:device.view')->name('devices.dashboard');
-        Route::get('devices/tablets', App\Livewire\Admin\Devices\Tablets::class)->middleware('permission:device.view')->name('devices.tablets');
-        Route::get('devices/smart-tvs', App\Livewire\Admin\Devices\SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
+        Route::get('devices', Dashboard::class)->middleware('permission:device.view')->name('devices.dashboard');
+        Route::get('devices/tablets', Tablets::class)->middleware('permission:device.view')->name('devices.tablets');
+        Route::get('devices/smart-tvs', SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
         Route::get('devices/{device}', App\Livewire\Admin\Devices\Show::class)->whereNumber('device')->middleware('permission:device.view')->name('devices.show');
 
         // Security — SOS emergency register (management oversight of guest alerts)
         Route::redirect('security', 'security/incidents');
-        Route::get('security/incidents', App\Livewire\Admin\Security\Incidents::class)->name('security.incidents');
+        Route::get('security/incidents', Incidents::class)->name('security.incidents');
 
         // Visitor passes register — issue/manage passes, gate codes & TTLock status.
-        Route::get('security/visitor-passes', App\Livewire\Admin\Security\VisitorPasses::class)->name('security.visitor-passes');
+        Route::get('security/visitor-passes', VisitorPasses::class)->name('security.visitor-passes');
 
         // Visitor access log — the audit of gate entries, exits & denials.
-        Route::get('security/visitor-access', App\Livewire\Admin\Security\VisitorAccessLog::class)->name('security.visitor-access');
+        Route::get('security/visitor-access', VisitorAccessLog::class)->name('security.visitor-access');
 
         // Administration — access control (users, roles & permissions)
-        Route::get('users', App\Livewire\Admin\Access\Users::class)->name('access.users');
-        Route::get('roles-permissions', App\Livewire\Admin\Access\Roles::class)->name('access.roles');
+        Route::get('users', Users::class)->name('access.users');
+        Route::get('roles-permissions', Roles::class)->name('access.roles');
 
         // Administration — hotel information & front-desk policy
         Route::get('settings', App\Livewire\Admin\Settings\Index::class)->name('settings');

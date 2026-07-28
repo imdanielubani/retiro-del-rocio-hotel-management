@@ -62,9 +62,9 @@
             ['label' => 'Task Center', 'icon' => 'task', 'href' => '#'],
         ]],
         ['label' => 'Guest Management', 'items' => [
-            ['label' => 'Guests', 'icon' => 'guests', 'href' => '#'],
+            ['label' => 'Guests', 'icon' => 'guests', 'href' => route('admin.guests.index'), 'active' => request()->routeIs('admin.guests.*')],
             ['label' => 'Service Requests', 'icon' => 'requests', 'href' => '#'],
-            ['label' => 'Stay History', 'icon' => 'history', 'href' => '#'],
+            ['label' => 'Stay History', 'icon' => 'history', 'href' => route('admin.stay-history.index'), 'active' => request()->routeIs('admin.stay-history.*')],
         ]],
         ['label' => 'Property Management', 'items' => [
             ['key' => 'apartments', 'label' => 'Apartments', 'icon' => 'apartments', 'children' => [

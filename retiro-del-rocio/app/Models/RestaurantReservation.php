@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class RestaurantReservation extends Model
@@ -11,7 +12,7 @@ class RestaurantReservation extends Model
         'code', 'reference', 'area', 'restaurant_table_id', 'table_label', 'floor', 'occasion',
         'guests', 'reserved_date', 'reserved_time', 'special_request',
         'customer_name', 'customer_email', 'customer_phone',
-        'status', 'payment_status', 'fee', 'payment_method', 'paid_at',
+        'status', 'payment_status', 'fee', 'vat', 'payment_method', 'paid_at',
     ];
 
     /** The two floors a lounge guest can pick between. */
@@ -20,6 +21,7 @@ class RestaurantReservation extends Model
     protected $casts = [
         'guests' => 'integer',
         'fee' => 'integer',
+        'vat' => 'integer',
         'reserved_date' => 'date',
         'paid_at' => 'datetime',
     ];
@@ -42,6 +44,18 @@ class RestaurantReservation extends Model
     public function feeLabel(): string
     {
         return '₦'.number_format($this->fee);
+    }
+
+    /** VAT (7.5%) charged on top of the reservation fee at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the reservation fee plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->fee + (int) $this->vat);
     }
 
     public function areaLabel(): string
@@ -72,7 +86,7 @@ class RestaurantReservation extends Model
             return '—';
         }
         try {
-            return \Illuminate\Support\Carbon::createFromFormat('H:i', substr($this->reserved_time, 0, 5))->format('g:i A');
+            return Carbon::createFromFormat('H:i', substr($this->reserved_time, 0, 5))->format('g:i A');
         } catch (\Throwable $e) {
             return $this->reserved_time;
         }

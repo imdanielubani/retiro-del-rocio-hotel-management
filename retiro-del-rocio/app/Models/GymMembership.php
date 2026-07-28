@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 class GymMembership extends Model
 {
     protected $fillable = [
-        'code', 'reference', 'gym_plan_id', 'plan_name', 'price', 'period', 'type',
+        'code', 'reference', 'gym_plan_id', 'plan_name', 'price', 'vat', 'period', 'type',
         'customer_name', 'customer_email', 'customer_phone', 'dob',
         'status', 'payment_status', 'starts_at', 'ends_at', 'payment_method', 'paid_at',
     ];
 
     protected $casts = [
         'price' => 'integer',
+        'vat' => 'integer',
         'dob' => 'date',
         'starts_at' => 'date',
         'ends_at' => 'date',
@@ -38,6 +39,18 @@ class GymMembership extends Model
     public function priceLabel(): string
     {
         return '₦'.number_format($this->price);
+    }
+
+    /** VAT (7.5%) charged on top of the plan price at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the plan price plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->price + (int) $this->vat);
     }
 
     public function periodShort(): string

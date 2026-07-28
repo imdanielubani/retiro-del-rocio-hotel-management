@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/application/visitor_pass_providers.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/data/visitor_pass_repository.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/domain/visitor_pass.dart';
@@ -213,6 +214,13 @@ class _VisitorPassScreenState extends ConsumerState<VisitorPassScreen> {
                             weather: ref.watch(weatherProvider).value,
                             onNotifications: () {},
                             onProfile: () {},
+                            hasUnreadNotifications:
+                                ref.watch(
+                                  guestUnreadNotificationsProvider(
+                                    widget.device.token,
+                                  ),
+                                ) >
+                                0,
                           ),
                           const SizedBox(height: 22),
                           _headerRow(),

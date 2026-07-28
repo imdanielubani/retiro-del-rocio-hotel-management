@@ -1,5 +1,12 @@
 import './bootstrap';
 
+// VAT (7.5%) is charged on top of every service price at Paystack payment time,
+// matching the server (App\Support\Vat). Kept here so the displayed total and the
+// amount sent to Paystack always agree.
+const VAT_RATE = 0.075;
+const vatOn = (base) => Math.round((base || 0) * VAT_RATE);
+const withVat = (base) => (base || 0) + vatOn(base);
+
 /*
  * Fast admin image uploads.
  *
@@ -35,6 +42,7 @@ window.spaReservation = function (config) {
         firstName: '', lastName: '', email: '', phone: '', channel: 'card',
         paystackKey: config.paystackKey || '',
         callbackUrl: config.callbackUrl || '',
+        resetUrl: config.resetUrl || '',
         bookingKobo: config.bookingKobo || 0,
         bookingServices: config.bookingServices || '',
         bookingDateLabel: config.bookingDateLabel || '',
@@ -48,8 +56,19 @@ window.spaReservation = function (config) {
             }
         },
         open() { this.showModal = true; document.body.style.overflow = 'hidden'; },
-        close() { this.showModal = false; document.body.style.overflow = ''; },
-        editSelection() { this.step = 'select'; },
+        // Dismissing the popup while a booking is pending (checkout, unpaid) must
+        // clear it server-side too — otherwise the guest's next visit (or a plain
+        // refresh) finds `spa_booking` still in the session and is forced straight
+        // back into checkout, with no way to just browse the page.
+        close() {
+            if (this.step === 'checkout') { this.abandon(); }
+            this.showModal = false; document.body.style.overflow = '';
+        },
+        editSelection() { this.step = 'select'; this.abandon(); },
+        abandon() {
+            if (!this.resetUrl) return;
+            fetch(this.resetUrl, { headers: { Accept: 'application/json' } }).catch(() => {});
+        },
 
         toggle(slug) {
             const i = this.selected.indexOf(slug);
@@ -70,7 +89,8 @@ window.spaReservation = function (config) {
 
         get chosen() { return this.services.filter((s) => this.selected.includes(s.slug)); },
         get subtotal() { return this.chosen.reduce((t, s) => t + s.price * Math.max(1, this.guests), 0); },
-        get total() { return this.subtotal; },
+        get vat() { return vatOn(this.subtotal); },
+        get total() { return withVat(this.subtotal); },
         money(n) { return '₦' + (n || 0).toLocaleString(); },
         get canSubmit() { return this.chosen.length > 0 && !!this.date; },
 
@@ -155,7 +175,10 @@ window.gymMembership = function (config) {
         selectPlan(slug) { this.planSlug = slug; },
         isPlan(slug) { return this.planSlug === slug; },
         get selectedPlan() { return this.plans.find((p) => p.slug === this.planSlug) || null; },
-        get amountKobo() { return this.selectedPlan ? this.selectedPlan.price * 100 : 0; },
+        get planPrice() { return this.selectedPlan ? this.selectedPlan.price : 0; },
+        get vat() { return vatOn(this.planPrice); },
+        get total() { return withVat(this.planPrice); },
+        get amountKobo() { return this.total * 100; },
         money(n) { return '₦' + (n || 0).toLocaleString(); },
 
         pay() {
@@ -254,7 +277,9 @@ window.restaurantReservation = function (config) {
         selectTable(id) { this.tableId = id; },
         isTable(id) { return this.tableId === id; },
         get selectedTable() { return this.tables.find((t) => t.id === this.tableId) || null; },
-        get amountKobo() { return this.fee * 100; },
+        get vat() { return vatOn(this.fee); },
+        get total() { return withVat(this.fee); },
+        get amountKobo() { return this.total * 100; },
         money(n) { return '₦' + (n || 0).toLocaleString(); },
         get prettyDate() {
             if (!this.date) return '—';
@@ -470,7 +495,8 @@ window.cinemaBooking = function (config) {
 
         get snacksTotal() { return this.snacks.reduce((t, s) => t + (this.snackQty[s.id] || 0) * s.price, 0); },
         get subtotal() { return this.roomPrice + this.snacksTotal; },
-        get grandTotal() { return this.subtotal; },
+        get vat() { return vatOn(this.subtotal); },
+        get grandTotal() { return withVat(this.subtotal); },
         get amountKobo() { return this.grandTotal * 100; },
         get fullName() { return (this.firstName + ' ' + this.lastName).trim(); },
         money(n) { return '₦' + (n || 0).toLocaleString(); },

@@ -85,6 +85,12 @@
 
                         <div class="h-px w-full bg-white/10"></div>
 
+                        {{-- VAT --}}
+                        <div class="flex items-center justify-end gap-4 text-body text-white/80">
+                            <span>VAT (7.5%)</span>
+                            <span class="font-semibold text-white" x-text="money(vat)"></span>
+                        </div>
+
                         {{-- Total --}}
                         <div class="flex items-center justify-end gap-4">
                             <span class="text-title font-medium text-[#f38c00]">TOTAL</span>
@@ -194,6 +200,8 @@
                         <p class="flex justify-between gap-3"><span class="text-white/55">Room</span><span x-text="success ? success.room : ''"></span></p>
                         <p class="flex justify-between gap-3"><span class="text-white/55">Guests</span><span x-text="success ? success.guests : ''"></span></p>
                         <p class="flex justify-between gap-3"><span class="text-white/55">Food &amp; Drinks</span><span class="text-right" x-text="success ? success.snacks : ''"></span></p>
+                        <p class="flex justify-between gap-3 border-t border-white/10 pt-2"><span class="text-white/55">Subtotal</span><span class="font-medium text-white" x-text="success ? success.subtotal_label : ''"></span></p>
+                        <p class="flex justify-between gap-3"><span class="text-white/55">VAT (7.5%)</span><span class="font-medium text-white" x-text="success ? success.vat_label : ''"></span></p>
                         <p class="flex justify-between gap-3 border-t border-white/10 pt-2"><span class="text-white/55">Total order</span><span class="font-semibold text-white" x-text="success ? success.total : ''"></span></p>
                     </div>
 
