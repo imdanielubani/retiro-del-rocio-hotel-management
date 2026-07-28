@@ -17,6 +17,7 @@ class ReceptionTopBar extends StatelessWidget {
     required this.role,
     required this.weather,
     this.hasAlert = false,
+    this.hasUnreadNotifications = false,
     this.onNotifications,
   });
 
@@ -24,8 +25,13 @@ class ReceptionTopBar extends StatelessWidget {
   final String role;
   final Weather? weather;
 
-  /// A live alert tints the bell red instead of gold.
+  /// A live SOS alert lights the bell's dot red — outranks a plain unread
+  /// notification, which is never an emergency.
   final bool hasAlert;
+
+  /// An unread front-desk notification lights the bell's dot gold, the same
+  /// way the guest tablet's bell badges an unread guest notification.
+  final bool hasUnreadNotifications;
   final VoidCallback? onNotifications;
 
   String get _initials {
@@ -131,6 +137,9 @@ class ReceptionTopBar extends StatelessWidget {
   }
 
   Widget _bell() {
+    // A live SOS alert always outranks a plain unread notification — it is
+    // never just informational, so it wins the dot's colour when both are true.
+    final showDot = hasAlert || hasUnreadNotifications;
     final dot = hasAlert ? const Color(0xFFFF0000) : AppColors.gold;
     return SizedBox(
       width: 35,
@@ -150,17 +159,18 @@ class ReceptionTopBar extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            right: 6,
-            top: 5,
-            child: SizedBox(
-              width: 6,
-              height: 6,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          if (showDot)
+            Positioned(
+              right: 6,
+              top: 5,
+              child: SizedBox(
+                width: 6,
+                height: 6,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

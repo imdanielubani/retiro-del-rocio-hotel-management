@@ -8,6 +8,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/l
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
 import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_assign_driver_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
@@ -91,6 +93,9 @@ class _ReceptionVehiclePickupScreenState
   @override
   Widget build(BuildContext context) {
     final pickupsAsync = ref.watch(receptionPickupsProvider(_token));
+    final unreadNotifications = ref.watch(
+      receptionUnreadNotificationsProvider(_token),
+    );
 
     return ReceptionScaffold(
       session: widget.session,
@@ -102,6 +107,8 @@ class _ReceptionVehiclePickupScreenState
         current: ReceptionNavItem.vehiclePickup,
       ),
       onLogout: _logout,
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
       title: 'Vehicle Pickup',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,6 +157,17 @@ class _ReceptionVehiclePickupScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openNotifications() {
+    ReceptionNavigation.push(
+      context,
+      'notifications',
+      ReceptionNotificationScreen(
+        session: widget.session,
+        current: ReceptionNavItem.vehiclePickup,
       ),
     );
   }

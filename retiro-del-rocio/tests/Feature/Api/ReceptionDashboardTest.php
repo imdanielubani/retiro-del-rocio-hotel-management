@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\BillPayment;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Models\SosAlert;
+use App\Models\SpaBooking;
 use App\Models\User;
 use App\Models\VisitorPass;
 use App\Services\JwtService;
@@ -366,6 +368,82 @@ class ReceptionDashboardTest extends TestCase
         $this->assertNotNull($booking->fresh()->checked_out_at);
         $this->assertSame('available', $unit->fresh()->status);
         $this->assertNull($unit->fresh()->booking_id);
+    }
+
+    public function test_checkout_is_blocked_while_a_room_charge_is_still_outstanding(): void
+    {
+        $unit = $this->unit('201', 'occupied');
+        $booking = $this->booking([
+            'room_unit_id' => $unit->id,
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDay(),
+        ]);
+        $unit->update(['booking_id' => $booking->id]);
+
+        SpaBooking::create([
+            'booking_id' => $booking->id,
+            'reference' => 'SPA-GATE-1',
+            'services' => [['name' => 'Facial', 'slug' => 'facial', 'price' => 15000, 'qty' => 1]],
+            'guests' => 1,
+            'date' => now()->toDateString(),
+            'time' => '10:30 AM',
+            'subtotal' => 15000,
+            'vat' => 1125,
+            'total' => 15000,
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => 'room_charge',
+            'paid_at' => now(),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->postJson("/api/v1/reception/bookings/{$booking->id}/check-out")
+            ->assertStatus(409)
+            ->assertJsonPath('due', 16125)
+            ->assertJsonPath('due_label', 'NGN 16,125');
+
+        $this->assertSame('checked_in', $booking->fresh()->status);
+        $this->assertSame('occupied', $unit->fresh()->status);
+    }
+
+    public function test_checkout_succeeds_once_the_room_charge_is_settled_via_bill_payment(): void
+    {
+        $unit = $this->unit('201', 'occupied');
+        $booking = $this->booking([
+            'room_unit_id' => $unit->id,
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDay(),
+        ]);
+        $unit->update(['booking_id' => $booking->id]);
+
+        SpaBooking::create([
+            'booking_id' => $booking->id,
+            'reference' => 'SPA-GATE-2',
+            'services' => [['name' => 'Facial', 'slug' => 'facial', 'price' => 15000, 'qty' => 1]],
+            'guests' => 1,
+            'date' => now()->toDateString(),
+            'time' => '10:30 AM',
+            'subtotal' => 15000,
+            'vat' => 1125,
+            'total' => 15000,
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => 'room_charge',
+            'paid_at' => now(),
+        ]);
+        BillPayment::create([
+            'booking_id' => $booking->id,
+            'reference' => 'BILL-GATE-1',
+            'amount' => 15000,
+            'vat' => 1125,
+            'status' => BillPayment::SUCCESS,
+            'paid_at' => now(),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->postJson("/api/v1/reception/bookings/{$booking->id}/check-out")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'checked_out');
     }
 
     public function test_a_booking_not_ready_cannot_be_checked_in(): void

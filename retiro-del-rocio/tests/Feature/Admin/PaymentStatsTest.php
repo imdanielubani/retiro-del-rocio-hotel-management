@@ -119,6 +119,19 @@ class PaymentStatsTest extends TestCase
             ->assertSee('>2</p>', false);
     }
 
+    public function test_the_ledger_row_and_filtered_total_show_the_guests_actual_total_paid(): void
+    {
+        // ₦30,000 base + 7.5% VAT (₦2,250) = ₦32,250 actually paid by the guest.
+        $this->booking(['customer_name' => 'Vat Guest', 'status' => 'checked_out', 'amount' => 30000, 'vat' => 2250, 'paid_at' => now()]);
+
+        // The row must show the VAT-inclusive total the guest actually paid.
+        // (₦30,000 alone still legitimately appears elsewhere, in the
+        // VAT-exclusive "Revenue by Department" card — that's by design.)
+        Livewire::actingAs($this->admin())
+            ->test(Index::class)
+            ->assertSee('₦32,250');
+    }
+
     public function test_picking_a_past_month_scopes_every_headline_card_to_it(): void
     {
         // This month: one paid stay.

@@ -129,8 +129,58 @@ class TabletMyStayTest extends TestCase
             ->assertJsonPath('data.guests.primary_name', 'Daniel Ubani')
             ->assertJsonPath('data.guests.party_size', 3)
             ->assertJsonPath('data.summary.total_label', 'NGN 37,500')
-            ->assertJsonPath('data.current_bill_label', 'NGN 37,500')
+            // Current Bill is what's charged to the room right now — nothing
+            // has been, so it's zero even though the stay itself cost 37,500.
+            ->assertJsonPath('data.current_bill_label', 'NGN 0')
+            ->assertJsonPath('data.current_bill_due', false)
             ->assertJsonPath('data.inclusions.0.title', 'High-Speed WiFi');
+    }
+
+    public function test_stay_summary_itemises_every_extension_however_it_was_paid(): void
+    {
+        // A Paystack-paid extension and a room-charge one both count toward
+        // the stay's full financial history — unlike My Bills, Stay Summary
+        // never hides a payment from the guest.
+        StayExtensionPayment::create([
+            'booking_id' => $this->booking->id,
+            'reference' => 'EXT-PAYSTACK-SUMMARY',
+            'nights' => 2,
+            'new_check_out' => now()->addDays(6)->toDateString(),
+            'amount' => 15000,
+            'vat' => 1125,
+            'status' => StayExtensionPayment::SUCCESS,
+            'paid_at' => now(),
+            'payment_method' => 'card',
+        ]);
+        StayExtensionPayment::create([
+            'booking_id' => $this->booking->id,
+            'reference' => 'EXT-ROOM-SUMMARY',
+            'nights' => 1,
+            'new_check_out' => now()->addDays(7)->toDateString(),
+            'amount' => 7500,
+            'vat' => 563,
+            'status' => StayExtensionPayment::SUCCESS,
+            'paid_at' => now(),
+            'payment_method' => 'room_charge',
+        ]);
+        $this->booking->update(['amount' => $this->booking->amount + 15000 + 7500]);
+
+        $this->withToken($this->token)
+            ->getJson('/api/v1/tablets/my-stay')
+            ->assertOk()
+            // Room Rate + Airport Pickup would come first if present; here just
+            // Room Rate, then both extensions in order.
+            ->assertJsonPath('data.summary.lines.0.label', 'Room Rate')
+            ->assertJsonPath('data.summary.lines.0.amount_label', 'NGN 37,500')
+            ->assertJsonPath('data.summary.lines.1.label', 'Stay Extension')
+            ->assertJsonPath('data.summary.lines.1.amount_label', 'NGN 15,000')
+            ->assertJsonPath('data.summary.lines.2.label', 'Stay Extension')
+            ->assertJsonPath('data.summary.lines.2.amount_label', 'NGN 7,500')
+            // The lines add up to the real total — nothing swallowed, nothing double-counted.
+            ->assertJsonPath('data.summary.total_label', 'NGN 60,000')
+            // Only the room-charge extension is still outstanding.
+            ->assertJsonPath('data.current_bill_label', 'NGN 8,063') // 7,500 + 7.5% VAT
+            ->assertJsonPath('data.current_bill_due', true);
     }
 
     public function test_my_stay_lists_the_invited_visitors(): void
@@ -201,7 +251,7 @@ class TabletMyStayTest extends TestCase
         $this->assertDatabaseHas('stay_extension_payments', [
             'booking_id' => $this->booking->id,
             'nights' => 2,
-            'amount' => 16125,
+            'amount' => 15000, // pre-VAT room charge; VAT (1,125) is stored separately
             'status' => 'pending',
         ]);
     }
@@ -233,6 +283,66 @@ class TabletMyStayTest extends TestCase
         // The guest is emailed their receipt inline (not after-response, so a
         // failing gate-code re-issue can't skip it).
         Bus::assertDispatchedSync(SendStayExtensionReceipt::class);
+    }
+
+    public function test_charging_the_extension_to_room_applies_it_immediately_no_paystack(): void
+    {
+        $newCheckout = now()->addDays(6)->toDateString(); // +2 nights
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/extend-stay/charge-to-room', ['check_out' => $newCheckout])
+            ->assertOk()
+            ->assertJsonPath('data.extension.additional_nights', 2)
+            ->assertJsonPath('data.extension.additional_cost', 15000) // pre-VAT
+            ->assertJsonPath('data.reservation.nights', 7);
+
+        $fresh = $this->booking->fresh();
+        $this->assertSame($newCheckout, $fresh->check_out->toDateString());
+        $this->assertSame(7, (int) $fresh->nights);
+        $this->assertSame(52500, (int) $fresh->amount); // 37,500 + 2 × 7,500
+
+        $payment = StayExtensionPayment::where('booking_id', $this->booking->id)->first();
+        $this->assertSame(15000, (int) $payment->amount);
+        $this->assertSame(1125, (int) $payment->vat); // 7.5% of 15,000
+        $this->assertSame('success', $payment->status);
+        $this->assertSame('room_charge', $payment->payment_method);
+        $this->assertNotNull($payment->paid_at);
+
+        Bus::assertDispatchedSync(SendStayExtensionReceipt::class);
+    }
+
+    public function test_charge_to_room_does_not_overwrite_the_bookings_original_payment_method(): void
+    {
+        $this->booking->update(['payment_method' => 'bank_transfer']);
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/extend-stay/charge-to-room', ['check_out' => now()->addDays(6)->toDateString()])
+            ->assertOk();
+
+        $this->assertSame('bank_transfer', $this->booking->fresh()->payment_method);
+    }
+
+    public function test_charge_to_room_is_still_blocked_when_the_room_is_booked_by_another_guest(): void
+    {
+        Booking::create([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Next Guest',
+            'room_id' => $this->room->id,
+            'room_name' => $this->room->name,
+            'room_unit_id' => $this->unit->id,
+            'check_in' => now()->addDays(4)->toDateString(),
+            'check_out' => now()->addDays(8)->toDateString(),
+            'nights' => 4,
+            'guests' => 2,
+            'amount' => 30000,
+            'status' => 'paid',
+        ]);
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/extend-stay/charge-to-room', ['check_out' => now()->addDays(6)->toDateString()])
+            ->assertStatus(422);
+
+        $this->assertSame(5, (int) $this->booking->fresh()->nights);
     }
 
     public function test_the_receipt_is_emailed_even_when_the_gate_reissue_would_fail(): void

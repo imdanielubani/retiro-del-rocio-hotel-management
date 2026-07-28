@@ -48,6 +48,7 @@ use App\Models\ContactMessage;
 use App\Models\GymMembership;
 use App\Models\GymPlan;
 use App\Models\Movie;
+use App\Models\ReceptionNotification;
 use App\Models\RestaurantReservation;
 use App\Models\RestaurantTable;
 use App\Models\Room;
@@ -66,6 +67,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 // Public website.
@@ -327,6 +329,17 @@ Route::get('checkout/callback', function () use ($paidAmountMatches) {
                 report($e);
             }
 
+            // Front desk should know a new paid reservation just came in from the
+            // website — it's a guest they'll need to prepare for. Placed ahead of
+            // the admin bell below so it never depends on that call succeeding.
+            ReceptionNotification::notify(
+                'booking',
+                'New Room Booking',
+                ($booking->customer_name ?: 'A guest').' booked '.($booking->room_name ?: 'a room').
+                    ' for '.$booking->nights.' '.Str::plural('night', $booking->nights).'.',
+                $booking,
+            );
+
             // Notify the admin bell of a brand-new booking.
             Notification::send(User::admins()->get(), new BookingReceived($booking));
 
@@ -586,6 +599,13 @@ Route::get('spa-wellness/callback', function () use ($paidAmountMatches) {
             Mail::to($spaBooking->customer_email)->send(new SpaReservation($spaBooking));
         }
 
+        // Front desk should know a spa session was just booked and paid.
+        ReceptionNotification::notify(
+            'booking',
+            'New Spa Booking',
+            ($spaBooking->customer_name ?: 'A guest').' booked '.$spaBooking->servicesLabel().'.',
+        );
+
         // Ring the admin bell for the new spa reservation.
         Notification::send(User::admins()->get(), new SpaBookingReceived($spaBooking));
     } catch (Throwable $e) {
@@ -673,6 +693,13 @@ Route::post('gym/subscribe', function () use ($paidAmountMatches) {
         if ($membership->customer_email) {
             Mail::to($membership->customer_email)->send(new GymMembershipConfirmation($membership));
         }
+        // Front desk should know a new gym membership was just bought.
+        ReceptionNotification::notify(
+            'booking',
+            'New Gym Membership',
+            ($membership->customer_name ?: 'A guest').' bought the '.$membership->plan_name.' plan.',
+        );
+
         Notification::send(User::admins()->get(), new GymMembershipReceived($membership));
 
         session(['gym_success' => [
@@ -790,6 +817,14 @@ Route::post('restaurant-bar/reserve', function () use ($paidAmountMatches) {
         if ($reservation->customer_email) {
             Mail::to($reservation->customer_email)->send(new RestaurantReservationConfirmation($reservation));
         }
+        // Front desk should know a new restaurant reservation was just paid.
+        ReceptionNotification::notify(
+            'booking',
+            'New Restaurant Reservation',
+            ($reservation->customer_name ?: 'A guest').' reserved '.$reservation->areaLabel().
+                ' for '.$reservation->guestsLabel().' on '.optional($reservation->reserved_date)->format('M j, Y').'.',
+        );
+
         Notification::send(User::admins()->get(), new RestaurantReservationReceived($reservation));
 
         session(['restaurant_success' => [
@@ -986,6 +1021,14 @@ Route::post('cinema/book', function () use ($paidAmountMatches) {
         if ($booking->customer_email) {
             Mail::to($booking->customer_email)->send(new CinemaBookingConfirmation($booking));
         }
+        // Front desk should know a new private cinema room was just booked.
+        ReceptionNotification::notify(
+            'booking',
+            'New Cinema Booking',
+            ($booking->customer_name ?: 'A guest').' booked '.$booking->roomLabel().
+                ' for '.$booking->movie_title.' on '.optional($booking->show_date)->format('M j, Y').'.',
+        );
+
         Notification::send(User::admins()->get(), new CinemaBookingReceived($booking));
 
         session(['cinema_success' => [
@@ -1132,6 +1175,9 @@ $adminRoutes->group(function () {
 
         // Payment — transactions captured from checkout
         Route::get('payment', App\Livewire\Admin\Payment\Index::class)->name('payment.index');
+
+        // Billing — every checked-in guest's outstanding room-charge balance
+        Route::get('billing', App\Livewire\Admin\Billing\Index::class)->name('billing.index');
 
         // Access Control — TTLock smart locks (lock mapping + passcode dashboard)
         Route::get('access-control/ttlock', Locks::class)->name('ttlock.locks');

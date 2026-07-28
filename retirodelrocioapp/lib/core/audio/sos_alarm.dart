@@ -16,6 +16,26 @@ class SosAlarm {
   Timer? _haptics;
   bool _started = false;
 
+  /// The default [AudioContextAndroid] requests [AndroidAudioFocus.gain] —
+  /// exclusive, indefinite focus intended for music/video — before every
+  /// playback. That negotiation can silently stall or be denied, which is
+  /// exactly the kind of failure an emergency siren cannot afford (see
+  /// `NotificationChime`, which hit the same bug). `usageType: alarm` routes
+  /// this to the device's alarm stream — the one stream that bypasses ringer
+  /// mode and Do Not Disturb — and `audioFocus: none` skips the negotiation
+  /// entirely, so the siren starts immediately every time.
+  static final audioContext = AudioContext(
+    android: const AudioContextAndroid(
+      contentType: AndroidContentType.sonification,
+      usageType: AndroidUsageType.alarm,
+      audioFocus: AndroidAudioFocus.none,
+    ),
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: const {AVAudioSessionOptions.mixWithOthers},
+    ),
+  );
+
   /// Start the siren (idempotent).
   Future<void> start() async {
     if (_started) return;
@@ -23,8 +43,7 @@ class SosAlarm {
 
     try {
       await _player.setReleaseMode(ReleaseMode.loop);
-      await _player.setVolume(1);
-      await _player.play(BytesSource(_sirenWav()), volume: 1);
+      await _player.play(BytesSource(_sirenWav()), volume: 1, ctx: audioContext);
     } catch (error) {
       debugPrint('SosAlarm: audio failed — $error');
     }

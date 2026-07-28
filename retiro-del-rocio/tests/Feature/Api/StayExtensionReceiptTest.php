@@ -39,7 +39,7 @@ class StayExtensionReceiptTest extends TestCase
             'reference' => 'EXT-'.$booking->id.'-ABCDEFGHIJ',
             'nights' => 2,
             'new_check_out' => now()->addDays(6)->toDateString(),
-            'amount' => 16125, // 15,000 + 7.5% VAT
+            'amount' => 15000, // pre-VAT room charge; VAT (1,125) is stored separately
             'vat' => 1125,
             'status' => $status,
             'paid_at' => $status === StayExtensionPayment::SUCCESS ? now() : null,
@@ -93,7 +93,7 @@ class StayExtensionReceiptTest extends TestCase
         $mailable->assertSeeInHtml($booking->bookingCode());
         $mailable->assertSeeInHtml('2 nights');
         $mailable->assertSeeInHtml('VAT (7.5%)');
-        $mailable->assertSeeInHtml('₦15,000');  // subtotal (amount − VAT)
+        $mailable->assertSeeInHtml('₦15,000');  // subtotal (= amount, pre-VAT)
         $mailable->assertSeeInHtml('₦1,125');   // VAT
         $mailable->assertSeeInHtml('₦16,125');  // total paid
     }

@@ -32,8 +32,9 @@ class StayExtensionReceipt extends Mailable
 
     public function content(): Content
     {
-        // Subtotal is the room charge; VAT is a separate tax line paid at checkout.
-        $subtotal = max(0, (int) $this->payment->amount - (int) $this->payment->vat);
+        // `amount` is the pre-VAT room charge; VAT is stored separately.
+        $subtotal = (int) $this->payment->amount;
+        $total = $subtotal + (int) $this->payment->vat;
 
         return new Content(
             view: 'emails.stay-extension-receipt',
@@ -41,6 +42,7 @@ class StayExtensionReceipt extends Mailable
                 'booking' => $this->booking,
                 'payment' => $this->payment,
                 'subtotal' => $subtotal,
+                'total' => $total,
             ],
         );
     }

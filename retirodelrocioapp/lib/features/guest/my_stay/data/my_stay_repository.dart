@@ -78,6 +78,27 @@ class MyStayRepository {
     }
   }
 
+  /// Extend the stay straight against the room's folio, no Paystack round
+  /// trip needed. Confirmed immediately. Returns the updated stay with its
+  /// `extension` details.
+  Future<GuestStay> chargeToRoom(String deviceToken, DateTime newCheckOut) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('tablets/extend-stay/charge-to-room')),
+        data: {'check_out': DateFormat('yyyy-MM-dd').format(newCheckOut)},
+        options: _auth(deviceToken),
+      );
+      return GuestStay.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw MyStayException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('MyStayRepository: chargeToRoom failed — $error');
+      throw MyStayException('Could not extend your stay. Please try again.');
+    }
+  }
+
   /// Verify the paid [reference] and move the checkout to [newCheckOut]. Returns
   /// the updated stay with its `extension` details.
   Future<GuestStay> extend(

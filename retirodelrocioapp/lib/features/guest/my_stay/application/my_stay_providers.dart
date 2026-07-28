@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retirodelrocioapp/features/guest/bills/application/bills_providers.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/data/my_stay_repository.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/domain/guest_stay.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
@@ -48,6 +49,19 @@ class MyStayActions {
         .extend(_deviceToken, newCheckOut, reference);
     _ref.invalidate(myStayProvider(_deviceToken));
     _ref.invalidate(roomStatusProvider(_deviceToken));
+    return stay;
+  }
+
+  /// Extend the stay straight against the room's folio, then refresh the
+  /// stay, room status and My Bills — the new charge is real outstanding
+  /// balance the guest can pay off from there.
+  Future<GuestStay> chargeToRoom(DateTime newCheckOut) async {
+    final stay = await _ref
+        .read(myStayRepositoryProvider)
+        .chargeToRoom(_deviceToken, newCheckOut);
+    _ref.invalidate(myStayProvider(_deviceToken));
+    _ref.invalidate(roomStatusProvider(_deviceToken));
+    _ref.invalidate(billProvider(_deviceToken));
     return stay;
   }
 }

@@ -8,6 +8,7 @@ enum ReceptionNavItem {
   dashboard,
   guests,
   bookings,
+  bills,
   visitorPass,
   roomStatus,
   vehiclePickup,
@@ -67,6 +68,12 @@ class ReceptionNavRail extends StatelessWidget {
                     ReceptionNavItem.bookings,
                     Icons.calendar_month_rounded,
                     'Bookings',
+                  ),
+                  const SizedBox(height: 4),
+                  _item(
+                    ReceptionNavItem.bills,
+                    Icons.receipt_long_rounded,
+                    'Bills',
                   ),
                   const SizedBox(height: 4),
                   _item(

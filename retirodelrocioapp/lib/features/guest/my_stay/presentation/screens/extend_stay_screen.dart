@@ -28,9 +28,13 @@ class ExtendStayScreen extends ConsumerStatefulWidget {
   ConsumerState<ExtendStayScreen> createState() => _ExtendStayScreenState();
 }
 
+/// How the guest wants to pay for the extra nights.
+enum _ExtendPaymentMethod { room, paystack }
+
 class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
   late DateTime _month;
   DateTime? _selected;
+  _ExtendPaymentMethod? _paymentMethod;
 
   /// True while the Paystack charge is being opened (the Confirm button spins).
   bool _busy = false;
@@ -60,11 +64,24 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
   void _stepMonth(int delta) =>
       setState(() => _month = DateTime(_month.year, _month.month + delta));
 
+  void _selectPayment(_ExtendPaymentMethod method) =>
+      setState(() => _paymentMethod = method);
+
   Future<void> _confirm() async {
     final selected = _selected;
-    if (selected == null || _busy) return;
+    final method = _paymentMethod;
+    if (selected == null || method == null || _busy) return;
 
-    // Price the extension and open the Paystack charge.
+    if (method == _ExtendPaymentMethod.room) {
+      await _confirmChargeToRoom(selected);
+      return;
+    }
+    await _confirmPaystack(selected);
+  }
+
+  /// Paystack: price the extension server-side, then Payment Summary → Pay
+  /// Now → Paystack → verify → apply.
+  Future<void> _confirmPaystack(DateTime selected) async {
     setState(() => _busy = true);
     final ExtensionQuote quote;
     try {
@@ -87,7 +104,6 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
 
-    // Payment Summary (VAT 7.5%) → Pay Now → Paystack → verify → apply.
     final extension = await showExtendPaymentDialog(
       context,
       quote: quote,
@@ -116,7 +132,52 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
     );
 
     if (extension == null || !mounted) return;
+    await _finish(extension);
+  }
 
+  /// Charge to Room: the same Payment Summary popup, priced client-side
+  /// (mirrors the server's own VAT calc), confirmed straight to the room's
+  /// folio — no Paystack round trip.
+  Future<void> _confirmChargeToRoom(DateTime selected) async {
+    final naira = NumberFormat('#,###');
+    final subtotal = _additionalCost;
+    final vat = (subtotal * 0.075).round();
+    final total = subtotal + vat;
+    final quote = ExtensionQuote(
+      authorizationUrl: '',
+      callbackUrl: '',
+      reference: '',
+      additionalNights: _additionalNights,
+      subtotalLabel: 'NGN ${naira.format(subtotal)}',
+      vatLabel: 'NGN ${naira.format(vat)}',
+      totalLabel: 'NGN ${naira.format(total)}',
+    );
+
+    final extension = await showExtendPaymentDialog(
+      context,
+      quote: quote,
+      partySize: widget.stay.guests.partySize,
+      buttonLabel: 'BOOK NOW',
+      onPay: () async {
+        final stay = await ref
+            .read(myStayActionsProvider(_token))
+            .chargeToRoom(selected);
+        return stay.extension ??
+            StayExtension(
+              additionalNights: quote.additionalNights,
+              additionalCost: subtotal,
+              additionalCostLabel: quote.totalLabel,
+              newCheckOut: selected,
+              newCheckOutLabel: DateFormat('MMMM d, y').format(selected),
+            );
+      },
+    );
+
+    if (extension == null || !mounted) return;
+    await _finish(extension);
+  }
+
+  Future<void> _finish(StayExtension extension) async {
     await showStayExtendedDialog(context, extension: extension);
     // Back to My Stay, which reloads the (now longer) reservation from the server.
     if (mounted) Navigator.of(context).pop();
@@ -325,8 +386,96 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          _paymentOption(
+            method: _ExtendPaymentMethod.room,
+            icon: Icons.hotel_rounded,
+            title: 'Charge to Room',
+            subtitle: 'Add to your room bill',
+          ),
+          const SizedBox(height: 12),
+          _paymentOption(
+            method: _ExtendPaymentMethod.paystack,
+            icon: Icons.credit_card_rounded,
+            title: 'Paystack',
+            subtitle: 'African payment gateway',
+          ),
+          const SizedBox(height: 16),
           _confirmButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _paymentOption({
+    required _ExtendPaymentMethod method,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    final selected = method == _paymentMethod;
+    final tint = selected ? AppColors.gold : Colors.white;
+
+    return Material(
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.12)
+          : Colors.white.withValues(alpha: 0.05),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () => _selectPayment(method),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.gold.withValues(alpha: 0.13)
+                      : Colors.white.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, size: 18, color: tint),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.style(
+                        color: tint,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -397,7 +546,10 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
   }
 
   Widget _confirmButton() {
-    final enabled = _selected != null && _additionalNights > 0 && !_busy;
+    final enabled = _selected != null &&
+        _additionalNights > 0 &&
+        _paymentMethod != null &&
+        !_busy;
     final button = Material(
       color: AppColors.gold,
       borderRadius: BorderRadius.circular(16),

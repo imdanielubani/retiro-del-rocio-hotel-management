@@ -9,6 +9,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/s
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
 import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_checkin_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
@@ -59,6 +61,17 @@ class _ReceptionDashboardScreenState
     if (!confirmed) return;
     await ref.read(authControllerProvider.notifier).logout();
     if (mounted) Navigator.of(context).pop();
+  }
+
+  void _openNotifications() {
+    ReceptionNavigation.push(
+      context,
+      'notifications',
+      ReceptionNotificationScreen(
+        session: widget.session,
+        current: ReceptionNavItem.dashboard,
+      ),
+    );
   }
 
   void _onNav(ReceptionNavItem item) {
@@ -208,6 +221,9 @@ class _ReceptionDashboardScreenState
     // one for alerts, one for booking changes (new reservations, check-ins, etc.).
     ref.watch(receptionRealtimeProvider(_token));
     ref.watch(receptionBookingsRealtimeProvider(_token));
+    // Rings the chime and toasts a new front-desk notification, from either
+    // the socket above or the plain poll if it's down.
+    ref.watch(receptionNotificationChimeProvider(_token));
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on
     // first load and on every refresh (socket or poll); the guards inside make it
@@ -220,6 +236,9 @@ class _ReceptionDashboardScreenState
     final overviewAsync = ref.watch(receptionOverviewProvider(_token));
     final weather = ref.watch(weatherProvider).value;
     final overview = overviewAsync.value;
+    final unreadNotifications = ref.watch(
+      receptionUnreadNotificationsProvider(_token),
+    );
 
     final name = overview != null && overview.receptionistName != 'Reception'
         ? overview.receptionistName
@@ -254,6 +273,8 @@ class _ReceptionDashboardScreenState
                             role: overview?.receptionistRole ?? 'Reception',
                             weather: weather,
                             hasAlert: (overview?.alerts.isNotEmpty ?? false),
+                            hasUnreadNotifications: unreadNotifications > 0,
+                            onNotifications: _openNotifications,
                           ),
                           const SizedBox(height: 20),
                           _header(

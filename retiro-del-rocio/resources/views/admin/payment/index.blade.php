@@ -196,7 +196,7 @@
                 <table class="w-full min-w-[900px] border-collapse">
                     <thead>
                         <tr class="bg-[#f9fafb] text-left">
-                            @foreach (['Transaction ID', 'Booking', 'Guest', 'Amount', 'Method', 'Date', 'Status'] as $col)
+                            @foreach (['Transaction ID', 'Booking', 'Guest', 'Total Paid', 'Method', 'Date', 'Status'] as $col)
                                 <th class="border-b border-[#e5e7eb] px-4 py-2.5 text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">{{ $col }}</th>
                             @endforeach
                         </tr>
@@ -220,7 +220,7 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3.5 text-[13px] font-medium text-[#1e1e1e]">{{ $t->customer_name ?: '—' }}</td>
-                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $t->amountLabel() }}</td>
+                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $t->totalWithVatLabel() }}</td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ $t->methodLabel() }}</td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ optional($t->paid_at ?? $t->created_at)->format('M j, Y') }}</td>
                                 <td class="px-4 py-3.5">
@@ -242,7 +242,7 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <p class="text-[14px] font-medium text-[#1e1e1e]">{{ $t->customer_name ?: '—' }}</p>
-                            <p class="text-[14px] font-bold text-[#1e1e1e]">{{ $t->amountLabel() }}</p>
+                            <p class="text-[14px] font-bold text-[#1e1e1e]">{{ $t->totalWithVatLabel() }}</p>
                         </div>
                         <div class="flex items-center justify-between text-[12px] text-[#6b7280]">
                             <span>{{ $t->bookingCode() }} · {{ $t->sourceLabel() }} · {{ $t->methodLabel() }}</span>

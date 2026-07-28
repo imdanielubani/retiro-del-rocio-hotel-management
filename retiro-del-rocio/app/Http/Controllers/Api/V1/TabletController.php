@@ -9,15 +9,21 @@ use App\Http\Requests\Api\V1\ProvisionTabletRequest;
 use App\Http\Requests\Api\V1\StaffLoginRequest;
 use App\Http\Resources\DeviceResource;
 use App\Jobs\SendStayExtensionReceipt;
+use App\Models\BillPayment;
 use App\Models\Booking;
 use App\Models\Device;
 use App\Models\GuestNotification;
+use App\Models\ReceptionNotification;
 use App\Models\RoomUnit;
+use App\Models\SpaBooking;
+use App\Models\SpaCategory;
+use App\Models\SpaService;
 use App\Models\StayExtensionPayment;
 use App\Models\User;
 use App\Models\VisitorPass;
 use App\Services\DeviceCommandService;
 use App\Services\JwtService;
+use App\Support\ComputesBookingBill;
 use Closure;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +32,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -36,6 +43,7 @@ use Illuminate\Validation\ValidationException;
 class TabletController extends Controller
 {
     use AuthorizesRequests;
+    use ComputesBookingBill;
 
     /** POST /tablets/provision — bind a tablet using its QR payload. */
     public function provision(ProvisionTabletRequest $request): JsonResponse
@@ -361,7 +369,9 @@ class TabletController extends Controller
             'reference' => $reference,
             'nights' => $q['nights'],
             'new_check_out' => $q['newOut']->toDateString(),
-            'amount' => $q['total'],
+            // Pre-VAT room charge; VAT is stored separately (matches every
+            // other charge-source model: SpaBooking.subtotal/vat, etc.).
+            'amount' => $q['base'],
             'vat' => $q['vat'],
             'status' => StayExtensionPayment::PENDING,
         ]);
@@ -378,6 +388,38 @@ class TabletController extends Controller
             'total' => $q['total'],
             'total_label' => 'NGN '.number_format($q['total']),
         ]]);
+    }
+
+    /**
+     * POST /tablets/extend-stay/charge-to-room — extend the stay straight
+     * against the room's folio, no Paystack round trip needed. Confirmed the
+     * moment it's recorded, the same as the spa's "Charge to Room" option.
+     */
+    public function chargeExtensionToRoom(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+
+        $data = $request->validate(['check_out' => ['required', 'date']]);
+        $q = $this->extensionQuote($booking, $unit, $data['check_out']);
+
+        $payment = StayExtensionPayment::create([
+            'booking_id' => $booking->id,
+            'reference' => 'EXT-'.$booking->id.'-'.strtoupper(Str::random(10)),
+            'nights' => $q['nights'],
+            'new_check_out' => $q['newOut']->toDateString(),
+            'amount' => $q['base'],
+            'vat' => $q['vat'],
+            'status' => StayExtensionPayment::SUCCESS,
+            'paid_at' => now(),
+            'payment_method' => 'room_charge',
+        ]);
+
+        $this->applyExtension($booking, $q, null);
+
+        SendStayExtensionReceipt::dispatchSync($payment->id);
+        $this->notifyExtended($booking, $unit, $payment);
+
+        return response()->json(['data' => $this->extensionPayload($booking, $unit, $payment)]);
     }
 
     /**
@@ -421,26 +463,23 @@ class TabletController extends Controller
             402,
             'Your payment was not completed.'
         );
-        abort_if((int) data_get($body, 'data.amount') < $payment->amount * 100, 402, 'The payment amount did not match.');
+        abort_if(
+            (int) data_get($body, 'data.amount') < ((int) $payment->amount + (int) $payment->vat) * 100,
+            402,
+            'The payment amount did not match.'
+        );
 
         // Re-price now: the room must still be free for the extra nights.
         $q = $this->extensionQuote($booking, $unit, $data['check_out']);
-
-        $booking->forceFill([
-            'check_out' => $q['newOut']->toDateString(),
-            'nights' => (int) $booking->nights + $q['nights'],
-            // The folio carries the room charge; VAT is a payment-time tax line.
-            'amount' => (int) $booking->amount + $q['base'],
-            'payment_method' => data_get($body, 'data.channel', $booking->payment_method),
-        ])->save();
-        $booking->refresh();
+        $channel = data_get($body, 'data.channel');
+        $this->applyExtension($booking, $q, $channel);
 
         // Stamp when (and how) the guest paid so the admin Payments module can
         // list this extension as its own dated transaction.
         $payment->update([
             'status' => StayExtensionPayment::SUCCESS,
             'paid_at' => now(),
-            'payment_method' => data_get($body, 'data.channel'),
+            'payment_method' => $channel,
         ]);
 
         // Email the guest their receipt. Sent synchronously (and guarded) rather
@@ -450,7 +489,32 @@ class TabletController extends Controller
         // receipt. This sits after the idempotent early-return, so a repeated
         // verify never re-sends it.
         SendStayExtensionReceipt::dispatchSync($payment->id);
+        $this->notifyExtended($booking, $unit, $payment);
 
+        return response()->json(['data' => $this->extensionPayload($booking, $unit, $payment)]);
+    }
+
+    /**
+     * Apply a priced extension to the booking's dates and folio. Shared by the
+     * Paystack path (after verification) and the charge-to-room path
+     * (immediately) — the folio always carries the pre-VAT room charge; VAT is
+     * a payment-time tax line, never folio revenue. A null [$channel] (the
+     * charge-to-room path) leaves the booking's own payment method untouched.
+     */
+    private function applyExtension(Booking $booking, array $q, ?string $channel): void
+    {
+        $booking->forceFill([
+            'check_out' => $q['newOut']->toDateString(),
+            'nights' => (int) $booking->nights + $q['nights'],
+            'amount' => (int) $booking->amount + $q['base'],
+            'payment_method' => $channel ?? $booking->payment_method,
+        ])->save();
+        $booking->refresh();
+    }
+
+    /** Notify the guest's own tablet feed and the front desk of an applied stay extension. */
+    private function notifyExtended(Booking $booking, RoomUnit $unit, StayExtensionPayment $payment): void
+    {
         GuestNotification::notify(
             $booking,
             $unit,
@@ -459,7 +523,277 @@ class TabletController extends Controller
             'Your stay has been extended to '.Carbon::parse($booking->check_out)->format('F j, Y').'.',
         );
 
-        return response()->json(['data' => $this->extensionPayload($booking, $unit, $payment)]);
+        $totalLabel = '₦'.number_format((int) $payment->amount + (int) $payment->vat);
+        $verb = $payment->payment_method === 'room_charge' ? 'charged to their room bill' : 'paid';
+
+        // The front desk should know a guest just extended their stay — it
+        // changes the room's expected checkout date and, once settled, the
+        // day's revenue.
+        ReceptionNotification::notify(
+            'payment',
+            'Stay Extension',
+            ($booking->customer_name ?: 'A guest').' in Room '.($unit->number ?? $booking->room_name).
+                ' extended their stay to '.Carbon::parse($booking->check_out)->format('F j, Y').
+                ' — '.$totalLabel.' '.$verb.'.',
+            $booking,
+        );
+    }
+
+    /* ---------------- Spa & Wellness ---------------- */
+
+    /**
+     * The fixed appointment times the spa offers each day (Figma design — no
+     * per-slot capacity system exists yet, so every slot is always offered).
+     */
+    private const SPA_TIMES = ['9:00 AM', '10:30 AM', '12:00 PM', '2:00 PM', '3:30 PM', '5:00 PM', '6:30 PM'];
+
+    /**
+     * GET /tablets/spa/services — the spa's bookable services (with their
+     * real admin-managed categories) plus today's available appointment
+     * times, for the guest tablet's Spa & Wellness screen.
+     */
+    public function spaServices(Request $request): JsonResponse
+    {
+        $this->activeStay($request);
+
+        $services = SpaService::active()->ordered()->with('category')->get();
+
+        return response()->json(['data' => [
+            'services' => $services->map->toGuestArray()->values(),
+            'categories' => SpaCategory::ordered()->get()->map->toGuestArray()->values(),
+            'available_times' => self::SPA_TIMES,
+        ]]);
+    }
+
+    /**
+     * GET /tablets/spa/appointments — the checked-in guest's own spa bookings,
+     * newest first: every confirmed session, whether charged to the room or
+     * paid directly via Paystack. A Paystack checkout the guest never
+     * completed stays `pending`/unpaid and is left out — it was never a real
+     * appointment.
+     */
+    public function spaAppointments(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+
+        $appointments = SpaBooking::where('booking_id', $booking->id)
+            ->where('payment_status', 'paid')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json(['data' => $appointments->map->toGuestAppointmentArray()->values()]);
+    }
+
+    /**
+     * POST /tablets/spa/book — charge a spa session straight to the room's
+     * folio, no Paystack round trip needed. Confirmed the moment it's
+     * recorded, the same as a guest signing a chit at the spa desk.
+     */
+    public function bookSpaToRoom(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+        $data = $this->validateSpaBooking($request);
+        $service = $this->findSpaService($data['service_slug']);
+        $q = $this->spaQuote($service);
+
+        $spaBooking = SpaBooking::create([
+            'booking_id' => $booking->id,
+            'reference' => 'SPA-'.$booking->id.'-'.strtoupper(Str::random(10)),
+            'services' => [['name' => $service->name, 'slug' => $service->slug, 'price' => $service->price, 'qty' => 1]],
+            'guests' => 1,
+            'date' => now()->toDateString(),
+            'time' => $data['time'],
+            'subtotal' => $q['base'],
+            'vat' => $q['vat'],
+            'total' => $q['base'],
+            'customer_name' => $booking->customer_name,
+            'customer_email' => $booking->customer_email,
+            'customer_phone' => $booking->customer_phone,
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => 'room_charge',
+            'paid_at' => now(),
+        ]);
+
+        $this->notifySpaBooked($booking, $unit, $spaBooking, $service);
+
+        return response()->json(['data' => $spaBooking->toGuestConfirmationArray()]);
+    }
+
+    /**
+     * POST /tablets/spa/initialize — price the session and open a Paystack
+     * transaction, for the guest paying directly rather than charging the room.
+     */
+    public function initializeSpaBooking(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+        $data = $this->validateSpaBooking($request);
+        $service = $this->findSpaService($data['service_slug']);
+        $q = $this->spaQuote($service);
+
+        $secret = config('services.paystack.secret_key');
+        abort_if(blank($secret), 503, 'Online payment is not available right now.');
+
+        $reference = 'SPA-'.$booking->id.'-'.strtoupper(Str::random(10));
+        $callbackUrl = rtrim((string) config('app.url'), '/').'/tablet/extend-return';
+        $email = $booking->customer_email ?: 'guest'.$booking->id.'@retirodelrocio.ng';
+
+        try {
+            $response = Http::withToken($secret)->acceptJson()->post(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/initialize',
+                [
+                    'email' => $email,
+                    'amount' => $q['total'] * 100,
+                    'reference' => $reference,
+                    'callback_url' => $callbackUrl,
+                    'metadata' => [
+                        'booking_id' => $booking->id,
+                        'purpose' => 'spa_booking',
+                        'service_slug' => $service->slug,
+                    ],
+                ],
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not start the payment. Please try again.');
+        }
+
+        $authUrl = data_get($response->json(), 'data.authorization_url');
+        abort_if(! $response->ok() || ! $authUrl, 502, 'Could not start the payment. Please try again.');
+
+        SpaBooking::create([
+            'booking_id' => $booking->id,
+            'reference' => $reference,
+            'services' => [['name' => $service->name, 'slug' => $service->slug, 'price' => $service->price, 'qty' => 1]],
+            'guests' => 1,
+            'date' => now()->toDateString(),
+            'time' => $data['time'],
+            'subtotal' => $q['base'],
+            'vat' => $q['vat'],
+            'total' => $q['base'],
+            'customer_name' => $booking->customer_name,
+            'customer_email' => $booking->customer_email,
+            'customer_phone' => $booking->customer_phone,
+            'status' => 'pending',
+            'payment_status' => 'pending',
+        ]);
+
+        return response()->json(['data' => [
+            'authorization_url' => $authUrl,
+            'reference' => $reference,
+            'callback_url' => $callbackUrl,
+            'subtotal' => $q['base'],
+            'subtotal_label' => 'NGN '.number_format($q['base']),
+            'vat' => $q['vat'],
+            'vat_label' => 'NGN '.number_format($q['vat']),
+            'total' => $q['total'],
+            'total_label' => 'NGN '.number_format($q['total']),
+        ]]);
+    }
+
+    /**
+     * POST /tablets/spa/confirm — verify the Paystack charge and confirm the
+     * booking. Idempotent: a repeated call for an already-applied reference
+     * just returns the booking.
+     */
+    public function confirmSpaBooking(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+
+        $data = $request->validate(['reference' => ['required', 'string']]);
+
+        $spaBooking = SpaBooking::where('reference', $data['reference'])
+            ->where('booking_id', $booking->id)
+            ->first();
+        abort_unless($spaBooking, 404, 'We could not find that booking.');
+
+        if ($spaBooking->payment_status === 'paid') {
+            return response()->json(['data' => $spaBooking->toGuestConfirmationArray()]);
+        }
+
+        $secret = config('services.paystack.secret_key');
+        try {
+            $verify = Http::withToken($secret)->acceptJson()->get(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/verify/'.$data['reference']
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not verify the payment. Please try again.');
+        }
+
+        $body = $verify->json();
+        abort_unless(
+            $verify->ok() && data_get($body, 'data.status') === 'success',
+            402,
+            'Your payment was not completed.'
+        );
+        abort_if(
+            (int) data_get($body, 'data.amount') < ((int) $spaBooking->subtotal + (int) $spaBooking->vat) * 100,
+            402,
+            'The payment amount did not match.'
+        );
+
+        $spaBooking->update([
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => data_get($body, 'data.channel'),
+            'paid_at' => now(),
+        ]);
+
+        $service = SpaService::where('slug', data_get($spaBooking->services, '0.slug'))->first();
+        $this->notifySpaBooked($booking, $unit, $spaBooking->fresh(), $service);
+
+        return response()->json(['data' => $spaBooking->fresh()->toGuestConfirmationArray()]);
+    }
+
+    /** @return array{service_slug: string, time: string} */
+    private function validateSpaBooking(Request $request): array
+    {
+        return $request->validate([
+            'service_slug' => ['required', 'string'],
+            'time' => ['required', 'string', Rule::in(self::SPA_TIMES)],
+        ]);
+    }
+
+    private function findSpaService(string $slug): SpaService
+    {
+        $service = SpaService::active()->where('slug', $slug)->first();
+        abort_unless($service, 404, 'That service is not available.');
+
+        return $service;
+    }
+
+    /** Price a spa session: the service's price plus VAT on top. */
+    private function spaQuote(SpaService $service): array
+    {
+        $base = (int) $service->price;
+        $vat = (int) round($base * self::VAT_RATE);
+        $total = $base + $vat;
+
+        return compact('base', 'vat', 'total');
+    }
+
+    /** Notify the guest's own tablet feed and the front desk of a new spa booking. */
+    private function notifySpaBooked(Booking $booking, RoomUnit $unit, SpaBooking $spaBooking, ?SpaService $service): void
+    {
+        $serviceName = $service?->name ?? collect($spaBooking->services)->pluck('name')->first() ?? 'Spa session';
+
+        GuestNotification::notify(
+            $booking,
+            $unit,
+            'spa',
+            'Spa Booking Confirmed',
+            $serviceName.' is booked for '.$spaBooking->time.' today.',
+        );
+
+        ReceptionNotification::notify(
+            'booking',
+            'New Spa Booking',
+            ($booking->customer_name ?: 'A guest').' in Room '.($unit->number ?? $booking->room_name).
+                ' booked '.$serviceName.' at '.$spaBooking->time.'.',
+            $booking,
+        );
     }
 
     /**
@@ -515,6 +849,189 @@ class TabletController extends Controller
         return $payload;
     }
 
+    /* ---------------- My Bills ---------------- */
+
+    /**
+     * GET /tablets/my-bills — the checked-in guest's itemised folio for the My
+     * Bills screen: stay extensions charged to the room, spa sessions charged
+     * to the room, the categories with no charge source yet (Restaurant & Bar,
+     * Cinema, Gym), a priced summary and the checkout countdown. The room
+     * rate and airport pickup are settled at booking time and never appear.
+     */
+    public function myBills(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+
+        return response()->json(['data' => $this->billsPayload($booking, $unit)]);
+    }
+
+    /**
+     * POST /tablets/my-bills/initialize — price the guest's outstanding balance
+     * and open a Paystack transaction to pre-settle it ahead of checkout. No
+     * folio is touched here — that only happens once the charge is verified in
+     * {@see confirmBillPayment()}.
+     */
+    public function initializeBillPayment(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+
+        $q = $this->billQuote($booking);
+        abort_if($q['due'] <= 0, 422, 'There is nothing to pay right now.');
+
+        $secret = config('services.paystack.secret_key');
+        abort_if(blank($secret), 503, 'Online payment is not available right now.');
+
+        $reference = 'BILL-'.$booking->id.'-'.strtoupper(Str::random(10));
+        $callbackUrl = rtrim((string) config('app.url'), '/').'/tablet/extend-return';
+        $email = $booking->customer_email ?: 'guest'.$booking->id.'@retirodelrocio.ng';
+
+        try {
+            $response = Http::withToken($secret)->acceptJson()->post(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/initialize',
+                [
+                    'email' => $email,
+                    'amount' => $q['due'] * 100,
+                    'reference' => $reference,
+                    'callback_url' => $callbackUrl,
+                    'metadata' => [
+                        'booking_id' => $booking->id,
+                        'purpose' => 'bill_payment',
+                    ],
+                ],
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not start the payment. Please try again.');
+        }
+
+        $authUrl = data_get($response->json(), 'data.authorization_url');
+        abort_if(! $response->ok() || ! $authUrl, 502, 'Could not start the payment. Please try again.');
+
+        BillPayment::create([
+            'booking_id' => $booking->id,
+            'reference' => $reference,
+            'amount' => $q['amount_due'],
+            'vat' => $q['vat_due'],
+            'status' => BillPayment::PENDING,
+        ]);
+
+        return response()->json(['data' => [
+            'authorization_url' => $authUrl,
+            'reference' => $reference,
+            'callback_url' => $callbackUrl,
+            'subtotal' => $q['amount_due'],
+            'subtotal_label' => 'NGN '.number_format($q['amount_due']),
+            'vat' => $q['vat_due'],
+            'vat_label' => 'NGN '.number_format($q['vat_due']),
+            'total' => $q['due'],
+            'total_label' => 'NGN '.number_format($q['due']),
+        ]]);
+    }
+
+    /**
+     * POST /tablets/my-bills/confirm — verify the Paystack charge and record
+     * the settlement. Idempotent: a repeated call for an already-applied
+     * reference just returns the payment.
+     */
+    public function confirmBillPayment(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+
+        $data = $request->validate(['reference' => ['required', 'string']]);
+
+        $payment = BillPayment::where('reference', $data['reference'])
+            ->where('booking_id', $booking->id)
+            ->first();
+        abort_unless($payment, 404, 'We could not find that payment.');
+
+        if ($payment->isSuccessful()) {
+            return response()->json(['data' => $payment->toGuestConfirmationArray()]);
+        }
+
+        $secret = config('services.paystack.secret_key');
+        try {
+            $verify = Http::withToken($secret)->acceptJson()->get(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/verify/'.$data['reference']
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not verify the payment. Please try again.');
+        }
+
+        $body = $verify->json();
+        abort_unless(
+            $verify->ok() && data_get($body, 'data.status') === 'success',
+            402,
+            'Your payment was not completed.'
+        );
+        abort_if(
+            (int) data_get($body, 'data.amount') < ((int) $payment->amount + (int) $payment->vat) * 100,
+            402,
+            'The payment amount did not match.'
+        );
+
+        $payment->update([
+            'status' => BillPayment::SUCCESS,
+            'paid_at' => now(),
+            'payment_method' => data_get($body, 'data.channel'),
+        ]);
+
+        $totalLabel = $payment->toGuestConfirmationArray()['total_label'];
+
+        GuestNotification::notify(
+            $booking,
+            $unit,
+            'payment',
+            'Bill Confirmed',
+            'You paid '.$totalLabel.' towards your room bill.',
+        );
+
+        ReceptionNotification::notify(
+            'payment',
+            'Guest Bill Payment',
+            ($booking->customer_name ?: 'A guest').' in Room '.($unit->number ?? $booking->room_name).
+                ' paid '.$totalLabel.' towards their bill from the tablet.',
+            $booking,
+        );
+
+        return response()->json(['data' => $payment->fresh()->toGuestConfirmationArray()]);
+    }
+
+    /**
+     * The itemised My Bills payload: real room charges, real room-charge spa
+     * sessions, the categories with no charge source yet, a priced summary
+     * and the checkout countdown.
+     */
+    private function billsPayload(Booking $booking, RoomUnit $unit): array
+    {
+        $room = $unit->room ?? $booking->room;
+        $breakdown = $this->billBreakdown($booking);
+
+        $checkOut = $booking->departureAt();
+        $daysRemaining = $checkOut
+            ? max(0, (int) round(now()->startOfDay()->diffInDays($checkOut->copy()->startOfDay(), false)))
+            : 0;
+
+        return [
+            'reservation' => [
+                'room_name' => $room?->name ?? $booking->room_name,
+                'unit_label' => $unit->number ? 'Room '.$unit->number : null,
+            ],
+            'categories' => $breakdown['categories'],
+            'summary' => [
+                'lines' => $breakdown['summary_lines'],
+                'total_due' => $breakdown['due'],
+                'total_due_label' => 'NGN '.number_format($breakdown['due']),
+            ],
+            'checkout_reminder' => [
+                'check_out_label' => $checkOut ? $checkOut->format('D, M j \a\t g:i A') : null,
+                'days_remaining' => $daysRemaining,
+                'days_remaining_label' => $daysRemaining === 1 ? '1 day remaining' : $daysRemaining.' days remaining',
+            ],
+            'can_pay' => $breakdown['due'] > 0,
+        ];
+    }
+
     /**
      * Resolve the guest currently checked into this tablet's room, or 404. The
      * device token scopes the whole thing to one room.
@@ -546,7 +1063,15 @@ class TabletController extends Controller
 
         $pickup = (int) ($booking->pickup_price ?? 0);
         $amount = (int) $booking->amount;
-        $roomSubtotal = max(0, $amount - $pickup);
+
+        // Every successful extension, however it was paid — Stay Summary is
+        // the guest's full financial history for this stay, unlike My Bills
+        // (which only ever shows what's still charged to the room).
+        $extensions = $booking->stayExtensionPayments()
+            ->where('status', StayExtensionPayment::SUCCESS)
+            ->get();
+        $extensionsTotal = (int) $extensions->sum('amount');
+        $roomSubtotal = max(0, $amount - $pickup - $extensionsTotal);
 
         $lines = [[
             'label' => 'Room Rate',
@@ -560,6 +1085,17 @@ class TabletController extends Controller
                 'amount_label' => 'NGN '.number_format($pickup),
             ];
         }
+        foreach ($extensions as $extension) {
+            $lines[] = [
+                'label' => 'Stay Extension',
+                'sub' => $extension->nights.' night(s) to '.Carbon::parse($extension->new_check_out)->format('M j, Y'),
+                'amount_label' => 'NGN '.number_format((int) $extension->amount),
+            ];
+        }
+
+        // What's still charged to the room right now — the same real balance
+        // the My Bills screen shows, so "Current Bill" leads straight there.
+        $due = $this->billQuote($booking)['due'];
 
         $inclusions = collect($room?->amenities ?? [])
             ->filter(fn ($a) => is_string($a) && trim($a) !== '')
@@ -601,7 +1137,8 @@ class TabletController extends Controller
                 'lines' => $lines,
                 'total_label' => 'NGN '.number_format($amount),
             ],
-            'current_bill_label' => 'NGN '.number_format($amount),
+            'current_bill_label' => 'NGN '.number_format($due),
+            'current_bill_due' => $due > 0,
             'inclusions' => $inclusions,
         ];
     }

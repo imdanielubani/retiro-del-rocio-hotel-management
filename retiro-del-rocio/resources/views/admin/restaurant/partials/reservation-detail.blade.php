@@ -26,8 +26,10 @@
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Party size</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->guestsLabel() }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Table</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->table_label ?: '—' }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Fee</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->feeLabel() }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">VAT (7.5%)</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->vatLabel() }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Date</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ optional($selected->reserved_date)->format('M j, Y') ?: '—' }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Time</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->timeLabel() }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3 col-span-2"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Total paid</p><p class="mt-0.5 text-[16px] font-bold text-[#1e1e1e]">{{ $selected->totalWithVatLabel() }}</p></div>
                 </div>
                 @if ($selected->special_request)
                     <div class="mt-3 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3">

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bills_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bookings_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guests_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_incident_response_screen.dart';
@@ -87,6 +88,7 @@ class ReceptionNavigation {
       switch (item) {
         ReceptionNavItem.guests => ReceptionGuestsScreen(session: session),
         ReceptionNavItem.bookings => ReceptionBookingsScreen(session: session),
+        ReceptionNavItem.bills => ReceptionBillsScreen(session: session),
         ReceptionNavItem.vehiclePickup => ReceptionVehiclePickupScreen(
           session: session,
         ),
@@ -109,6 +111,7 @@ class ReceptionNavigation {
   }
 
   static String _label(ReceptionNavItem item) => switch (item) {
+    ReceptionNavItem.bills => 'Bills',
     ReceptionNavItem.visitorPass => 'Visitor Pass',
     ReceptionNavItem.roomStatus => 'Room Status',
     ReceptionNavItem.vehiclePickup => 'Vehicle Pickup',

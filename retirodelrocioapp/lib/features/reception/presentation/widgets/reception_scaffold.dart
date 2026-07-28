@@ -4,6 +4,7 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_top_bar.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
@@ -25,6 +26,8 @@ class ReceptionScaffold extends ConsumerWidget {
     this.subtitle = 'Reception',
     this.onBack,
     this.trailing,
+    this.hasUnreadNotifications = false,
+    this.onNotifications,
   });
 
   final StaffSession session;
@@ -41,9 +44,20 @@ class ReceptionScaffold extends ConsumerWidget {
   /// An optional widget pinned to the right of the heading (e.g. a search box).
   final Widget? trailing;
 
+  /// Lights the top bar's bell badge gold when the front desk has an unread
+  /// notification.
+  final bool hasUnreadNotifications;
+
+  /// Opens the reception Notifications screen. Left null on a screen that
+  /// doesn't wire it up yet, in which case the bell is inert.
+  final VoidCallback? onNotifications;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weather = ref.watch(weatherProvider).value;
+    // Keeps the notification chime alive on every reception screen that uses
+    // this shell — not just the dashboard.
+    ref.watch(receptionNotificationChimeProvider(session.token));
 
     return SessionGuard(
       child: Scaffold(
@@ -73,6 +87,8 @@ class ReceptionScaffold extends ConsumerWidget {
                             name: session.name,
                             role: subtitle,
                             weather: weather,
+                            hasUnreadNotifications: hasUnreadNotifications,
+                            onNotifications: onNotifications,
                           ),
                           const SizedBox(height: 20),
                           _header(),

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
+import 'package:retirodelrocioapp/features/guest/bills/presentation/screens/guest_bills_screen.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/application/my_stay_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
@@ -28,6 +29,14 @@ class MyStayScreen extends ConsumerWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ExtendStayScreen(device: device, stay: stay),
+      ),
+    );
+  }
+
+  void _openBills(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestBillsScreen(device: device, status: status),
       ),
     );
   }
@@ -220,7 +229,7 @@ class MyStayScreen extends ConsumerWidget {
               children: [
                 _inclusionsCard(stay.inclusions),
                 const SizedBox(height: 24),
-                _currentBillCard(stay.currentBillLabel),
+                _currentBillCard(context, stay.currentBillLabel),
               ],
             ),
           ),
@@ -296,31 +305,39 @@ class MyStayScreen extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _stayFact(
-            'CHECK-IN',
-            r.checkIn != null
-                ? DateFormat('MMMM d, y').format(r.checkIn!)
-                : '—',
-            r.checkIn != null ? DateFormat('h:mm a').format(r.checkIn!) : null,
-            Colors.white,
+          Expanded(
+            child: _stayFact(
+              'CHECK-IN',
+              r.checkIn != null
+                  ? DateFormat('MMMM d, y').format(r.checkIn!)
+                  : '—',
+              r.checkIn != null
+                  ? DateFormat('h:mm a').format(r.checkIn!)
+                  : null,
+              Colors.white,
+            ),
           ),
           _factDivider(),
-          _stayFact(
-            'CHECK-OUT',
-            r.checkOut != null
-                ? DateFormat('MMMM d, y').format(r.checkOut!)
-                : '—',
-            r.checkOut != null
-                ? DateFormat('h:mm a').format(r.checkOut!)
-                : null,
-            Colors.white,
+          Expanded(
+            child: _stayFact(
+              'CHECK-OUT',
+              r.checkOut != null
+                  ? DateFormat('MMMM d, y').format(r.checkOut!)
+                  : '—',
+              r.checkOut != null
+                  ? DateFormat('h:mm a').format(r.checkOut!)
+                  : null,
+              Colors.white,
+            ),
           ),
           _factDivider(),
-          _stayFact(
-            'DURATION',
-            '${r.nights} ${r.nights == 1 ? 'Night' : 'Nights'}',
-            r.rateLabel,
-            AppColors.gold,
+          Expanded(
+            child: _stayFact(
+              'DURATION',
+              '${r.nights} ${r.nights == 1 ? 'Night' : 'Nights'}',
+              r.rateLabel,
+              AppColors.gold,
+            ),
           ),
         ],
       ),
@@ -379,6 +396,8 @@ class MyStayScreen extends ConsumerWidget {
         const SizedBox(height: 6),
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppTypography.style(
             color: valueColor,
             fontSize: 16,
@@ -389,6 +408,8 @@ class MyStayScreen extends ConsumerWidget {
           const SizedBox(height: 3),
           Text(
             sub!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.style(
               color: Colors.white.withValues(alpha: 0.4),
               fontSize: 12,
@@ -772,50 +793,57 @@ class MyStayScreen extends ConsumerWidget {
 
   // --- Current bill ---------------------------------------------------------
 
-  Widget _currentBillCard(String amountLabel) {
-    return Container(
-      padding: const EdgeInsets.all(20.8),
-      decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.08),
+  Widget _currentBillCard(BuildContext context, String amountLabel) {
+    return Material(
+      color: AppColors.gold.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: () => _openBills(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.2),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'CURRENT BILL',
-                  style: AppTypography.style(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.88,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  amountLabel,
-                  style: AppTypography.style(
-                    color: AppColors.gold,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+        child: Container(
+          padding: const EdgeInsets.all(20.8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.gold.withValues(alpha: 0.2),
+              width: 0.8,
             ),
           ),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: Colors.white.withValues(alpha: 0.5),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'CURRENT BILL',
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.88,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      amountLabel,
+                      style: AppTypography.style(
+                        color: AppColors.gold,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

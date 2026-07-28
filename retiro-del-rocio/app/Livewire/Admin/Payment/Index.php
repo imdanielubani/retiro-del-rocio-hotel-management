@@ -341,6 +341,17 @@ class Index extends Component
         return $start->format('M j, Y').' – '.$end->format('M j, Y');
     }
 
+    /**
+     * Sum of a base-amount column plus its VAT — what the guest actually paid.
+     * Runs on the underlying query builder (not the Eloquent model), so an
+     * eager-loaded relation like `stayExtensionQuery()`'s `booking` never gets
+     * in the way of a plain scalar aggregate.
+     */
+    protected function sumWithVat($query, string $column): int
+    {
+        return (int) ($query->toBase()->selectRaw("SUM({$column} + COALESCE(vat, 0)) as t")->value('t') ?? 0);
+    }
+
     // ₦4.2M / ₦622,000 style.
     protected function naira(int $n): string
     {
@@ -480,8 +491,15 @@ class Index extends Component
         ];
 
         // ---- Filtered summary (both sources) ----
+        // The guest's actual total paid (base + VAT), matching the "Total Paid"
+        // column in the transaction table below — not just the pre-VAT subtotal.
         $summaryCount = (clone $this->roomQuery())->count() + (clone $this->spaQuery())->count() + (clone $this->gymQuery())->count() + (clone $this->restaurantQuery())->count() + (clone $this->cinemaQuery())->count() + (clone $this->stayExtensionQuery())->count();
-        $summaryAmount = (int) (clone $this->roomQuery())->sum('amount') + (int) (clone $this->spaQuery())->sum('total') + (int) (clone $this->gymQuery())->sum('price') + (int) (clone $this->restaurantQuery())->sum('fee') + (int) (clone $this->cinemaQuery())->sum('amount') + (int) (clone $this->stayExtensionQuery())->sum('amount');
+        $summaryAmount = $this->sumWithVat($this->roomQuery(), 'amount')
+            + $this->sumWithVat($this->spaQuery(), 'total')
+            + $this->sumWithVat($this->gymQuery(), 'price')
+            + $this->sumWithVat($this->restaurantQuery(), 'fee')
+            + $this->sumWithVat($this->cinemaQuery(), 'amount')
+            + $this->sumWithVat($this->stayExtensionQuery(), 'amount');
 
         // Whether any filter is active (drives the "Clear all" button).
         $hasFilters = (bool) ($this->search || $this->range || $this->year || $this->month

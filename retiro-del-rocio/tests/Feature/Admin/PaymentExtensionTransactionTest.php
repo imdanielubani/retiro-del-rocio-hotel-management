@@ -59,7 +59,7 @@ class PaymentExtensionTransactionTest extends TestCase
             ->test(Index::class)
             ->assertOk()
             ->assertSee('Extension')          // the source pill
-            ->assertSee('₦16,125')            // the amount charged (incl VAT)
+            ->assertSee('₦17,250')            // total paid: ₦16,125 base + ₦1,125 VAT
             ->assertSee('Daniel Ubani')       // host guest, read via the booking
             ->assertSee(now()->format('M j, Y')); // the payment date
     }

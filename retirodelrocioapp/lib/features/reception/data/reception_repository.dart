@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:retirodelrocioapp/core/config/api_config.dart';
 import 'package:retirodelrocioapp/core/error/messaged_exception.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
@@ -133,6 +134,48 @@ class ReceptionRepository {
     } catch (error) {
       debugPrint('ReceptionRepository: bookings failed — $error');
       return const [];
+    }
+  }
+
+  /// Every checked-in guest's outstanding room-charge balance. Failures fall
+  /// back to the empty overview so the module still renders.
+  Future<ReceptionBillsOverview> bills(String token, {String? search}) async {
+    try {
+      final uri = Uri.parse(ApiConfig.endpoint('reception/bills')).replace(
+        queryParameters: (search != null && search.isNotEmpty)
+            ? {'search': search}
+            : null,
+      );
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        uri,
+        options: _auth(token),
+      );
+      final data = (response.data?['data'] as Map?)?.cast<String, dynamic>();
+      return data != null
+          ? ReceptionBillsOverview.fromJson(data)
+          : ReceptionBillsOverview.empty;
+    } catch (error) {
+      debugPrint('ReceptionRepository: bills failed — $error');
+      return ReceptionBillsOverview.empty;
+    }
+  }
+
+  /// One guest's itemised folio — the same real numbers their own tablet's My
+  /// Bills screen shows them.
+  Future<ReceptionBillDetail> bookingBill(String token, int bookingId) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/bill')),
+        options: _auth(token),
+      );
+      return ReceptionBillDetail.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw ReceptionException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('ReceptionRepository: bookingBill failed — $error');
+      throw ReceptionException('Could not load this bill.');
     }
   }
 

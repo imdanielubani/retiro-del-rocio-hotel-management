@@ -65,7 +65,7 @@
                                 </tr>
                                 <tr>
                                     <td style="padding:14px 16px;font-weight:bold;font-size:16px;">Total paid</td>
-                                    <td style="padding:14px 16px;text-align:right;font-weight:bold;font-size:16px;color:#16a34a;">₦{{ number_format((int) $payment->amount) }}</td>
+                                    <td style="padding:14px 16px;text-align:right;font-weight:bold;font-size:16px;color:#16a34a;">₦{{ number_format($total) }}</td>
                                 </tr>
                             </table>
 

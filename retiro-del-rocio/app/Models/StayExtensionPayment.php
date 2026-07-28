@@ -73,6 +73,18 @@ class StayExtensionPayment extends Model
         return '₦'.number_format((int) $this->amount);
     }
 
+    /** VAT (7.5%) charged on top of the extension amount at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the extension amount plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->amount + (int) $this->vat);
+    }
+
     /** Human label for the Paystack channel the guest paid the extension with. */
     public function methodLabel(): string
     {

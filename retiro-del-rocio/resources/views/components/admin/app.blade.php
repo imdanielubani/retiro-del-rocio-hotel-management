@@ -145,7 +145,7 @@
         ]],
         ['label' => 'Analytics Management', 'items' => [
             ['label' => 'Payments', 'icon' => 'payments', 'href' => route('admin.payment.index'), 'active' => request()->routeIs('admin.payment.*')],
-            ['label' => 'Billing', 'icon' => 'billing', 'href' => '#'],
+            ['label' => 'Billing', 'icon' => 'billing', 'href' => route('admin.billing.index'), 'active' => request()->routeIs('admin.billing.*')],
             ['label' => 'Reports', 'icon' => 'reports', 'href' => '#'],
             ['label' => 'Activity Logs', 'icon' => 'activity', 'href' => '#'],
         ]],

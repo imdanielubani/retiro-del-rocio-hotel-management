@@ -134,6 +134,9 @@ class Index extends Component
                 $latest = $group->first(); // newest-first from the query
                 $stays = $group->whereIn('status', self::STAY_STATUSES);
 
+                // 'revenue' is the pre-VAT folio total (matches the Payments module's
+                // definition of revenue — VAT is a pass-through tax, never counted as
+                // hotel revenue). 'spend' is what the guest actually paid, VAT included.
                 return [
                     'id' => md5($latest->guestKey()),
                     'name' => $latest->customer_name ?: 'Guest',
@@ -142,7 +145,8 @@ class Index extends Component
                     'initials' => $this->initials($latest->customer_name),
                     'stays' => $stays->count(),
                     'nights' => (int) $stays->sum('nights'),
-                    'spend' => (int) $stays->sum('amount'),
+                    'revenue' => (int) $stays->sum('amount'),
+                    'spend' => (int) $stays->sum('amount') + (int) $stays->sum('vat'),
                     'last_stay' => $latest->check_in,
                     'in_house' => $group->contains(fn (Booking $b) => $b->status === 'checked_in'),
                 ];
@@ -180,7 +184,7 @@ class Index extends Component
             'in_house' => $bookings->contains(fn (Booking $b) => $b->status === 'checked_in'),
             'total_stays' => $stays->count(),
             'total_nights' => (int) $stays->sum('nights'),
-            'total_spend_label' => '₦'.number_format((int) $stays->sum('amount')),
+            'total_spend_label' => '₦'.number_format((int) $stays->sum('amount') + (int) $stays->sum('vat')),
             'first_seen_label' => optional($bookings->last()->check_in)->format('M Y') ?: '—',
             'favourite_room' => $favouriteRoom ?: '—',
             'uses_pickup' => $bookings->contains(fn (Booking $b) => ! empty($b->pickup_vehicle)),
@@ -196,7 +200,7 @@ class Index extends Component
             'total' => ['label' => 'Total Guests', 'value' => number_format($all->count()), 'sub' => 'Matching filters', 'accent' => '#f38c00'],
             'in_house' => ['label' => 'In-House Now', 'value' => number_format($all->where('in_house', true)->count()), 'sub' => 'Currently checked in', 'accent' => '#16a34a'],
             'repeat' => ['label' => 'Repeat Guests', 'value' => number_format($all->where('stays', '>', 1)->count()), 'sub' => 'More than one stay', 'accent' => '#7c3aed'],
-            'revenue' => ['label' => 'Total Revenue', 'value' => '₦'.number_format((int) $all->sum('spend')), 'sub' => 'Across these guests', 'accent' => '#d97706'],
+            'revenue' => ['label' => 'Total Revenue', 'value' => '₦'.number_format((int) $all->sum('revenue')), 'sub' => 'Across these guests', 'accent' => '#d97706'],
         ];
 
         $page = max(1, (int) ($this->paginators['page'] ?? 1));

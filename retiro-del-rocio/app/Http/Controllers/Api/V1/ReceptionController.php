@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Driver;
+use App\Models\ReceptionNotification;
 use App\Models\RoomUnit;
 use App\Models\SosAlert;
 use App\Models\User;
 use App\Models\VisitorPass;
 use App\Services\CloudinaryService;
 use App\Services\VisitorPassProvisioner;
+use App\Support\ComputesBookingBill;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +27,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ReceptionController extends Controller
 {
+    use ComputesBookingBill;
+
     /**
      * GET /reception/overview — everything the dashboard renders in one call: the
      * headline counters, today's arrivals still to be checked in, departures due
@@ -266,6 +270,18 @@ class ReceptionController extends Controller
 
         abort_unless($booking->status === 'checked_in', 409, 'This booking is not checked in.');
 
+        // The guest must settle their room-charge bill before checking out —
+        // the same real balance their own tablet's My Bills screen, and the
+        // desk's own Bills module, show them.
+        $due = $this->billQuote($booking)['due'];
+        if ($due > 0) {
+            return response()->json([
+                'message' => 'This guest has an outstanding balance of NGN '.number_format($due).'. Settle the bill before checking out.',
+                'due' => $due,
+                'due_label' => 'NGN '.number_format($due),
+            ], 409);
+        }
+
         DB::transaction(function () use ($booking) {
             RoomUnit::release($booking->room_unit_id);
             $booking->forceFill([
@@ -449,6 +465,86 @@ class ReceptionController extends Controller
         return response()->json(['data' => $bookings->map->toReceptionBookingRowArray()->values()]);
     }
 
+    /* ---------------- Bills ---------------- */
+
+    /**
+     * GET /reception/bills — every checked-in guest's outstanding room-charge
+     * balance, so the desk can see who owes what without opening each guest's
+     * folio. Optional `?search=` narrows by guest name or room number. Guests
+     * carrying a balance sort first — that's who the desk needs to chase.
+     */
+    public function bills(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $search = trim((string) $request->query('search', ''));
+
+        $bookings = Booking::with('roomUnit')
+            ->where('status', 'checked_in')
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('customer_name', 'like', "%{$search}%")
+                ->orWhere('room_name', 'like', "%{$search}%")))
+            ->get();
+
+        $rows = $bookings->map(function (Booking $booking) {
+            $q = $this->billQuote($booking);
+
+            return [
+                'booking_id' => $booking->id,
+                'guest_name' => $booking->customer_name,
+                'room_label' => $booking->roomUnit?->number
+                    ? 'Room '.$booking->roomUnit->number
+                    : ($booking->room_name ?: '—'),
+                'check_out_label' => optional($booking->departureAt())->format('M j, Y'),
+                'total_due' => $q['due'],
+                'total_due_label' => 'NGN '.number_format($q['due']),
+                'has_balance' => $q['due'] > 0,
+            ];
+        })->sortByDesc('total_due')->values();
+
+        return response()->json(['data' => [
+            'summary' => [
+                'total_outstanding' => (int) $rows->sum('total_due'),
+                'total_outstanding_label' => 'NGN '.number_format($rows->sum('total_due')),
+                'guests_with_balance' => $rows->where('has_balance', true)->count(),
+            ],
+            'bills' => $rows,
+        ]]);
+    }
+
+    /**
+     * GET /reception/bookings/{booking}/bill — one checked-in guest's itemised
+     * folio, the same real numbers the guest tablet's My Bills screen shows
+     * them, for the desk to review or settle in person.
+     */
+    public function bookingBill(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        abort_unless($booking->status === 'checked_in', 404, 'This booking is not checked in.');
+
+        $booking->loadMissing('roomUnit.room');
+        $room = $booking->roomUnit?->room ?? $booking->room;
+
+        $breakdown = $this->billBreakdown($booking);
+
+        return response()->json(['data' => [
+            'reservation' => [
+                'guest_name' => $booking->customer_name,
+                'room_name' => $room?->name ?? $booking->room_name,
+                'unit_label' => $booking->roomUnit?->number ? 'Room '.$booking->roomUnit->number : null,
+                'check_in_label' => optional($booking->arrivalAt())->format('M j, Y'),
+                'check_out_label' => optional($booking->departureAt())->format('M j, Y'),
+            ],
+            'categories' => $breakdown['categories'],
+            'summary' => [
+                'lines' => $breakdown['summary_lines'],
+                'total_due' => $breakdown['due'],
+                'total_due_label' => 'NGN '.number_format($breakdown['due']),
+            ],
+        ]]);
+    }
+
     /**
      * GET /reception/guests — the hotel's guests, aggregated from their bookings.
      *
@@ -549,6 +645,48 @@ class ReceptionController extends Controller
             ],
             'history' => $bookings->map->toReceptionBookingRowArray()->values(),
         ]]);
+    }
+
+    /* ---------------- Notifications ---------------- */
+
+    /**
+     * GET /reception/notifications — the front desk's notification feed,
+     * newest first. Reception is one shared station, so the feed (and its
+     * read state) is shared across whoever is signed in, not scoped to a
+     * single receptionist.
+     */
+    public function notifications(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $notifications = ReceptionNotification::latest()->limit(100)->get();
+
+        return response()->json(['data' => $notifications->map->toReceptionArray()->values()]);
+    }
+
+    /** POST /reception/notifications/{notification}/read — mark one as read. */
+    public function markNotificationRead(Request $request, int $notification): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $record = ReceptionNotification::find($notification);
+        abort_unless($record, 404, 'Notification not found.');
+
+        if (! $record->read_at) {
+            $record->update(['read_at' => now()]);
+        }
+
+        return response()->json(['data' => $record->toReceptionArray()]);
+    }
+
+    /** POST /reception/notifications/read-all — "Mark all read". */
+    public function markAllNotificationsRead(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        ReceptionNotification::whereNull('read_at')->update(['read_at' => now()]);
+
+        return response()->json(['ok' => true]);
     }
 
     /** The authenticated staffer, who must hold the `reception` role. */

@@ -206,6 +206,7 @@ class GuestStay {
     required this.summaryLines,
     required this.summaryTotalLabel,
     required this.currentBillLabel,
+    required this.currentBillDue,
     required this.inclusions,
     this.extension,
   });
@@ -215,7 +216,13 @@ class GuestStay {
   final List<StayVisitor> visitors;
   final List<StaySummaryLine> summaryLines;
   final String summaryTotalLabel;
+
+  /// What's currently charged to the room — the same balance the My Bills
+  /// screen shows. Not the stay's full cost (that's [summaryTotalLabel]).
   final String currentBillLabel;
+
+  /// True when [currentBillLabel] is a real outstanding balance (> 0).
+  final bool currentBillDue;
   final List<StayInclusion> inclusions;
 
   /// Present only on the response to an extension.
@@ -242,6 +249,7 @@ class GuestStay {
       summaryLines: parse(summary['lines'], StaySummaryLine.fromJson),
       summaryTotalLabel: summary['total_label'] as String? ?? '',
       currentBillLabel: json['current_bill_label'] as String? ?? '',
+      currentBillDue: json['current_bill_due'] as bool? ?? false,
       inclusions: parse(json['inclusions'], StayInclusion.fromJson),
       extension: json['extension'] is Map
           ? StayExtension.fromJson(

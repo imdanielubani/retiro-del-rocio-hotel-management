@@ -67,7 +67,7 @@
                                 </p>
                             </div>
                             <div class="flex shrink-0 flex-col items-end gap-1">
-                                <span class="text-[13px] font-semibold text-[#1e1e1e]">{{ $b->amountLabel() }}</span>
+                                <span class="text-[13px] font-semibold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</span>
                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
                             </div>
                         </div>

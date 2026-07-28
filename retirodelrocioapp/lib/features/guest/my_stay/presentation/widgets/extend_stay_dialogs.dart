@@ -17,12 +17,17 @@ Future<StayExtension?> showExtendPaymentDialog(
   required ExtensionQuote quote,
   required int partySize,
   required Future<StayExtension?> Function() onPay,
+  String buttonLabel = 'PAY NOW',
 }) {
   return showDialog<StayExtension>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.9),
-    builder: (_) =>
-        _PaymentDialog(quote: quote, partySize: partySize, onPay: onPay),
+    builder: (_) => _PaymentDialog(
+      quote: quote,
+      partySize: partySize,
+      onPay: onPay,
+      buttonLabel: buttonLabel,
+    ),
   );
 }
 
@@ -44,11 +49,13 @@ class _PaymentDialog extends StatefulWidget {
     required this.quote,
     required this.partySize,
     required this.onPay,
+    required this.buttonLabel,
   });
 
   final ExtensionQuote quote;
   final int partySize;
   final Future<StayExtension?> Function() onPay;
+  final String buttonLabel;
 
   @override
   State<_PaymentDialog> createState() => _PaymentDialogState();
@@ -238,7 +245,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                     ),
                   )
                 : Text(
-                    'PAY NOW',
+                    widget.buttonLabel,
                     style: AppTypography.style(
                       color: Colors.black,
                       fontSize: 16,

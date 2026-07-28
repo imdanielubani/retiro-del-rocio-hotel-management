@@ -81,7 +81,7 @@
                                     <p class="truncate text-[12px] text-[#6b7280]">{{ $r->room_name ?: '—' }}</p>
                                     <p class="text-[12px] text-[#6b7280]">{{ $dateRange($r->check_in, $r->check_out) }}</p>
                                     <div class="mt-1.5 flex items-center justify-between">
-                                        <span class="text-[13px] font-bold text-[#f38c00]">{{ $r->amountLabel() }}</span>
+                                        <span class="text-[13px] font-bold text-[#f38c00]">{{ $r->totalWithVatLabel() }}</span>
                                         <div class="flex items-center gap-1.5">
                                             <button type="button" wire:click.stop="approve({{ $r->id }})" title="Approve"
                                                     class="flex size-7 items-center justify-center rounded-md bg-[#dcfce7] text-[#16a34a] transition hover:bg-[#bbf7d0]">
@@ -123,7 +123,7 @@
                                 'Guest Name' => $approvalSelected->customer_name ?: '—',
                                 'Room' => $approvalSelected->room_name ?: '—',
                                 'Dates' => $dateRange($approvalSelected->check_in, $approvalSelected->check_out),
-                                'Amount' => $approvalSelected->amountLabel(),
+                                'Amount' => $approvalSelected->totalWithVatLabel(),
                                 'Submitted' => $approvalSelected->created_at->diffForHumans(),
                             ];
                         @endphp
@@ -204,7 +204,7 @@
                                         <td class="px-4 py-3.5 text-[13px] text-[#6b7280]">{{ $b->bookingCode() }}</td>
                                         <td class="px-4 py-3.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $b->customer_name ?: '—' }}</td>
                                         <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ $b->room_name ?: '—' }}</td>
-                                        <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</td>
+                                        <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</td>
                                         <td class="px-4 py-3.5 text-[13px] font-semibold">
                                             @if ($b->refund_status === 'declined')
                                                 <span class="text-[#dc2626]">₦0</span>
@@ -236,7 +236,7 @@
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <p class="text-[14px] font-semibold text-[#1e1e1e]">{{ $b->customer_name ?: '—' }}</p>
-                                    <p class="text-[13px] font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</p>
+                                    <p class="text-[13px] font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</p>
                                 </div>
                                 <p class="text-[12px] text-[#6b7280]">{{ $b->room_name }} · {{ optional($b->updated_at)->format('M j, Y') }}</p>
                             </button>
@@ -497,7 +497,7 @@
                                     <p class="truncate text-[12px] text-[#6b7280]">{{ $b->bookingCode() }} · {{ $b->customer_name ?: '—' }}</p>
                                 </div>
                                 <div class="flex shrink-0 items-center gap-3">
-                                    <span class="font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</span>
+                                    <span class="font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</span>
                                     <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
                                 </div>
                             </a>
@@ -592,7 +592,7 @@
                                         @endif
                                     </div>
                                 </td>
-                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</td>
+                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex items-center rounded-md border border-[#e5e7eb] px-2 py-0.5 text-[11px] text-[#6b7280]">{{ $b->nights }}n</span>
                                 </td>
@@ -638,7 +638,7 @@
                                     </span>
                                 @endif
                             </span>
-                            <span class="font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</span>
+                            <span class="font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</span>
                         </div>
                     </div>
                     @endforeach

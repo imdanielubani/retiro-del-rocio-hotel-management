@@ -114,7 +114,7 @@
                                 <td class="px-4 py-3.5"><p class="text-[13px] font-medium text-[#1e1e1e]">{{ $m->customer_name ?: '—' }}</p><p class="text-[11px] text-[#9ca3af]">{{ $m->customer_email }}</p></td>
                                 <td class="px-4 py-3.5 text-[13px] text-[#374151]">{{ $m->plan_name }}</td>
                                 <td class="px-4 py-3.5"><span class="inline-flex rounded-full bg-[#eef2f6] px-2.5 py-0.5 text-[11px] font-semibold text-[#475569]">{{ $m->typeLabel() }}</span></td>
-                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $m->priceLabel() }}<span class="font-normal text-[#9ca3af]"> / {{ $m->periodShort() }}</span></td>
+                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $m->totalWithVatLabel() }}<span class="font-normal text-[#9ca3af]"> / {{ $m->periodShort() }}</span></td>
                                 <td class="px-4 py-3.5"><span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" style="background: {{ $pB }}; color: {{ $pC }};">{{ $m->paymentLabel() }}</span></td>
                                 <td class="px-4 py-3.5"><span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold" style="background: {{ $sB }}; color: {{ $sC }};">{{ $m->statusLabel() }}</span></td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ optional($m->starts_at)->format('M j') }} – {{ optional($m->ends_at)->format('M j, Y') }}</td>
@@ -137,7 +137,7 @@
                                 <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold" style="background: {{ $sB }}; color: {{ $sC }};">{{ $m->statusLabel() }}</span>
                             </div>
                         </div>
-                        <div class="flex items-center justify-between"><p class="text-[14px] font-medium text-[#1e1e1e]">{{ $m->customer_name ?: '—' }}</p><p class="text-[14px] font-bold text-[#1e1e1e]">{{ $m->priceLabel() }}</p></div>
+                        <div class="flex items-center justify-between"><p class="text-[14px] font-medium text-[#1e1e1e]">{{ $m->customer_name ?: '—' }}</p><p class="text-[14px] font-bold text-[#1e1e1e]">{{ $m->totalWithVatLabel() }}</p></div>
                         <div class="flex items-center justify-between text-[12px] text-[#6b7280]"><span>{{ $m->plan_name }} · {{ $m->typeLabel() }}</span><span>{{ optional($m->ends_at)->format('M j, Y') }}</span></div>
                         <div class="flex justify-end pt-1">@include('admin.gym.partials.membership-menu', ['m' => $m])</div>
                     </div>

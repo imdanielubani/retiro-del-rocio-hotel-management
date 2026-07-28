@@ -6,12 +6,16 @@ use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Services\VisitorPassProvisioner;
+use App\Support\ComputesBookingBill;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class Show extends Component
 {
+    use ComputesBookingBill;
+
     public Booking $booking;
 
     // ----- Edit modal -----
@@ -131,6 +135,15 @@ class Show extends Component
 
     public function checkOut(): void
     {
+        // The guest must settle their room-charge bill before checking out —
+        // the same real balance their own tablet's My Bills screen shows them.
+        $due = $this->billQuote($this->booking)['due'];
+        if ($due > 0) {
+            $this->dispatch('toast', type: 'error', message: 'Outstanding balance of ₦'.number_format($due).'. Settle the bill before checking out.');
+
+            return;
+        }
+
         // Freeing the room and closing the booking likewise stand or fall together.
         DB::transaction(function () {
             RoomUnit::release($this->booking->room_unit_id);
@@ -249,7 +262,7 @@ class Show extends Component
 
         $this->renewing = false;
         $this->refresh();
-        $this->dispatch('toast', type: 'success', message: 'Stay extended by '.$extraNights.' '.\Illuminate\Support\Str::plural('night', $extraNights).'. New total '.$this->booking->amountLabel().'.');
+        $this->dispatch('toast', type: 'success', message: 'Stay extended by '.$extraNights.' '.Str::plural('night', $extraNights).'. New total '.$this->booking->amountLabel().'.');
     }
 
     public function render()
@@ -261,11 +274,15 @@ class Show extends Component
         $pickup = $b->pickup_price ? (int) preg_replace('/[^0-9]/', '', $b->pickup_price) : 0;
         $roomRate = max(0, $total - $pickup);
 
+        $vat = (int) $b->vat;
+
         $payment = [
             'room_rate' => $roomRate,
             'nights' => $nights,
             'pickup' => $pickup,
             'total' => $total,
+            'vat' => $vat,
+            'total_paid' => $total + $vat,
         ];
 
         return view('admin.bookings.show', [

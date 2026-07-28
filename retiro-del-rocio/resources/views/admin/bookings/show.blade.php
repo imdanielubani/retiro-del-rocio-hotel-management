@@ -221,8 +221,16 @@
                         </div>
                     @endif
                     <div class="mt-1 flex items-center justify-between border-t border-[#e5e7eb] pt-3">
-                        <span class="text-[15px] font-bold text-[#1e1e1e]">Total</span>
-                        <span class="text-[15px] font-bold text-[#f38c00]">{{ $naira($payment['total']) }}</span>
+                        <span class="text-[#6b7280]">Subtotal</span>
+                        <span class="font-medium text-[#1e1e1e]">{{ $naira($payment['total']) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[#6b7280]">VAT (7.5%)</span>
+                        <span class="font-medium text-[#1e1e1e]">{{ $naira($payment['vat']) }}</span>
+                    </div>
+                    <div class="mt-1 flex items-center justify-between border-t border-[#e5e7eb] pt-3">
+                        <span class="text-[15px] font-bold text-[#1e1e1e]">Total Paid</span>
+                        <span class="text-[15px] font-bold text-[#f38c00]">{{ $naira($payment['total_paid']) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[#6b7280]">Payment method</span>

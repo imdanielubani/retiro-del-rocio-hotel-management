@@ -90,7 +90,8 @@
                 {{-- Totals --}}
                 <div class="mt-6 flex flex-col gap-1.5 border-t border-[#e5e7eb] pt-4 text-[13px]">
                     <div class="flex justify-between text-[#6b7280]"><span>Subtotal</span><span>₦{{ number_format($selected->subtotal) }}</span></div>
-                    <div class="mt-1 flex justify-between text-[15px] font-bold text-[#1e1e1e]"><span>Total</span><span>{{ $selected->totalLabel() }}</span></div>
+                    <div class="flex justify-between text-[#6b7280]"><span>VAT (7.5%)</span><span>{{ $selected->vatLabel() }}</span></div>
+                    <div class="mt-1 flex justify-between text-[15px] font-bold text-[#1e1e1e]"><span>Total Paid</span><span>{{ $selected->totalWithVatLabel() }}</span></div>
                 </div>
             </div>
 

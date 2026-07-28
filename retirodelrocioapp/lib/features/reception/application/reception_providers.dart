@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/config/app_config.dart';
 import 'package:retirodelrocioapp/core/realtime/sos_channel.dart';
 import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
 final receptionRepositoryProvider = Provider<ReceptionRepository>(
@@ -74,10 +76,16 @@ final receptionIncidentLogsProvider =
 
 /// Subscribes the tablet to the hotel-wide `reception` channel and refreshes the
 /// dashboard, guests and bookings lists the instant any booking is created or
-/// changes state — a new reservation from the website or admin lands live. Pure
-/// accelerator over the periodic polls: if no broadcaster is configured, or the
-/// socket drops, the polls still carry every screen. Watched by every reception
-/// screen so the subscription is live wherever the user is in the module.
+/// changes state — a new reservation from the website or admin lands live. The
+/// same subscription also carries new front-desk notification signals — e.g. a
+/// guest paying to extend their stay — by invalidating
+/// [receptionNotificationsProvider]; [receptionNotificationChimeProvider] is
+/// what actually rings the chime and toasts the arrival, reacting to that
+/// refresh (or the plain 20-second poll, if the socket is down) either way.
+/// Pure accelerator over the periodic polls: if no broadcaster is configured,
+/// or the socket drops, the polls still carry every screen. Watched by every
+/// reception screen so the subscription is live wherever the user is in the
+/// module.
 final receptionBookingsRealtimeProvider = FutureProvider.family<void, String>((
   ref,
   token,
@@ -101,6 +109,7 @@ final receptionBookingsRealtimeProvider = FutureProvider.family<void, String>((
       ref.invalidate(receptionGuestsProvider(token));
       ref.invalidate(receptionBookingsProvider(token));
     },
+    onNotification: () => ref.invalidate(receptionNotificationsProvider(token)),
   );
 
   ref.onDispose(channel.dispose);
@@ -147,6 +156,20 @@ final receptionPickupsProvider = FutureProvider.autoDispose
       ref.onDispose(timer.cancel);
 
       return repo.pickups(token);
+    });
+
+/// Every checked-in guest's outstanding room-charge balance, keyed by the
+/// receptionist's token. Same freshness rules as the other lists — a spa
+/// session just charged to a room, or a guest pre-settling from their own
+/// tablet, shows up without a manual refresh.
+final receptionBillsProvider = FutureProvider.autoDispose
+    .family<ReceptionBillsOverview, String>((ref, token) {
+      final repo = ref.watch(receptionRepositoryProvider);
+
+      final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
+
+      return repo.bills(token);
     });
 
 /// The assignable driver roster (available drivers only), for the assign-driver

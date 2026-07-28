@@ -93,11 +93,33 @@ $api->group(function () {
 
         // The checked-in guest's My Stay screen + self-service stay extension.
         Route::get('tablets/my-stay', [TabletController::class, 'myStay'])->name('api.v1.tablets.my-stay');
-        // Paystack: price + open the charge, then verify it and move the checkout.
+        // Extend the stay, either charged straight to the room or paid
+        // directly via Paystack (price + open the charge, then verify it).
+        Route::post('tablets/extend-stay/charge-to-room', [TabletController::class, 'chargeExtensionToRoom'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.extend-stay.charge-to-room');
         Route::post('tablets/extend-stay/initialize', [TabletController::class, 'initializeExtension'])
             ->middleware('throttle:20,1')->name('api.v1.tablets.extend-stay.initialize');
         Route::post('tablets/extend-stay', [TabletController::class, 'extendStay'])
             ->middleware('throttle:20,1')->name('api.v1.tablets.extend-stay');
+
+        // Spa & Wellness — browse services and book a session, either charged
+        // straight to the room or paid directly via Paystack.
+        Route::get('tablets/spa/services', [TabletController::class, 'spaServices'])->name('api.v1.tablets.spa.services');
+        Route::get('tablets/spa/appointments', [TabletController::class, 'spaAppointments'])->name('api.v1.tablets.spa.appointments');
+        Route::post('tablets/spa/book', [TabletController::class, 'bookSpaToRoom'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.spa.book');
+        Route::post('tablets/spa/initialize', [TabletController::class, 'initializeSpaBooking'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.spa.initialize');
+        Route::post('tablets/spa/confirm', [TabletController::class, 'confirmSpaBooking'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.spa.confirm');
+
+        // My Bills — the guest's itemised folio, with an optional Paystack
+        // pre-settlement of the outstanding balance ahead of checkout.
+        Route::get('tablets/my-bills', [TabletController::class, 'myBills'])->name('api.v1.tablets.my-bills');
+        Route::post('tablets/my-bills/initialize', [TabletController::class, 'initializeBillPayment'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.my-bills.initialize');
+        Route::post('tablets/my-bills/confirm', [TabletController::class, 'confirmBillPayment'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.my-bills.confirm');
 
         // The checked-in guest's Notifications feed.
         Route::get('tablets/notifications', [TabletController::class, 'notifications'])
@@ -184,6 +206,13 @@ $api->group(function () {
         Route::post('reception/bookings/{booking}/check-out', [ReceptionController::class, 'checkOut'])
             ->middleware('throttle:60,1')->name('api.v1.reception.check-out');
 
+        // Bills — every checked-in guest's outstanding room-charge balance,
+        // plus one guest's itemised folio for the desk to review or settle.
+        Route::get('reception/bills', [ReceptionController::class, 'bills'])
+            ->name('api.v1.reception.bills');
+        Route::get('reception/bookings/{booking}/bill', [ReceptionController::class, 'bookingBill'])
+            ->name('api.v1.reception.booking-bill');
+
         // SOS incidents: hotel-wide emergencies. Reception sees the same alerts as
         // security and can acknowledge / resolve them from the front desk.
         Route::get('reception/incidents', [ReceptionController::class, 'incidents'])
@@ -202,5 +231,15 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.reception.assign-driver');
         Route::post('reception/bookings/{booking}/pickup-complete', [ReceptionController::class, 'completePickup'])
             ->middleware('throttle:60,1')->name('api.v1.reception.pickup-complete');
+
+        // Front-desk notifications — a stay extension paid, a new reservation,
+        // etc. Shared across the station, same pattern as the guest tablet's
+        // notifications feed.
+        Route::get('reception/notifications', [ReceptionController::class, 'notifications'])
+            ->name('api.v1.reception.notifications');
+        Route::post('reception/notifications/read-all', [ReceptionController::class, 'markAllNotificationsRead'])
+            ->name('api.v1.reception.notifications.read-all');
+        Route::post('reception/notifications/{notification}/read', [ReceptionController::class, 'markNotificationRead'])
+            ->whereNumber('notification')->name('api.v1.reception.notifications.read');
     });
 });

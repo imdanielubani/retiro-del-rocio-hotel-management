@@ -23,11 +23,13 @@
                 </div>
                 <div class="mt-5 grid grid-cols-2 gap-3">
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Plan</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->plan_name }}</p></div>
-                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Amount</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->priceLabel() }} / {{ $selected->periodShort() }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Subtotal</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->priceLabel() }} / {{ $selected->periodShort() }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">VAT (7.5%)</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->vatLabel() }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Start date</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ optional($selected->starts_at)->format('M j, Y') ?: '—' }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Valid until</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ optional($selected->ends_at)->format('M j, Y') ?: '—' }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Reference</p><p class="mt-0.5 truncate text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->reference ?: '—' }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Method</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ ucfirst($selected->payment_method ?: '—') }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3 col-span-2"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Total paid</p><p class="mt-0.5 text-[16px] font-bold text-[#1e1e1e]">{{ $selected->totalWithVatLabel() }}</p></div>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2 border-t border-[#e5e7eb] px-6 py-4">

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
@@ -333,6 +334,108 @@ class ReceptionBookingRowCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// One checked-in guest's balance in the Bills list — guest, room, checkout
+/// and the outstanding total, charged-to-room only. A guest with nothing
+/// outstanding still shows (so the desk can confirm they're settled), muted
+/// rather than gold.
+class ReceptionBillRowCard extends StatelessWidget {
+  const ReceptionBillRowCard({super.key, required this.row, required this.onTap});
+
+  final ReceptionBillRow row;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: row.hasBalance
+                  ? AppColors.gold.withValues(alpha: 0.18)
+                  : Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              ReceptionAvatar(initials: _initials(row.guestName)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      row.guestName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        row.roomLabel,
+                        if (row.checkOutLabel != null) 'out ${row.checkOutLabel}',
+                      ].join('  ·  '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    row.totalDueLabel,
+                    style: AppTypography.style(
+                      color: row.hasBalance ? AppColors.gold : Colors.white.withValues(alpha: 0.4),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    row.hasBalance ? 'due' : 'settled',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white.withValues(alpha: 0.25)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
   }
 }
 

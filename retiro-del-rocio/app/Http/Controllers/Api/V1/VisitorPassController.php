@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProvisionVisitorPass;
 use App\Models\Device;
+use App\Models\ReceptionNotification;
 use App\Models\VisitorPass;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -99,6 +100,21 @@ class VisitorPassController extends Controller
             'pass_id' => $pass->id,
             'visitor' => $pass->visitor_name,
         ]);
+
+        // Front desk should know a guest just invited a visitor, so security
+        // isn't the only station aware a pass is coming. Never let a hiccup here
+        // fail a pass the guest already has.
+        try {
+            ReceptionNotification::notify(
+                'guest',
+                'Visitor Pass Issued',
+                ($booking->customer_name ?: 'A guest').' in Room '.($unit?->number ?? '—').
+                    ' invited '.$pass->visitor_name.'.',
+                $booking,
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return response()->json(['data' => $pass->fresh()->toTabletArray()], 201);
     }

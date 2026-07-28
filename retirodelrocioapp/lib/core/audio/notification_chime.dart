@@ -13,14 +13,34 @@ import 'package:flutter/foundation.dart';
 class NotificationChime {
   final AudioPlayer _player = AudioPlayer(playerId: 'notification-chime');
 
+  /// A short UI sound needs none of Android's exclusive-playback machinery —
+  /// the default [AudioContextAndroid] requests [AndroidAudioFocus.gain],
+  /// which can silently delay or drop a quick chime while it negotiates focus
+  /// (this is the actual cause of a chime that "does nothing" with no error).
+  /// `notification`/`sonification` with focus `none` plays immediately,
+  /// alongside whatever else has audio focus, the same way a system
+  /// notification sound does. iOS mirrors that with an `ambient` session,
+  /// which mixes with other audio automatically — explicitly passing
+  /// `mixWithOthers` alongside `ambient` is invalid (the package only allows
+  /// that option with `playback`/`playAndRecord`/`multiRoute`) and throws an
+  /// assertion error on construction, which was silently swallowed by
+  /// [play]'s `catch` and meant the chime never actually played.
+  static final audioContext = AudioContext(
+    android: const AudioContextAndroid(
+      contentType: AndroidContentType.sonification,
+      usageType: AndroidUsageType.notification,
+      audioFocus: AndroidAudioFocus.none,
+    ),
+    iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
+  );
+
   /// Play the chime once. Safe to call repeatedly — a busy player is simply
   /// restarted from the top, so a burst of notifications never queues sounds.
   Future<void> play() async {
     try {
       await _player.stop();
       await _player.setReleaseMode(ReleaseMode.stop);
-      await _player.setVolume(0.7);
-      await _player.play(BytesSource(_chimeWav()));
+      await _player.play(BytesSource(_chimeWav()), volume: 0.7, ctx: audioContext);
     } catch (error) {
       debugPrint('NotificationChime: audio failed — $error');
     }

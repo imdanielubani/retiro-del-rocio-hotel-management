@@ -8,6 +8,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/l
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
 import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guest_profile_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
@@ -93,6 +95,9 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
     ref.watch(receptionBookingsRealtimeProvider(_token));
 
     final guestsAsync = ref.watch(receptionGuestsProvider(_token));
+    final unreadNotifications = ref.watch(
+      receptionUnreadNotificationsProvider(_token),
+    );
 
     return ReceptionScaffold(
       session: widget.session,
@@ -104,6 +109,8 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
         current: ReceptionNavItem.guests,
       ),
       onLogout: _logout,
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
       title: 'Guests',
       trailing: ReceptionSearchField(
         hint: 'Search name, email or phone',
@@ -160,6 +167,17 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
       context,
       'guest-profile',
       ReceptionGuestProfileScreen(session: widget.session, guestKey: guest.key),
+    );
+  }
+
+  void _openNotifications() {
+    ReceptionNavigation.push(
+      context,
+      'notifications',
+      ReceptionNotificationScreen(
+        session: widget.session,
+        current: ReceptionNavItem.guests,
+      ),
     );
   }
 }

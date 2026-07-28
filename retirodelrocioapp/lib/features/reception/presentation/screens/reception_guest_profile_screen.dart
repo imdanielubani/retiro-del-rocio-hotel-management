@@ -8,6 +8,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/l
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
 import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_scaffold.dart';
@@ -95,8 +97,23 @@ class _ReceptionGuestProfileScreenState
     if (mounted) ReceptionNavigation.afterLogout(context);
   }
 
+  void _openNotifications() {
+    ReceptionNavigation.push(
+      context,
+      'notifications',
+      ReceptionNotificationScreen(
+        session: widget.session,
+        current: ReceptionNavItem.guests,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final unreadNotifications = ref.watch(
+      receptionUnreadNotificationsProvider(_token),
+    );
+
     return ReceptionScaffold(
       session: widget.session,
       active: ReceptionNavItem.guests,
@@ -107,6 +124,8 @@ class _ReceptionGuestProfileScreenState
         current: ReceptionNavItem.guests,
       ),
       onLogout: _logout,
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
       onBack: () => Navigator.of(context).pop(),
       title: 'Guest Profile',
       body: FutureBuilder<ReceptionGuestProfile>(

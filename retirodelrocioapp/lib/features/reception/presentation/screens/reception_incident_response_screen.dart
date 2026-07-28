@@ -7,6 +7,8 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
 import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_scaffold.dart';
@@ -155,6 +157,9 @@ class _ReceptionIncidentResponseScreenState
     // Keep the sos socket alive while this screen is up so incidents refresh live.
     ref.watch(receptionRealtimeProvider(_token));
     final logsAsync = ref.watch(receptionIncidentLogsProvider(_token));
+    final unreadNotifications = ref.watch(
+      receptionUnreadNotificationsProvider(_token),
+    );
 
     final all = logsAsync.value ?? const <SecurityIncident>[];
     final visible = _filter == null
@@ -177,6 +182,8 @@ class _ReceptionIncidentResponseScreenState
         current: ReceptionNavItem.incidentResponse,
       ),
       onLogout: _logout,
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
       title: 'SOS Alert Logs',
       trailing: IncidentFilterButton(label: _filterLabel, onTap: _pickFilter),
       body: logsAsync.when(
@@ -187,6 +194,17 @@ class _ReceptionIncidentResponseScreenState
               )
             : _body(visible, selected),
         error: (_, _) => all.isEmpty ? _errorState() : _body(visible, selected),
+      ),
+    );
+  }
+
+  void _openNotifications() {
+    ReceptionNavigation.push(
+      context,
+      'notifications',
+      ReceptionNotificationScreen(
+        session: widget.session,
+        current: ReceptionNavItem.incidentResponse,
       ),
     );
   }
