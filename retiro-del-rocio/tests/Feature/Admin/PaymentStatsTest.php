@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Livewire\Admin\Payment\Index;
+use App\Models\BillPayment;
 use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -130,6 +131,62 @@ class PaymentStatsTest extends TestCase
         Livewire::actingAs($this->admin())
             ->test(Index::class)
             ->assertSee('₦32,250');
+    }
+
+    /**
+     * A room-charge spa/cinema session isn't its own revenue line (see
+     * PaymentSpaTransactionTest / PaymentCinemaTransactionTest) — the money
+     * it represents has to count somewhere once it's actually settled, or
+     * the headline Revenue card silently loses it. It must land in the month
+     * the settlement happened, not the month the room booking itself was
+     * paid for.
+     */
+    public function test_a_settled_room_charge_balance_counts_toward_the_revenue_of_the_month_it_was_settled_in(): void
+    {
+        // The room was paid for two months ago — that money correctly
+        // belongs to that month, not this one.
+        $twoMonthsAgo = now()->subMonthsNoOverflow(2);
+        $booking = $this->booking(['status' => 'checked_out', 'amount' => 40000, 'paid_at' => $twoMonthsAgo]);
+
+        // The room-charge balance is only settled today.
+        BillPayment::create([
+            'booking_id' => $booking->id,
+            'reference' => 'BILL-'.$booking->id.'-STATS1',
+            'amount' => 35000,
+            'vat' => 2625,
+            'status' => BillPayment::SUCCESS,
+            'payment_method' => 'cash',
+            'paid_at' => now(),
+        ]);
+
+        // This month's revenue is the settlement alone (₦35,000) — the room
+        // payment stays counted in its own month, not duplicated here.
+        Livewire::actingAs($this->admin())
+            ->test(Index::class)
+            ->assertSee(now()->format('F Y').' Revenue')
+            ->assertSee('₦35,000')
+            ->assertSee('Room Charges');
+    }
+
+    /**
+     * The transaction table must default to the same window the headline
+     * cards do — "this month" — not every payment ever made. Before this,
+     * only the cards were scoped; the table below kept showing everything,
+     * so a July payment still appeared in the list in August.
+     */
+    public function test_the_transaction_table_defaults_to_this_month_not_all_time(): void
+    {
+        $this->booking(['customer_name' => 'This Month Guest', 'status' => 'checked_out', 'paid_at' => now()]);
+        $this->booking([
+            'customer_name' => 'Last Month Guest',
+            'status' => 'checked_out',
+            'paid_at' => now()->subMonthsNoOverflow(2),
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(Index::class)
+            ->assertSee('This Month Guest')
+            ->assertDontSee('Last Month Guest');
     }
 
     public function test_picking_a_past_month_scopes_every_headline_card_to_it(): void

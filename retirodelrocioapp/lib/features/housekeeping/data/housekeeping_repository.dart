@@ -89,7 +89,7 @@ class HousekeepingRepository {
     }
   }
 
-  /// Guest requests, oldest pending first. Optional [status] narrows to
+  /// Guest requests, newest pending first. Optional [status] narrows to
   /// pending or completed.
   Future<List<HousekeepingGuestRequest>> requests(String token, {String? status}) async {
     try {

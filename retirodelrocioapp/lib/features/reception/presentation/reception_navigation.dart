@@ -5,6 +5,7 @@ import 'package:retirodelrocioapp/features/reception/presentation/screens/recept
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bookings_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guests_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_incident_response_screen.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_room_status_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_vehicle_pickup_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_visitors_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
@@ -91,6 +92,7 @@ class ReceptionNavigation {
         ReceptionNavItem.bookings => ReceptionBookingsScreen(session: session),
         ReceptionNavItem.bills => ReceptionBillsScreen(session: session),
         ReceptionNavItem.visitorPass => ReceptionVisitorsScreen(session: session),
+        ReceptionNavItem.roomStatus => ReceptionRoomStatusScreen(session: session),
         ReceptionNavItem.vehiclePickup => ReceptionVehiclePickupScreen(
           session: session,
         ),

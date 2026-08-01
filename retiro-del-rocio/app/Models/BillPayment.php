@@ -18,6 +18,9 @@ class BillPayment extends Model
 
     public const SUCCESS = 'success';
 
+    /** The methods reception can pick when settling a bill at the desk in person. */
+    public const DESK_METHODS = ['cash', 'card', 'bank_transfer'];
+
     protected $fillable = [
         'booking_id', 'reference', 'amount', 'vat', 'status', 'paid_at', 'payment_method',
     ];

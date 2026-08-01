@@ -152,6 +152,23 @@ class SecurityNotificationsTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.category', 'guest')
             ->assertJsonPath('data.0.title', 'New Visitor Invited')
-            ->assertJsonPath('data.0.read', false);
+            ->assertJsonPath('data.0.read', false)
+            // Which room and guest this is about, so the officer doesn't
+            // have to open the message to find out.
+            ->assertJsonPath('data.0.suite_name', 'Alba Suite')
+            ->assertJsonPath('data.0.room_number', '101')
+            ->assertJsonPath('data.0.guest_name', 'Daniel Ubani');
+    }
+
+    public function test_a_notification_without_a_booking_has_no_room_or_guest_info(): void
+    {
+        SecurityNotification::notify('message', 'Heads up', 'Nothing booking-specific.');
+
+        $this->withToken($this->officerToken())
+            ->getJson('/api/v1/security/notifications')
+            ->assertOk()
+            ->assertJsonPath('data.0.suite_name', null)
+            ->assertJsonPath('data.0.room_number', null)
+            ->assertJsonPath('data.0.guest_name', null);
     }
 }

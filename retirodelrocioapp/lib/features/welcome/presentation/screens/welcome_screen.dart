@@ -40,9 +40,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   /// moment the room stops being occupied (i.e. reception checks them out).
   bool _explored = false;
 
-  /// Occupancy at the previous poll, so a check-out can be detected as an edge.
-  bool _wasCheckedIn = false;
-
   void _toggleMute(VideoPlayerController video) {
     video.setVolume(video.value.volume == 0 ? 1 : 0);
   }
@@ -100,13 +97,14 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     // welcome screen — no one has to touch it. The guest may have pushed their
     // home dashboard (and screens above it) on top of us, so tear those down:
     // this screen is the authority on whether anyone is still checked in.
+    // Hide the in-place guest view the moment the room empties out. Popping
+    // any *pushed* guest screens back to this one is handled separately by
+    // [CheckoutResetWatcher] at the app root, not here: this screen sits
+    // buried underneath those pushed routes once the guest has navigated
+    // anywhere, and Flutter does not rebuild a route that isn't the current
+    // top of the stack — so a watcher living here would simply never fire
+    // once there's anything to pop.
     if (!checkedIn) _explored = false;
-    if (device.isGuest && _wasCheckedIn && !checkedIn) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-      });
-    }
-    _wasCheckedIn = checkedIn;
 
     // The guest's own screens are behind Explore: on check-in this screen just
     // reports the room as occupied and offers the way in.

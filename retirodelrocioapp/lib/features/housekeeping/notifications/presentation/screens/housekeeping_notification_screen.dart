@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -11,7 +10,7 @@ import 'package:retirodelrocioapp/features/housekeeping/notifications/data/house
 import 'package:retirodelrocioapp/features/housekeeping/notifications/domain/housekeeping_notification.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/housekeeping_navigation.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
-import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
+import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_scaffold.dart';
 
 /// The "All" / "Unread" tabs sit alongside the category chips but aren't
 /// [HousekeepingNotificationCategory] values, so the filter needs one more
@@ -131,94 +130,33 @@ class _HousekeepingNotificationScreenState
     final notificationsAsync = ref.watch(housekeepingNotificationsProvider(_token));
     final notifications = notificationsAsync.value ?? const [];
     final unreadCount = notifications.where((n) => !n.read).length;
-    final weather = ref.watch(weatherProvider).value;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
-        fit: StackFit.expand,
+    return HousekeepingScaffold(
+      session: widget.session,
+      active: widget.current,
+      onNav: _onNav,
+      onLogout: _logout,
+      onBack: () => Navigator.of(context).maybePop(),
+      title: 'Notifications',
+      trailing: _markAllReadButton(unreadCount),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
-          const ColoredBox(color: Color(0xF2000000)),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  HousekeepingNavRail(active: widget.current, onSelect: _onNav, onLogout: _logout),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        StaffTopBar(
-                          name: widget.session.name,
-                          role: 'Housekeeping',
-                          brandLabel: 'HOUSEKEEPING',
-                          weather: weather,
-                          initialsFallback: 'HK',
-                        ),
-                        const SizedBox(height: 20),
-                        _header(unreadCount),
-                        const SizedBox(height: 16),
-                        _unreadPill(unreadCount),
-                        const SizedBox(height: 16),
-                        _filterChips(unreadCount),
-                        const SizedBox(height: 19),
-                        Expanded(
-                          child: notificationsAsync.when(
-                            data: (data) => _list(data),
-                            loading: () => notifications.isNotEmpty
-                                ? _list(notifications)
-                                : const Center(
-                                    child: CircularProgressIndicator(color: AppColors.gold),
-                                  ),
-                            error: (_, _) => notifications.isNotEmpty
-                                ? _list(notifications)
-                                : _errorState(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+          _unreadPill(unreadCount),
+          const SizedBox(height: 16),
+          _filterChips(unreadCount),
+          const SizedBox(height: 19),
+          Expanded(
+            child: notificationsAsync.when(
+              data: (data) => _list(data),
+              loading: () => notifications.isNotEmpty
+                  ? _list(notifications)
+                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              error: (_, _) => notifications.isNotEmpty ? _list(notifications) : _errorState(),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _header(int unreadCount) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Housekeeping', style: AppTypography.style(color: AppColors.gold, fontSize: 12)),
-              const SizedBox(height: 3),
-              Text(
-                'Notifications',
-                style: AppTypography.style(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  height: 1.1,
-                ),
-              ),
-            ],
-          ),
-        ),
-        _markAllReadButton(unreadCount),
-      ],
     );
   }
 
@@ -366,6 +304,32 @@ class _HousekeepingNotificationScreenState
     );
   }
 
+  /// A "Two Bedroom Suite · Room 101 · Daniel Ubani" style line showing
+  /// which room and guest a notification is about, skipping whichever parts
+  /// are missing.
+  Widget _roomGuestLine(String? suite, String? room, String? guest) {
+    final parts = <String>[
+      if ((suite ?? '').isNotEmpty) suite!,
+      if ((room ?? '').isNotEmpty) 'Room $room',
+      if ((guest ?? '').isNotEmpty) guest!,
+    ];
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.meeting_room_outlined, size: 13, color: AppColors.gold.withValues(alpha: 0.6)),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            parts.join(' · '),
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.style(color: AppColors.gold.withValues(alpha: 0.75), fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _card(HousekeepingNotification n) {
     final busy = _busyId == n.id;
 
@@ -435,6 +399,10 @@ class _HousekeepingNotificationScreenState
                       n.message,
                       style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
                     ),
+                    if (n.hasRoomContext) ...[
+                      const SizedBox(height: 6),
+                      _roomGuestLine(n.suiteName, n.roomNumber, n.guestName),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       _timeAgo(n.time),

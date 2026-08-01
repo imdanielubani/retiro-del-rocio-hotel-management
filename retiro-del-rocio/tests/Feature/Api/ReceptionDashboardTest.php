@@ -4,12 +4,14 @@ namespace Tests\Feature\Api;
 
 use App\Models\BillPayment;
 use App\Models\Booking;
+use App\Models\HousekeepingRequest;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Models\SosAlert;
 use App\Models\SpaBooking;
 use App\Models\User;
 use App\Models\VisitorPass;
+use App\Models\WorkOrder;
 use App\Services\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -80,6 +82,16 @@ class ReceptionDashboardTest extends TestCase
             'amount' => 300000,
             'status' => 'paid',
         ], $overrides));
+    }
+
+    /** Housekeeping has already inspected and cleared this booking's room. */
+    private function completeInspection(Booking $booking): void
+    {
+        HousekeepingRequest::create([
+            'room_unit_id' => $booking->room_unit_id,
+            'booking_id' => $booking->id,
+            'type' => HousekeepingRequest::CHECKOUT_INSPECTION,
+        ])->complete();
     }
 
     public function test_a_walk_in_arrival_is_flagged_for_the_desk(): void
@@ -153,7 +165,9 @@ class ReceptionDashboardTest extends TestCase
             ->assertJsonPath('data.receptionist.name', 'Daniel Ubani')
             ->assertJsonPath('data.stats.arrivals_today', 1)
             ->assertJsonPath('data.stats.check_ins_today', 0)
-            ->assertJsonPath('data.stats.check_outs_today', 0)
+            // Grace Hopper is checked in with checkout due today — counted as
+            // scheduled to leave even though she hasn't actually checked out.
+            ->assertJsonPath('data.stats.departures_today', 1)
             ->assertJsonPath('data.stats.visitor_pass_check_ins', 1)
             ->assertJsonPath('data.stats.overdue_departures', 0)
             ->assertJsonCount(1, 'data.arrivals')
@@ -167,6 +181,49 @@ class ReceptionDashboardTest extends TestCase
             ->assertJsonPath('data.room_status.occupied', 1)
             ->assertJsonPath('data.room_status.dirty', 0)
             ->assertJsonPath('data.room_status.maintenance', 1);
+    }
+
+    public function test_departures_today_counts_who_is_scheduled_not_who_has_actually_left(): void
+    {
+        // Due out today, still in the room — hasn't checked out yet.
+        $stillIn = $this->unit('215', 'occupied');
+        $this->booking([
+            'room_unit_id' => $stillIn->id,
+            'check_in' => today()->subDays(2)->toDateString(),
+            'check_out' => today()->toDateString(),
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDays(2),
+        ]);
+
+        // Due out today and already checked out — still counts as "today's
+        // departure", the desk cares who was due out today, not just who's
+        // still lingering.
+        $alreadyOut = $this->unit('216', 'available');
+        $this->booking([
+            'room_unit_id' => $alreadyOut->id,
+            'check_in' => today()->subDays(2)->toDateString(),
+            'check_out' => today()->toDateString(),
+            'status' => 'checked_out',
+            'checked_in_at' => now()->subDays(2),
+            'checked_out_at' => now(),
+        ]);
+
+        // Checked out yesterday against a checkout date of yesterday — not
+        // scheduled for today, must not be counted.
+        $yesterday = $this->unit('217', 'available');
+        $this->booking([
+            'room_unit_id' => $yesterday->id,
+            'check_in' => today()->subDays(3)->toDateString(),
+            'check_out' => today()->subDay()->toDateString(),
+            'status' => 'checked_out',
+            'checked_in_at' => now()->subDays(3),
+            'checked_out_at' => now()->subDay(),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonPath('data.stats.departures_today', 2);
     }
 
     public function test_an_overdue_checked_in_guest_still_appears_in_departures(): void
@@ -225,6 +282,76 @@ class ReceptionDashboardTest extends TestCase
             ->assertJsonPath('data.alerts.1.type', 'overdue_departure');
     }
 
+    public function test_a_guests_housekeeping_and_maintenance_requests_appear_in_alerts(): void
+    {
+        $unit = $this->unit('112', 'occupied');
+        $booking = $this->booking(['room_unit_id' => $unit->id, 'status' => 'checked_in']);
+
+        HousekeepingRequest::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'type' => 'towels',
+        ]);
+
+        WorkOrder::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'title' => 'AC not cooling',
+            'priority' => 'urgent',
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.alerts')
+            ->assertJsonPath('data.alerts.0.type', 'maintenance_request')
+            ->assertJsonPath('data.alerts.0.severity', 'high')
+            ->assertJsonPath('data.alerts.0.title', 'Maintenance Request — AC not cooling (Room 112)')
+            ->assertJsonPath('data.alerts.1.type', 'housekeeping_request')
+            ->assertJsonPath('data.alerts.1.severity', 'medium')
+            ->assertJsonPath('data.alerts.1.title', 'Housekeeping Request — Towels (Room 112)');
+    }
+
+    public function test_a_completed_housekeeping_request_and_done_work_order_do_not_stay_in_alerts(): void
+    {
+        $unit = $this->unit('113', 'occupied');
+        $booking = $this->booking(['room_unit_id' => $unit->id, 'status' => 'checked_in']);
+
+        HousekeepingRequest::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'type' => 'towels',
+        ])->complete();
+
+        WorkOrder::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'title' => 'Leaky faucet',
+        ])->complete();
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.alerts');
+    }
+
+    public function test_the_reception_initiated_checkout_inspection_never_appears_as_a_guest_alert(): void
+    {
+        $unit = $this->unit('114', 'occupied');
+        $booking = $this->booking(['room_unit_id' => $unit->id, 'status' => 'checked_in']);
+
+        HousekeepingRequest::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'type' => HousekeepingRequest::CHECKOUT_INSPECTION,
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.alerts');
+    }
+
     public function test_a_guest_departing_today_is_not_flagged_overdue(): void
     {
         $unit = $this->unit('205', 'occupied');
@@ -241,14 +368,19 @@ class ReceptionDashboardTest extends TestCase
             ->getJson('/api/v1/reception/overview')
             ->assertOk()
             ->assertJsonCount(1, 'data.departures')
+            ->assertJsonPath('data.departures.0.is_due_today', true)
             ->assertJsonPath('data.departures.0.is_overdue', false)
             ->assertJsonPath('data.departures.0.overdue_label', null)
             // Due today is not overdue yet — the stat must not count it.
             ->assertJsonPath('data.stats.overdue_departures', 0);
     }
 
-    public function test_a_guest_not_due_to_leave_yet_does_not_appear_in_departures(): void
+    public function test_a_guest_not_due_to_leave_yet_still_appears_in_departures_as_upcoming(): void
     {
+        // The Departures panel isn't scoped to today only — every checked-in
+        // guest is a future departure the desk should be able to see, so a
+        // stay extension moves a guest down the list instead of disappearing
+        // them from it entirely until their new date arrives.
         $unit = $this->unit('206', 'occupied');
         $this->booking([
             'customer_name' => 'Future Fola',
@@ -262,7 +394,13 @@ class ReceptionDashboardTest extends TestCase
         $this->withToken($this->receptionToken())
             ->getJson('/api/v1/reception/overview')
             ->assertOk()
-            ->assertJsonCount(0, 'data.departures');
+            ->assertJsonCount(1, 'data.departures')
+            ->assertJsonPath('data.departures.0.guest_name', 'Future Fola')
+            ->assertJsonPath('data.departures.0.is_due_today', false)
+            ->assertJsonPath('data.departures.0.is_overdue', false)
+            // An upcoming departure is not "today's", so it must not inflate
+            // the headline counter.
+            ->assertJsonPath('data.stats.departures_today', 0);
     }
 
     public function test_checking_a_guest_in_occupies_the_room_and_records_the_arrival(): void
@@ -328,9 +466,14 @@ class ReceptionDashboardTest extends TestCase
             ->assertJsonPath('data.arrivals.0.status', 'paid')
             ->assertJsonPath('data.arrivals.1.guest_name', 'Already In')
             ->assertJsonPath('data.arrivals.1.status', 'checked_in')
-            // A completed departure remains, shown as checked out.
-            ->assertJsonCount(1, 'data.departures')
-            ->assertJsonPath('data.departures.0.status_label', 'Checked Out');
+            // Departures now lists every checked-in guest, not just today's —
+            // "Already In" (still checked in, checkout days away) sorts first,
+            // and the completed departure remains, shown as checked out.
+            ->assertJsonCount(2, 'data.departures')
+            ->assertJsonPath('data.departures.0.guest_name', 'Already In')
+            ->assertJsonPath('data.departures.0.status', 'checked_in')
+            ->assertJsonPath('data.departures.1.guest_name', 'Gone Home')
+            ->assertJsonPath('data.departures.1.status_label', 'Checked Out');
     }
 
     public function test_check_in_is_idempotent(): void
@@ -358,6 +501,7 @@ class ReceptionDashboardTest extends TestCase
             'checked_in_at' => now()->subDay(),
         ]);
         $unit->update(['booking_id' => $booking->id]);
+        $this->completeInspection($booking);
 
         $this->withToken($this->receptionToken())
             ->postJson("/api/v1/reception/bookings/{$booking->id}/check-out")
@@ -366,8 +510,40 @@ class ReceptionDashboardTest extends TestCase
 
         $this->assertSame('checked_out', $booking->fresh()->status);
         $this->assertNotNull($booking->fresh()->checked_out_at);
+        $this->assertNotNull($booking->fresh()->checkout_inspected_at);
         $this->assertSame('available', $unit->fresh()->status);
         $this->assertNull($unit->fresh()->booking_id);
+        // The room needs a turnover clean now that the guest has left — the
+        // housekeeping tablet should pick this room up as dirty right away.
+        $this->assertSame('dirty', $unit->fresh()->housekeeping_status);
+    }
+
+    public function test_checkout_is_blocked_until_housekeeping_completes_the_inspection(): void
+    {
+        $unit = $this->unit('201', 'occupied');
+        $booking = $this->booking([
+            'room_unit_id' => $unit->id,
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDay(),
+        ]);
+        $unit->update(['booking_id' => $booking->id]);
+
+        // No inspection requested at all yet.
+        $this->withToken($this->receptionToken())
+            ->postJson("/api/v1/reception/bookings/{$booking->id}/check-out")
+            ->assertStatus(409);
+        $this->assertSame('checked_in', $booking->fresh()->status);
+
+        // Requested, but housekeeping hasn't cleared it yet.
+        HousekeepingRequest::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'type' => HousekeepingRequest::CHECKOUT_INSPECTION,
+        ]);
+        $this->withToken($this->receptionToken())
+            ->postJson("/api/v1/reception/bookings/{$booking->id}/check-out")
+            ->assertStatus(409);
+        $this->assertSame('checked_in', $booking->fresh()->status);
     }
 
     public function test_checkout_is_blocked_while_a_room_charge_is_still_outstanding(): void
@@ -439,6 +615,7 @@ class ReceptionDashboardTest extends TestCase
             'status' => BillPayment::SUCCESS,
             'paid_at' => now(),
         ]);
+        $this->completeInspection($booking);
 
         $this->withToken($this->receptionToken())
             ->postJson("/api/v1/reception/bookings/{$booking->id}/check-out")

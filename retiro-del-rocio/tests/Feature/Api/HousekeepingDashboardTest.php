@@ -174,6 +174,35 @@ class HousekeepingDashboardTest extends TestCase
         $this->assertFalse($data[1]['is_pending']);
     }
 
+    public function test_requests_lists_the_newest_pending_request_first(): void
+    {
+        $unit = $this->unit();
+        $older = HousekeepingRequest::create(['room_unit_id' => $unit->id, 'type' => 'towels']);
+        $older->forceFill(['created_at' => now()->subHours(2)])->save();
+        $newer = HousekeepingRequest::create(['room_unit_id' => $unit->id, 'type' => 'dnd']);
+
+        $data = $this->withToken($this->housekeeperToken())
+            ->getJson('/api/v1/housekeeping/requests')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->json('data');
+
+        $this->assertSame($newer->id, $data[0]['id']);
+        $this->assertSame($older->id, $data[1]['id']);
+    }
+
+    public function test_a_request_shows_which_room_and_suite_it_is_about(): void
+    {
+        $unit = $this->unit(['number' => '204']);
+        HousekeepingRequest::create(['room_unit_id' => $unit->id, 'type' => 'towels']);
+
+        $this->withToken($this->housekeeperToken())
+            ->getJson('/api/v1/housekeeping/requests')
+            ->assertOk()
+            ->assertJsonPath('data.0.room_number', '204')
+            ->assertJsonPath('data.0.room_name', 'Alba Suite');
+    }
+
     public function test_a_request_can_be_created_and_then_completed(): void
     {
         $unit = $this->unit();
@@ -195,6 +224,84 @@ class HousekeepingDashboardTest extends TestCase
             ->assertJsonPath('data.is_pending', false);
 
         $this->assertNotNull(HousekeepingRequest::find($created['id'])->completed_at);
+    }
+
+    public function test_completing_a_guests_request_notifies_their_tablet(): void
+    {
+        $unit = $this->unit();
+        $booking = Booking::create([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Grace Hopper',
+            'room_id' => $unit->room_id,
+            'room_name' => 'Alba Suite',
+            'room_unit_id' => $unit->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'nights' => 2,
+            'guests' => 1,
+            'amount' => 300000,
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDay(),
+        ]);
+        $entry = HousekeepingRequest::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'type' => 'towels',
+        ]);
+
+        $this->withToken($this->housekeeperToken())
+            ->postJson("/api/v1/housekeeping/requests/{$entry->id}/complete")
+            ->assertOk();
+
+        $this->assertDatabaseHas('guest_notifications', [
+            'booking_id' => $booking->id,
+            'room_unit_id' => $unit->id,
+            'category' => 'housekeeping',
+            'title' => 'Housekeeping Request Completed',
+            'message' => 'Your Towels request has been completed.',
+        ]);
+    }
+
+    public function test_completing_a_checkout_inspection_does_not_notify_the_guest(): void
+    {
+        $unit = $this->unit();
+        $booking = Booking::create([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Grace Hopper',
+            'room_id' => $unit->room_id,
+            'room_name' => 'Alba Suite',
+            'room_unit_id' => $unit->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'nights' => 2,
+            'guests' => 1,
+            'amount' => 300000,
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDay(),
+        ]);
+        $entry = HousekeepingRequest::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'type' => HousekeepingRequest::CHECKOUT_INSPECTION,
+        ]);
+
+        $this->withToken($this->housekeeperToken())
+            ->postJson("/api/v1/housekeeping/requests/{$entry->id}/complete")
+            ->assertOk();
+
+        $this->assertDatabaseCount('guest_notifications', 0);
+    }
+
+    public function test_completing_a_request_with_no_booking_does_not_notify_anyone(): void
+    {
+        $unit = $this->unit();
+        $entry = HousekeepingRequest::create(['room_unit_id' => $unit->id, 'type' => 'towels']);
+
+        $this->withToken($this->housekeeperToken())
+            ->postJson("/api/v1/housekeeping/requests/{$entry->id}/complete")
+            ->assertOk();
+
+        $this->assertDatabaseCount('guest_notifications', 0);
     }
 
     public function test_completing_an_already_completed_request_is_a_no_op(): void

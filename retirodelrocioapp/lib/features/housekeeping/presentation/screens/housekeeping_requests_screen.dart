@@ -3,19 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
-import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
-import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/housekeeping/application/housekeeping_providers.dart';
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_guest_request.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/application/housekeeping_notification_providers.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/presentation/screens/housekeeping_notification_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/housekeeping_navigation.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
+import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_scaffold.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_widgets.dart';
-import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 enum _Filter { all, pending, completed }
 
@@ -31,7 +29,7 @@ class HousekeepingRequestsScreen extends ConsumerStatefulWidget {
 }
 
 class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequestsScreen> {
-  _Filter _filter = _Filter.pending;
+  _Filter _filter = _Filter.all;
   int? _busyId;
 
   String get _token => widget.session.token;
@@ -92,100 +90,57 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
   @override
   Widget build(BuildContext context) {
     ref.watch(housekeepingNotificationsRealtimeProvider(_token));
-    ref.watch(housekeepingNotificationChimeProvider(_token));
 
     final requestsAsync = ref.watch(housekeepingRequestsProvider(_token));
     final requests = requestsAsync.value ?? const <HousekeepingGuestRequest>[];
-    final weather = ref.watch(weatherProvider).value;
     final pendingCount = requests.where((r) => r.isPending).length;
     final unreadNotifications = ref.watch(housekeepingUnreadNotificationsProvider(_token));
 
-    return SessionGuard(
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
-            const ColoredBox(color: Color(0xF2000000)),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    HousekeepingNavRail(active: HousekeepingNavItem.requests, onSelect: _onNav, onLogout: _logout),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          StaffTopBar(
-                            name: widget.session.name,
-                            role: 'Housekeeping',
-                            brandLabel: 'HOUSEKEEPING',
-                            weather: weather,
-                            hasUnreadNotifications: unreadNotifications > 0,
-                            onNotifications: _openNotifications,
-                            initialsFallback: 'HK',
-                          ),
-                          const SizedBox(height: 20),
-                          _header(),
-                          const SizedBox(height: 16),
-                          _filterChips(pendingCount),
-                          const SizedBox(height: 16),
-                          Expanded(
-                            child: requestsAsync.when(
-                              data: (data) => _list(data),
-                              loading: () => requests.isNotEmpty
-                                  ? _list(requests)
-                                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-                              error: (_, _) => requests.isNotEmpty
-                                  ? _list(requests)
-                                  : Center(
-                                      child: TextButton(
-                                        onPressed: () => ref.invalidate(housekeepingRequestsProvider(_token)),
-                                        child: const Text(
-                                          'Could not load requests. Retry',
-                                          style: TextStyle(color: AppColors.gold),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
+    return HousekeepingScaffold(
+      session: widget.session,
+      active: HousekeepingNavItem.requests,
+      onNav: _onNav,
+      onLogout: _logout,
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
+      title: 'Requests',
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _filterChips(pendingCount),
+          const SizedBox(height: 16),
+          Expanded(
+            child: requestsAsync.when(
+              data: (data) => _list(data),
+              loading: () => requests.isNotEmpty
+                  ? _list(requests)
+                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              error: (_, _) => requests.isNotEmpty
+                  ? _list(requests)
+                  : Center(
+                      child: TextButton(
+                        onPressed: () => ref.invalidate(housekeepingRequestsProvider(_token)),
+                        child: const Text(
+                          'Could not load requests. Retry',
+                          style: TextStyle(color: AppColors.gold),
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _header() {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-        ),
-        Text('Requests', style: AppTypography.style(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700)),
-      ],
     );
   }
 
   Widget _filterChips(int pendingCount) {
     return Row(
       children: [
+        _chip('All', _Filter.all),
+        const SizedBox(width: 8),
         _chip('Pending', _Filter.pending, badge: pendingCount),
         const SizedBox(width: 8),
         _chip('Completed', _Filter.completed),
-        const SizedBox(width: 8),
-        _chip('All', _Filter.all),
       ],
     );
   }

@@ -225,6 +225,8 @@ $api->group(function () {
         // is re-checked in the controller on every call.
         Route::get('reception/overview', [ReceptionController::class, 'overview'])
             ->name('api.v1.reception.overview');
+        Route::get('reception/room-status', [ReceptionController::class, 'roomStatus'])
+            ->name('api.v1.reception.room-status');
 
         // The front desk's read-only views of the admin's guests and bookings.
         Route::get('reception/guests', [ReceptionController::class, 'guests'])
@@ -238,6 +240,12 @@ $api->group(function () {
             ->name('api.v1.reception.rooms');
         Route::post('reception/bookings/{booking}/check-in', [ReceptionController::class, 'checkIn'])
             ->middleware('throttle:60,1')->name('api.v1.reception.check-in');
+        Route::get('reception/bookings/{booking}/departure-readiness', [ReceptionController::class, 'departureReadiness'])
+            ->name('api.v1.reception.departure-readiness');
+        Route::post('reception/bookings/{booking}/settle-bill', [ReceptionController::class, 'settleBill'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.settle-bill');
+        Route::post('reception/bookings/{booking}/request-inspection', [ReceptionController::class, 'requestInspection'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.request-inspection');
         Route::post('reception/bookings/{booking}/check-out', [ReceptionController::class, 'checkOut'])
             ->middleware('throttle:60,1')->name('api.v1.reception.check-out');
 

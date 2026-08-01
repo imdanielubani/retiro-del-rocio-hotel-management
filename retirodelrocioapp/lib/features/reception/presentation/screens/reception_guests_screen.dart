@@ -6,12 +6,12 @@ import 'package:retirodelrocioapp/features/authentication/application/auth_provi
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
-import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guest_profile_screen.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_checkout_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_scaffold.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
@@ -31,9 +31,6 @@ class ReceptionGuestsScreen extends ConsumerStatefulWidget {
 class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
   String _search = '';
 
-  /// The guest whose check-out is mid-request, so only that one card spins.
-  String? _checkingOutKey;
-
   String get _token => widget.session.token;
 
   Future<void> _logout() async {
@@ -45,23 +42,19 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
 
   /// Check a guest out straight from the list — no need to open their profile
   /// first. Only called when [ReceptionGuestSummary.activeBookingId] is set.
+  /// Opens the pre-checkout confirmation; the dialog performs the checkout
+  /// itself.
   Future<void> _checkOut(ReceptionGuestSummary guest) async {
     final bookingId = guest.activeBookingId;
     if (bookingId == null) return;
 
-    setState(() => _checkingOutKey = guest.key);
-    try {
-      await ref.read(receptionActionsProvider(_token)).checkOut(bookingId);
-      if (mounted) _toast('${guest.name} checked out.');
-    } on ReceptionException catch (e) {
-      if (mounted) _toast(e.message, error: true);
-    } catch (_) {
-      if (mounted) {
-        _toast('Something went wrong. Please try again.', error: true);
-      }
-    } finally {
-      if (mounted) setState(() => _checkingOutKey = null);
-    }
+    final done = await showReceptionCheckOutDialog(
+      context,
+      session: widget.session,
+      bookingId: bookingId,
+      guestName: guest.name,
+    );
+    if (done == true && mounted) _toast('${guest.name} checked out.');
   }
 
   void _toast(String message, {bool error = false}) {
@@ -95,6 +88,7 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
     ref.watch(receptionBookingsRealtimeProvider(_token));
 
     final guestsAsync = ref.watch(receptionGuestsProvider(_token));
+    final all = guestsAsync.value ?? const <ReceptionGuestSummary>[];
     final unreadNotifications = ref.watch(
       receptionUnreadNotificationsProvider(_token),
     );
@@ -116,49 +110,74 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
         hint: 'Search name, email or phone',
         onChanged: (v) => setState(() => _search = v),
       ),
-      body: guestsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-        error: (_, _) => Center(
-          child: TextButton(
-            onPressed: () => ref.invalidate(receptionGuestsProvider(_token)),
-            child: const Text('Could not load guests. Retry', style: TextStyle(color: AppColors.gold)),
-          ),
-        ),
-        data: (all) {
-          final guests = _filter(all);
-          if (guests.isEmpty) {
-            return const ReceptionSectionEmpty(
-              icon: Icons.person_search_rounded,
-              message: 'No guests match your search',
-            );
-          }
-          return RefreshIndicator(
-            color: AppColors.gold,
-            onRefresh: () async => ref.invalidate(receptionGuestsProvider(_token)),
-            child: GridView.builder(
-              padding: const EdgeInsets.only(bottom: 24),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 560,
-                mainAxisExtent: 84,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 14,
-              ),
-              itemCount: guests.length,
-              itemBuilder: (_, i) {
-                final guest = guests[i];
-                return ReceptionGuestCard(
-                  guest: guest,
-                  onTap: () => _openProfile(guest),
-                  checkingOut: _checkingOutKey == guest.key,
-                  onCheckOut: guest.activeBookingId != null
-                      ? () => _checkOut(guest)
-                      : null,
-                );
-              },
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _summaryCards(all),
+          const SizedBox(height: 16),
+          Expanded(
+            child: guestsAsync.when(
+              loading: () => all.isNotEmpty
+                  ? _list(all)
+                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              error: (_, _) => all.isNotEmpty
+                  ? _list(all)
+                  : Center(
+                      child: TextButton(
+                        onPressed: () => ref.invalidate(receptionGuestsProvider(_token)),
+                        child: const Text('Could not load guests. Retry', style: TextStyle(color: AppColors.gold)),
+                      ),
+                    ),
+              data: _list,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _list(List<ReceptionGuestSummary> all) {
+    final guests = _filter(all);
+    if (guests.isEmpty) {
+      return const ReceptionSectionEmpty(
+        icon: Icons.person_search_rounded,
+        message: 'No guests match your search',
+      );
+    }
+    return RefreshIndicator(
+      color: AppColors.gold,
+      onRefresh: () async => ref.invalidate(receptionGuestsProvider(_token)),
+      child: GridView.builder(
+        padding: const EdgeInsets.only(bottom: 24),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 560,
+          mainAxisExtent: 84,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 14,
+        ),
+        itemCount: guests.length,
+        itemBuilder: (_, i) {
+          final guest = guests[i];
+          return ReceptionGuestCard(
+            guest: guest,
+            onTap: () => _openProfile(guest),
+            onCheckOut: guest.activeBookingId != null ? () => _checkOut(guest) : null,
           );
         },
       ),
+    );
+  }
+
+  /// Total guests on the books, and how many are currently in-house — the
+  /// hotel-wide totals, unaffected by the search box below them.
+  Widget _summaryCards(List<ReceptionGuestSummary> all) {
+    final inHouse = all.where((g) => g.inHouse).length;
+    return Row(
+      children: [
+        Expanded(child: ReceptionStatCard(label: 'TOTAL GUESTS', value: all.length, accent: AppColors.gold)),
+        const SizedBox(width: 16),
+        Expanded(child: ReceptionStatCard(label: 'IN HOUSE', value: inHouse, accent: kReceptionBlue)),
+      ],
     );
   }
 

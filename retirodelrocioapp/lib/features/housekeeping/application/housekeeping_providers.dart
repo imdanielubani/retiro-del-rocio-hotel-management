@@ -52,10 +52,12 @@ final housekeepingRequestsProvider = FutureProvider.family<List<HousekeepingGues
 });
 
 /// Subscribes the tablet to the hotel-wide `housekeeping` channel and
-/// refreshes the notification feed the instant a new one lands (today, only
-/// "a guest raised a housekeeping request"). Pure accelerator: if no
-/// broadcaster is configured, or the socket drops, the periodic poll in
-/// [housekeepingNotificationsProvider] still carries the feed.
+/// refreshes the notification feed, the Requests list and the dashboard the
+/// instant a new one lands (today, only "a guest raised a housekeeping
+/// request") — so a fresh ask appears within a couple of seconds instead of
+/// waiting on the 15s poll. Pure accelerator: if no broadcaster is
+/// configured, or the socket drops, those providers' own periodic polls
+/// still carry the feed.
 final housekeepingNotificationsRealtimeProvider = FutureProvider.family<void, String>((ref, token) async {
   final config = (await ref.watch(appConfigProvider.future)).realtime;
   if (config == null) {
@@ -66,7 +68,11 @@ final housekeepingNotificationsRealtimeProvider = FutureProvider.family<void, St
   final channel = SosChannel(config: config, channel: 'housekeeping', events: const {});
   channel.connect(
     onChanged: () {},
-    onNotification: () => ref.invalidate(housekeepingNotificationsProvider(token)),
+    onNotification: () {
+      ref.invalidate(housekeepingNotificationsProvider(token));
+      ref.invalidate(housekeepingRequestsProvider(token));
+      ref.invalidate(housekeepingOverviewProvider(token));
+    },
   );
 
   ref.onDispose(channel.dispose);

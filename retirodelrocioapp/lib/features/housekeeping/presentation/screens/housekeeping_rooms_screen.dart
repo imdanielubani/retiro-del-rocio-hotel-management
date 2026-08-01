@@ -3,21 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
-import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
-import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/housekeeping/application/housekeeping_providers.dart';
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_room.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/application/housekeeping_notification_providers.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/presentation/screens/housekeeping_notification_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/housekeeping_navigation.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
+import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_scaffold.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_widgets.dart';
-import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
-enum _StatusFilter { all, dirty, clean, inspected, outOfOrder }
+enum _StatusFilter { all, dirty, preparing, clean, inspected, outOfOrder }
 
 /// The full room grid — every room, filterable by cleanliness and
 /// searchable by number, with the same mark-clean/inspected/dirty/out-of-
@@ -65,6 +63,7 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
     var rows = all;
     final statusValue = switch (_filter) {
       _StatusFilter.dirty => 'dirty',
+      _StatusFilter.preparing => 'preparing',
       _StatusFilter.clean => 'clean',
       _StatusFilter.inspected => 'inspected',
       _StatusFilter.outOfOrder => 'out_of_order',
@@ -105,134 +104,71 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
   @override
   Widget build(BuildContext context) {
     ref.watch(housekeepingNotificationsRealtimeProvider(_token));
-    ref.watch(housekeepingNotificationChimeProvider(_token));
 
     final roomsAsync = ref.watch(housekeepingRoomsProvider(_token));
     final rooms = roomsAsync.value ?? const <HousekeepingRoom>[];
-    final weather = ref.watch(weatherProvider).value;
     final unreadNotifications = ref.watch(housekeepingUnreadNotificationsProvider(_token));
 
-    return SessionGuard(
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
-            const ColoredBox(color: Color(0xF2000000)),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    HousekeepingNavRail(active: HousekeepingNavItem.rooms, onSelect: _onNav, onLogout: _logout),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          StaffTopBar(
-                            name: widget.session.name,
-                            role: 'Housekeeping',
-                            brandLabel: 'HOUSEKEEPING',
-                            weather: weather,
-                            hasUnreadNotifications: unreadNotifications > 0,
-                            onNotifications: _openNotifications,
-                            initialsFallback: 'HK',
-                          ),
-                          const SizedBox(height: 20),
-                          _header(),
-                          const SizedBox(height: 16),
-                          _searchAndFilters(),
-                          const SizedBox(height: 16),
-                          Expanded(
-                            child: roomsAsync.when(
-                              data: (data) => _grid(data),
-                              loading: () => rooms.isNotEmpty
-                                  ? _grid(rooms)
-                                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-                              error: (_, _) => rooms.isNotEmpty
-                                  ? _grid(rooms)
-                                  : Center(
-                                      child: TextButton(
-                                        onPressed: () => ref.invalidate(housekeepingRoomsProvider(_token)),
-                                        child: const Text(
-                                          'Could not load rooms. Retry',
-                                          style: TextStyle(color: AppColors.gold),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
+    return HousekeepingScaffold(
+      session: widget.session,
+      active: HousekeepingNavItem.rooms,
+      onNav: _onNav,
+      onLogout: _logout,
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
+      title: 'Rooms',
+      trailing: HousekeepingSearchField(
+        hint: 'Search room',
+        onChanged: (v) => setState(() => _search = v),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _filterChips(),
+          const SizedBox(height: 16),
+          Expanded(
+            child: roomsAsync.when(
+              data: (data) => _grid(data),
+              loading: () => rooms.isNotEmpty
+                  ? _grid(rooms)
+                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              error: (_, _) => rooms.isNotEmpty
+                  ? _grid(rooms)
+                  : Center(
+                      child: TextButton(
+                        onPressed: () => ref.invalidate(housekeepingRoomsProvider(_token)),
+                        child: const Text(
+                          'Could not load rooms. Retry',
+                          style: TextStyle(color: AppColors.gold),
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _header() {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-        ),
-        Text('Rooms', style: AppTypography.style(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700)),
-      ],
-    );
-  }
-
-  Widget _searchAndFilters() {
-    return Row(
-      children: [
-        SizedBox(
-          width: 260,
-          child: TextField(
-            onChanged: (v) => setState(() => _search = v),
-            style: AppTypography.style(color: Colors.white, fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Search room',
-              hintStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 13),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              prefixIcon: Icon(Icons.search_rounded, size: 18, color: Colors.white.withValues(alpha: 0.4)),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SizedBox(
-            height: 38,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _chip('All', _StatusFilter.all),
-                const SizedBox(width: 8),
-                _chip('Dirty', _StatusFilter.dirty),
-                const SizedBox(width: 8),
-                _chip('Clean', _StatusFilter.clean),
-                const SizedBox(width: 8),
-                _chip('Inspected', _StatusFilter.inspected),
-                const SizedBox(width: 8),
-                _chip('Out of Order', _StatusFilter.outOfOrder),
-              ],
-            ),
-          ),
-        ),
-      ],
+  Widget _filterChips() {
+    return SizedBox(
+      height: 38,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _chip('All', _StatusFilter.all),
+          const SizedBox(width: 8),
+          _chip('Dirty', _StatusFilter.dirty),
+          const SizedBox(width: 8),
+          _chip('Preparing', _StatusFilter.preparing),
+          const SizedBox(width: 8),
+          _chip('Clean', _StatusFilter.clean),
+          const SizedBox(width: 8),
+          _chip('Inspected', _StatusFilter.inspected),
+          const SizedBox(width: 8),
+          _chip('Out of Order', _StatusFilter.outOfOrder),
+        ],
+      ),
     );
   }
 

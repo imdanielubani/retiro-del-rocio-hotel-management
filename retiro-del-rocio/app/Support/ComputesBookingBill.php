@@ -184,4 +184,36 @@ trait ComputesBookingBill
             'vat_due' => $breakdown['vat_due'],
         ];
     }
+
+    /**
+     * Call once a settlement (a guest's My Bills payment, or reception
+     * settling the balance at the desk) has just brought this booking's
+     * outstanding balance to zero.
+     *
+     * {@see billBreakdown()} works entirely off the running total (every
+     * room-charge line minus every successful {@see BillPayment}), so the
+     * "due" figure is correct without this — but the spa/cinema bookings
+     * themselves carry their own separate `payment_status` column, which
+     * nothing was ever flipping. That column, not the BillPayment ledger, is
+     * what the admin Payments/Revenue dashboard reads directly — so left
+     * alone, a settled spa session stayed "pending" forever, dated the day
+     * it was charged (e.g. last month) instead of the day it was actually
+     * paid. Since the "due" balance is never partial — a settlement always
+     * covers everything outstanding at that moment — it's safe to mark every
+     * not-yet-paid room-charge spa/cinema booking on this stay as paid now.
+     */
+    private function markRoomChargesSettled(Booking $booking): void
+    {
+        $now = now();
+
+        SpaBooking::where('booking_id', $booking->id)
+            ->where('payment_method', 'room_charge')
+            ->where('payment_status', '!=', 'paid')
+            ->update(['payment_status' => 'paid', 'paid_at' => $now]);
+
+        CinemaBooking::where('booking_id', $booking->id)
+            ->where('payment_method', 'room_charge')
+            ->where('payment_status', '!=', 'paid')
+            ->update(['payment_status' => 'paid', 'paid_at' => $now]);
+    }
 }

@@ -16,7 +16,7 @@ void main() {
         'stats': {
           'arrivals_today': 2,
           'check_ins_today': 0,
-          'check_outs_today': 1,
+          'departures_today': 1,
           'visitor_pass_check_ins': 4,
           'overdue_departures': 3,
         },
@@ -77,7 +77,7 @@ void main() {
 
       expect(overview.receptionistName, 'Daniel Ubani');
       expect(overview.arrivalsToday, 2);
-      expect(overview.checkOutsToday, 1);
+      expect(overview.departuresToday, 1);
       expect(overview.visitorPassCheckIns, 4);
       expect(overview.overdueDepartures, 3);
       expect(overview.arrivals.single.guestName, 'Daniel Ubani');
@@ -158,6 +158,36 @@ void main() {
       expect(checkedIn, isTrue);
     });
 
+    testWidgets(
+      'on the Arrivals list, an already-checked-in guest shows a status pill, not Check Out',
+      (tester) async {
+        await tester.pumpWidget(
+          _host(
+            ReceptionBookingCard(
+              booking: const ReceptionBooking(
+                id: 302,
+                reference: 'BK-0302',
+                guestName: 'Already In',
+                roomLabel: 'Brisa Residence · Room 302',
+                dateLabel: 'Jul 24, 2026',
+                status: 'checked_in',
+                statusLabel: 'Checked In',
+              ),
+              busy: false,
+              onCheckIn: () {},
+              showCheckOutAction: false,
+            ),
+          ),
+        );
+
+        // Arrivals is done once a guest is checked in — checking them back
+        // out belongs to Departures, which already lists every checked-in
+        // guest for exactly that.
+        expect(find.text('Checked In'), findsOneWidget);
+        expect(find.text('Check Out'), findsNothing);
+      },
+    );
+
     testWidgets('an in-house guest shows Check Out and checks out', (
       tester,
     ) async {
@@ -222,6 +252,70 @@ void main() {
       await tester.pump();
       expect(checkedOut, isTrue);
     });
+
+    testWidgets('a guest due today is flagged distinctly from an overdue one', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          ReceptionBookingCard(
+            booking: const ReceptionBooking(
+              id: 305,
+              reference: 'BK-0305',
+              guestName: 'Due Today Dara',
+              roomLabel: 'Brisa Residence · Room 305',
+              dateLabel: 'Jul 24, 2026',
+              status: 'checked_in',
+              statusLabel: 'Checked In',
+              isDueToday: true,
+            ),
+            busy: false,
+            onCheckIn: () {},
+            onCheckOut: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Due Today'), findsOneWidget);
+      expect(find.text('Overdue'), findsNothing);
+      expect(find.text('Check Out'), findsOneWidget);
+    });
+
+    testWidgets(
+      'an upcoming departure (not yet due) shows no urgency badge but still checks out',
+      (tester) async {
+        var checkedOut = false;
+        await tester.pumpWidget(
+          _host(
+            ReceptionBookingCard(
+              booking: const ReceptionBooking(
+                id: 412,
+                reference: 'BK-0412',
+                guestName: 'Extended Emeka',
+                roomLabel: 'Brisa Residence · Room 412',
+                dateLabel: 'Jul 30, 2026',
+                status: 'checked_in',
+                statusLabel: 'Checked In',
+              ),
+              busy: false,
+              onCheckIn: () {},
+              onCheckOut: () => checkedOut = true,
+            ),
+          ),
+        );
+
+        // Neither badge applies to a departure that's simply upcoming — a
+        // guest who just extended their stay should read as unremarkable,
+        // not overdue or due today, while the desk can still check them out
+        // early if they choose to.
+        expect(find.text('Overdue'), findsNothing);
+        expect(find.text('Due Today'), findsNothing);
+        expect(find.text('Check Out'), findsOneWidget);
+        await tester.tap(find.text('Check Out'));
+        await tester.pump();
+        expect(checkedOut, isTrue);
+      },
+    );
 
     testWidgets('a departed guest shows a terminal status, no action', (
       tester,

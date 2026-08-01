@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Models\User;
@@ -150,6 +151,54 @@ class MaintenanceDashboardTest extends TestCase
         $this->assertNotNull($fresh->accepted_at);
         $this->assertNotNull($fresh->started_at);
         $this->assertNotNull($fresh->completed_at);
+    }
+
+    public function test_completing_a_guests_fault_notifies_their_tablet(): void
+    {
+        $unit = $this->unit();
+        $booking = Booking::create([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Grace Hopper',
+            'room_id' => $unit->room_id,
+            'room_name' => 'Brisa Residence',
+            'room_unit_id' => $unit->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'nights' => 2,
+            'guests' => 1,
+            'amount' => 300000,
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDay(),
+        ]);
+        $order = WorkOrder::create([
+            'room_unit_id' => $unit->id,
+            'booking_id' => $booking->id,
+            'title' => 'AC not cooling',
+        ]);
+
+        $this->withToken($this->technicianToken())
+            ->postJson("/api/v1/maintenance/work-orders/{$order->id}/complete")
+            ->assertOk();
+
+        $this->assertDatabaseHas('guest_notifications', [
+            'booking_id' => $booking->id,
+            'room_unit_id' => $unit->id,
+            'category' => 'maintenance',
+            'title' => 'Maintenance Request Completed',
+            'message' => 'Your AC not cooling request has been completed.',
+        ]);
+    }
+
+    public function test_completing_a_staff_reported_fault_does_not_notify_a_guest(): void
+    {
+        $unit = $this->unit();
+        $order = WorkOrder::create(['room_unit_id' => $unit->id, 'title' => 'Lobby light out']);
+
+        $this->withToken($this->technicianToken())
+            ->postJson("/api/v1/maintenance/work-orders/{$order->id}/complete")
+            ->assertOk();
+
+        $this->assertDatabaseCount('guest_notifications', 0);
     }
 
     public function test_starting_an_order_that_was_never_accepted_is_rejected(): void

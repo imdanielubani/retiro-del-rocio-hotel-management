@@ -104,24 +104,28 @@ void main() {
     expect(find.text('Daniel Ubani.'), findsOneWidget);
   });
 
-  testWidgets('a check-out returns the tablet to welcome from the guest home',
-      (tester) async {
-    await pumpWelcome(tester, occupied);
+  testWidgets(
+    'a check-out hides the in-place guest welcome once nothing is pushed on top',
+    (tester) async {
+      await pumpWelcome(tester, occupied);
 
-    // The guest walks all the way in: Explore → Enter Your Suite.
-    await tester.tap(find.text('Explore'));
-    await tester.pump();
-    await tester.tap(find.text('Enter Your Suite'));
-    await tester.pumpAndSettle();
-    expect(find.text('Quick Services'), findsOneWidget);
+      await tester.tap(find.text('Explore'));
+      await tester.pump();
+      expect(find.text('Welcome Back,'), findsOneWidget);
 
-    // Reception checks them out; the tablet's next poll sees the empty room.
-    _container(tester).read(liveStatus.notifier).set(available);
-    await tester.pumpAndSettle();
+      // Reception checks them out; the tablet's next poll sees the empty room.
+      // Nothing was pushed on top of this screen, so it's still the one
+      // rebuilding — this is the one piece of the reset WelcomeScreen owns
+      // itself. Unwinding any *pushed* screens (My Stay, Bills, …) back down
+      // to here is [CheckoutResetWatcher]'s job, covered in its own test —
+      // this screen doesn't reliably rebuild once anything sits on top of it,
+      // so it can't be the one responsible for that part.
+      _container(tester).read(liveStatus.notifier).set(available);
+      await tester.pumpAndSettle();
 
-    // The guest home is gone — no one had to touch the tablet.
-    expect(find.text('Quick Services'), findsNothing);
-    expect(find.text('This room is currently available.'), findsOneWidget);
-    expect(find.text('Explore'), findsNothing);
-  });
+      expect(find.text('Welcome Back,'), findsNothing);
+      expect(find.text('This room is currently available.'), findsOneWidget);
+      expect(find.text('Explore'), findsNothing);
+    },
+  );
 }

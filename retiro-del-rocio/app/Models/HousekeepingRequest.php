@@ -15,7 +15,17 @@ class HousekeepingRequest extends Model
 
     public const COMPLETED = 'completed';
 
-    public const TYPES = ['towels', 'amenities', 'dnd', 'make_up_room', 'other'];
+    /**
+     * Raised by reception, not the guest — a pre-checkout ask for
+     * housekeeping to inspect an occupied room before the guest is allowed
+     * to leave. Everything else in this model (the pending/completed
+     * lifecycle, the Requests queue, the notification on create) is shared
+     * with the guest-raised types; only the guest-facing history excludes it
+     * (see {@see GuestServiceRequestController}).
+     */
+    public const CHECKOUT_INSPECTION = 'checkout_inspection';
+
+    public const TYPES = ['towels', 'amenities', 'dnd', 'make_up_room', 'other', self::CHECKOUT_INSPECTION];
 
     // Matches the migration's column default. Without this, a freshly
     // `create()`d instance has a null `status` in memory until re-fetched —
@@ -73,6 +83,7 @@ class HousekeepingRequest extends Model
             'amenities' => 'Amenities',
             'dnd' => 'Do Not Disturb',
             'make_up_room' => 'Make Up Room',
+            self::CHECKOUT_INSPECTION => 'Checkout Inspection',
             default => 'Other',
         };
     }
@@ -81,17 +92,39 @@ class HousekeepingRequest extends Model
     public function toHousekeepingArray(): array
     {
         $unit = $this->relationLoaded('roomUnit') ? $this->roomUnit : $this->roomUnit()->first();
+        $room = $unit?->relationLoaded('room') ? $unit->room : $unit?->room()->first();
 
         return [
             'id' => $this->id,
             'room_unit_id' => $this->room_unit_id,
             'room_number' => $unit?->number,
+            'room_name' => $room?->name,
             'type' => $this->type,
             'type_label' => $this->typeLabel(),
             'notes' => $this->notes,
             'status' => $this->status,
             'is_pending' => $this->isPending(),
             'created_label' => optional($this->created_at)->diffForHumans(),
+        ];
+    }
+
+    /**
+     * A compact alert row for the reception dashboard's "Alerts" panel,
+     * mirroring SosAlert::toReceptionAlertArray() — a guest's housekeeping
+     * ask is pushed to the desk the moment it lands, not left buried in the
+     * separate notifications inbox.
+     */
+    public function toReceptionAlertArray(): array
+    {
+        $unit = $this->relationLoaded('roomUnit') ? $this->roomUnit : $this->roomUnit()->first();
+        $room = $unit?->number ? 'Room '.$unit->number : 'the hotel';
+
+        return [
+            'id' => $this->id,
+            'type' => 'housekeeping_request',
+            'title' => 'Housekeeping Request — '.$this->typeLabel().' ('.$room.')',
+            'time_label' => optional($this->created_at)->diffForHumans(['short' => true]) ?? '',
+            'severity' => 'medium',
         ];
     }
 

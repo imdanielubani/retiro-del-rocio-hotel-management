@@ -2,10 +2,14 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Booking;
 use App\Models\HousekeepingNotification;
+use App\Models\Room;
+use App\Models\RoomUnit;
 use App\Models\User;
 use App\Services\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -95,5 +99,52 @@ class HousekeepingNotificationsTest extends TestCase
         $this->withToken($this->otherRoleToken())
             ->getJson('/api/v1/housekeeping/notifications')
             ->assertForbidden();
+    }
+
+    public function test_a_notification_shows_which_room_and_guest_it_is_about(): void
+    {
+        $room = Room::create([
+            'name' => 'Alba Suite',
+            'slug' => 'alba-suite-hk-notify',
+            'type' => 'suite',
+            'price' => 150000,
+        ]);
+        $unit = RoomUnit::create(['room_id' => $room->id, 'number' => '101', 'status' => 'occupied']);
+        $booking = Booking::create([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Daniel Ubani',
+            'room_id' => $room->id,
+            'room_name' => $room->name,
+            'room_unit_id' => $unit->id,
+            'check_in' => now()->toDateString(),
+            'check_out' => now()->addDays(3)->toDateString(),
+            'nights' => 3,
+            'guests' => 2,
+            'amount' => 450000,
+            'status' => 'checked_in',
+            'checked_in_at' => now(),
+        ]);
+        $unit->update(['booking_id' => $booking->id]);
+
+        HousekeepingNotification::notify('guest', 'New Housekeeping Request', 'Daniel Ubani requested towels.', $booking);
+
+        $this->withToken($this->housekeeperToken())
+            ->getJson('/api/v1/housekeeping/notifications')
+            ->assertOk()
+            ->assertJsonPath('data.0.suite_name', 'Alba Suite')
+            ->assertJsonPath('data.0.room_number', '101')
+            ->assertJsonPath('data.0.guest_name', 'Daniel Ubani');
+    }
+
+    public function test_a_notification_without_a_booking_has_no_room_or_guest_info(): void
+    {
+        HousekeepingNotification::notify('message', 'Heads up', 'Nothing booking-specific.');
+
+        $this->withToken($this->housekeeperToken())
+            ->getJson('/api/v1/housekeeping/notifications')
+            ->assertOk()
+            ->assertJsonPath('data.0.suite_name', null)
+            ->assertJsonPath('data.0.room_number', null)
+            ->assertJsonPath('data.0.guest_name', null);
     }
 }

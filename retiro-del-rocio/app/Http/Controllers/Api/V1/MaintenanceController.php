@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\GuestNotification;
 use App\Models\RoomUnit;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -128,9 +129,36 @@ class MaintenanceController extends Controller
     {
         $this->technician($request);
 
-        $workOrder->complete();
+        if ($workOrder->complete()) {
+            $this->notifyGuestFaultCompleted($workOrder);
+        }
 
         return response()->json(['data' => $workOrder->fresh(['roomUnit', 'assignedTo'])->toMaintenanceArray()]);
+    }
+
+    /**
+     * Push a live signal to the guest's own tablet the moment their fault is
+     * closed, over the room's existing realtime channel, so their Service
+     * Request history updates in a couple of seconds rather than waiting on
+     * its own poll. A fault reported by staff (no `booking_id`) has no guest
+     * to notify.
+     */
+    private function notifyGuestFaultCompleted(WorkOrder $workOrder): void
+    {
+        $booking = $workOrder->booking()->first();
+        $unit = $workOrder->roomUnit()->first();
+
+        if (! $booking || ! $unit) {
+            return;
+        }
+
+        GuestNotification::notify(
+            $booking,
+            $unit,
+            'maintenance',
+            'Maintenance Request Completed',
+            'Your '.$workOrder->title.' request has been completed.',
+        );
     }
 
     /**

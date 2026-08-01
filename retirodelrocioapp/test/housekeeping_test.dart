@@ -111,7 +111,7 @@ void main() {
     isPending: false,
   );
 
-  testWidgets('a dirty checkout-today room shows its status, guest and a Mark Clean action', (tester) async {
+  testWidgets('a dirty checkout-today room shows its status, guest and a Mark Preparing action', (tester) async {
     var tappedStatus = '';
     await tester.pumpWidget(
       _host(HousekeepingRoomCard(room: dirtyRoom, onMarkStatus: (s) => tappedStatus = s)),
@@ -121,6 +121,29 @@ void main() {
     expect(find.text('Dirty'), findsOneWidget);
     expect(find.text('Checkout today'), findsOneWidget);
     expect(find.text('Ada Lovelace'), findsOneWidget); // now its own prominent line
+    expect(find.text('Mark Preparing'), findsOneWidget);
+
+    await tester.tap(find.text('Mark Preparing'));
+    await tester.pump();
+    expect(tappedStatus, 'preparing');
+  });
+
+  testWidgets('a room being prepared offers Mark Clean once the turnover is done', (tester) async {
+    const room = HousekeepingRoom(
+      id: 2,
+      number: '204',
+      roomName: 'Brisa Residence',
+      occupancy: 'available',
+      occupancyLabel: 'Available',
+      housekeepingStatus: 'preparing',
+      housekeepingStatusLabel: 'Preparing',
+    );
+    var tappedStatus = '';
+    await tester.pumpWidget(
+      _host(HousekeepingRoomCard(room: room, onMarkStatus: (s) => tappedStatus = s)),
+    );
+
+    expect(find.text('Preparing'), findsOneWidget);
     expect(find.text('Mark Clean'), findsOneWidget);
 
     await tester.tap(find.text('Mark Clean'));

@@ -254,7 +254,7 @@ class SecurityController extends Controller
     {
         $this->officer($request);
 
-        $notifications = SecurityNotification::latest()->limit(100)->get();
+        $notifications = SecurityNotification::with('booking.roomUnit')->latest()->limit(100)->get();
 
         return response()->json(['data' => $notifications->map->toSecurityArray()->values()]);
     }

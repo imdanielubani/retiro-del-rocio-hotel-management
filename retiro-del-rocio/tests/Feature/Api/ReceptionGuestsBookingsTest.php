@@ -107,6 +107,44 @@ class ReceptionGuestsBookingsTest extends TestCase
         $this->assertSame(2, $ada['stays']); // her two stays grouped
     }
 
+    public function test_in_house_guests_sort_first_then_newest_check_in(): void
+    {
+        // Checked out long ago — the oldest booking, and not in-house.
+        $this->booking([
+            'customer_name' => 'Old Departed',
+            'customer_email' => 'old@mail.com',
+            'check_in' => today()->subDays(30)->toDateString(),
+            'status' => 'checked_out',
+        ]);
+        // A brand new reservation, not yet arrived — newest, but not in-house.
+        $this->booking([
+            'customer_name' => 'Just Booked',
+            'customer_email' => 'newbooking@mail.com',
+            'check_in' => today()->addDays(5)->toDateString(),
+            'status' => 'paid',
+        ]);
+        // In-house, but an older check-in than "Just Booked" — must still sort
+        // above every not-in-house guest, however recent.
+        $this->booking([
+            'customer_name' => 'Currently Staying',
+            'customer_email' => 'inhouse@mail.com',
+            'check_in' => today()->subDays(1)->toDateString(),
+            'status' => 'checked_in',
+        ]);
+
+        $names = collect(
+            $this->withToken($this->receptionToken())
+                ->getJson('/api/v1/reception/guests')
+                ->assertOk()
+                ->json('data')
+        )->pluck('name');
+
+        $this->assertSame(
+            ['Currently Staying', 'Just Booked', 'Old Departed'],
+            $names->all(),
+        );
+    }
+
     public function test_guest_search_narrows_the_list(): void
     {
         $this->booking(); // Ada

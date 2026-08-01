@@ -79,8 +79,7 @@ class MyStayScreen extends ConsumerWidget {
                     onNotifications: () => _openNotifications(context),
                     onProfile: () {},
                     hasUnreadNotifications:
-                        ref.watch(guestUnreadNotificationsProvider(_token)) >
-                        0,
+                        ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),
                   const SizedBox(height: 20),
                   _header(context, stay),
@@ -625,13 +624,33 @@ class MyStayScreen extends ConsumerWidget {
     return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           _eyebrow('STAY SUMMARY'),
           const SizedBox(height: 16),
-          for (final line in stay.summaryLines) ...[
-            _summaryLine(line),
-            const SizedBox(height: 12),
-          ],
+          SizedBox(
+            height: 200,
+            child: stay.summaryLines.isEmpty
+                ? Center(
+                    child: Text(
+                      'No charges yet.',
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                : Scrollbar(
+                    thumbVisibility: true,
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: stay.summaryLines.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => _summaryLine(stay.summaryLines[i]),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 9),
           Divider(
             color: Colors.white.withValues(alpha: 0.1),
             height: 1,

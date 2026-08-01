@@ -219,11 +219,10 @@ class _SecurityNotificationScreenState
 
   Widget _header(int unreadCount) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-        ),
+        _backButton(),
+        const SizedBox(width: 15),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,8 +245,31 @@ class _SecurityNotificationScreenState
             ],
           ),
         ),
+        const SizedBox(width: 16),
         _markAllReadButton(unreadCount),
       ],
+    );
+  }
+
+  Widget _backButton() {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.06),
+      shape: CircleBorder(
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+      ),
+      child: InkWell(
+        onTap: () => Navigator.of(context).maybePop(),
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(
+            Icons.arrow_back_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
+        ),
+      ),
     );
   }
 
@@ -430,6 +452,40 @@ class _SecurityNotificationScreenState
     );
   }
 
+  /// A "Two Bedroom Suite · Room 101 · Daniel Ubani" style line showing
+  /// which room and guest a notification is about, skipping whichever parts
+  /// are missing.
+  Widget _roomGuestLine(String? suite, String? room, String? guest) {
+    final parts = <String>[
+      if ((suite ?? '').isNotEmpty) suite!,
+      if ((room ?? '').isNotEmpty) 'Room $room',
+      if ((guest ?? '').isNotEmpty) guest!,
+    ];
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.meeting_room_outlined,
+          size: 13,
+          color: AppColors.gold.withValues(alpha: 0.6),
+        ),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            parts.join(' · '),
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.style(
+              color: AppColors.gold.withValues(alpha: 0.75),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _card(SecurityNotification n) {
     final busy = _busyId == n.id;
 
@@ -516,6 +572,10 @@ class _SecurityNotificationScreenState
                         fontSize: 13,
                       ),
                     ),
+                    if (n.hasRoomContext) ...[
+                      const SizedBox(height: 6),
+                      _roomGuestLine(n.suiteName, n.roomNumber, n.guestName),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       _timeAgo(n.time),

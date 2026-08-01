@@ -24,11 +24,17 @@ class BookingObserver
      * writes don't touch check_in/check_out, so this never loops.
      *
      * Also signal reception whenever the booking moves state (confirmed, checked
-     * in/out, cancelled) so the front desk sees it the moment it happens.
+     * in/out, cancelled) — or its checkout date moves, e.g. a paid stay
+     * extension — so the front desk's already-open dashboard sees it the
+     * moment it happens rather than waiting on its own next poll. A stay
+     * extension never changes `status` (the guest stays checked_in
+     * throughout), so `check_out` has to be watched on its own; otherwise the
+     * departures list keeps showing the guest under their old, pre-extension
+     * checkout date until something else happens to trigger a refetch.
      */
     public function updated(Booking $booking): void
     {
-        if ($booking->wasChanged('status')) {
+        if ($booking->wasChanged('status') || $booking->wasChanged('check_out')) {
             BookingChanged::announce($booking);
         }
 

@@ -97,10 +97,13 @@ class Index extends Component
         };
     }
 
-    // Room bookings, filtered. Date column = paid_at.
+    // Room bookings, filtered. Date column = paid_at, window = statsBounds()
+    // — the same one the headline cards use, so "no filter picked" means
+    // "this month" down here too, not all-time. See {@see statsBounds()}.
     protected function roomQuery()
     {
         $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
 
         return Booking::query()
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
@@ -111,25 +114,22 @@ class Index extends Component
                 ->orWhere('id', 'like', "%{$this->search}%")))
             ->tap(fn ($q) => $this->applyRoomStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
-            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
-            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
-            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
-            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
-            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
-            ->when($this->range, function ($q) use ($dateCol) {
-                [$start, $end] = $this->rangeBounds();
-                if ($start) {
-                    $q->whereBetween($dateCol, [$start, $end]);
-                }
-            });
+            ->whereBetween($dateCol, [$start, $end]);
     }
 
     // Spa reservations, filtered. Same date column + payment-centric status map.
+    // A room-charge session is excluded — like a room-charge stay extension,
+    // it was never actually paid on its own, just added to the room folio;
+    // once the folio is settled it's the {@see billPaymentQuery()} "Bill
+    // Settlement" row that represents that money here, not this one too —
+    // otherwise the same payment would be double-counted.
     protected function spaQuery()
     {
         $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
 
         return SpaBooking::query()
+            ->where('payment_method', '!=', 'room_charge')
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('reference', 'like', "%{$this->search}%")
                 ->orWhere('customer_name', 'like', "%{$this->search}%")
@@ -137,23 +137,14 @@ class Index extends Component
                 ->orWhere('id', 'like', "%{$this->search}%")))
             ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
-            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
-            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
-            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
-            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
-            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
-            ->when($this->range, function ($q) use ($dateCol) {
-                [$start, $end] = $this->rangeBounds();
-                if ($start) {
-                    $q->whereBetween($dateCol, [$start, $end]);
-                }
-            });
+            ->whereBetween($dateCol, [$start, $end]);
     }
 
     // Gym memberships, filtered. Same date column + payment-centric status map.
     protected function gymQuery()
     {
         $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
 
         return GymMembership::query()
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
@@ -164,23 +155,14 @@ class Index extends Component
                 ->orWhere('id', 'like', "%{$this->search}%")))
             ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
-            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
-            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
-            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
-            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
-            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
-            ->when($this->range, function ($q) use ($dateCol) {
-                [$start, $end] = $this->rangeBounds();
-                if ($start) {
-                    $q->whereBetween($dateCol, [$start, $end]);
-                }
-            });
+            ->whereBetween($dateCol, [$start, $end]);
     }
 
     // Restaurant reservations, filtered. Date column = paid_at, fee = amount.
     protected function restaurantQuery()
     {
         $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
 
         return RestaurantReservation::query()
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
@@ -191,25 +173,18 @@ class Index extends Component
                 ->orWhere('id', 'like', "%{$this->search}%")))
             ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
-            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
-            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
-            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
-            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
-            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
-            ->when($this->range, function ($q) use ($dateCol) {
-                [$start, $end] = $this->rangeBounds();
-                if ($start) {
-                    $q->whereBetween($dateCol, [$start, $end]);
-                }
-            });
+            ->whereBetween($dateCol, [$start, $end]);
     }
 
-    // Cinema bookings, filtered. Date column = paid_at, amount = amount.
+    // Cinema bookings, filtered. Date column = paid_at, amount = amount. A
+    // room-charge booking is excluded — see {@see spaQuery()} for why.
     protected function cinemaQuery()
     {
         $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
 
         return CinemaBooking::query()
+            ->where('payment_method', '!=', 'room_charge')
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('code', 'like', "%{$this->search}%")
                 ->orWhere('customer_name', 'like', "%{$this->search}%")
@@ -218,17 +193,7 @@ class Index extends Component
                 ->orWhere('id', 'like', "%{$this->search}%")))
             ->tap(fn ($q) => $this->applyPaymentStatus($q))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
-            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
-            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
-            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
-            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
-            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
-            ->when($this->range, function ($q) use ($dateCol) {
-                [$start, $end] = $this->rangeBounds();
-                if ($start) {
-                    $q->whereBetween($dateCol, [$start, $end]);
-                }
-            });
+            ->whereBetween($dateCol, [$start, $end]);
     }
 
     // Guest-paid stay extensions, filtered. Each successful extension is its own
@@ -240,6 +205,7 @@ class Index extends Component
     protected function stayExtensionQuery()
     {
         $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
 
         return StayExtensionPayment::query()
             ->with('booking')
@@ -255,17 +221,7 @@ class Index extends Component
             // Only 'paid' keeps them; a pending/cancelled filter excludes all.
             ->when($this->status, fn ($q) => $this->status === 'paid' ? $q : $q->whereRaw('1 = 0'))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
-            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
-            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
-            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
-            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
-            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
-            ->when($this->range, function ($q) use ($dateCol) {
-                [$start, $end] = $this->rangeBounds();
-                if ($start) {
-                    $q->whereBetween($dateCol, [$start, $end]);
-                }
-            });
+            ->whereBetween($dateCol, [$start, $end]);
     }
 
     // A guest settling their outstanding room-charge folio from My Bills —
@@ -276,6 +232,7 @@ class Index extends Component
     protected function billPaymentQuery()
     {
         $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
 
         return BillPayment::query()
             ->with('booking')
@@ -290,17 +247,7 @@ class Index extends Component
             // Only 'paid' keeps them; a pending/cancelled filter excludes all.
             ->when($this->status, fn ($q) => $this->status === 'paid' ? $q : $q->whereRaw('1 = 0'))
             ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
-            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
-            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
-            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
-            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
-            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
-            ->when($this->range, function ($q) use ($dateCol) {
-                [$start, $end] = $this->rangeBounds();
-                if ($start) {
-                    $q->whereBetween($dateCol, [$start, $end]);
-                }
-            });
+            ->whereBetween($dateCol, [$start, $end]);
     }
 
     protected function rangeBounds(): array
@@ -419,29 +366,37 @@ class Index extends Component
         $prevStart = $prevEnd->copy()->subSeconds($periodSeconds - 1);
 
         // ---- Revenue by department (selected period) — the headline card and the breakdown ----
+        // Spa/Cinema exclude room-charge items — see {@see spaQuery()} for why:
+        // that money isn't lost, it's counted here instead, under "Room
+        // Charges" — the settlement itself ({@see billPaymentQuery()}), dated
+        // to when it was actually paid off, not when the charge was first
+        // made. Without this bucket a settled room-charge balance had nowhere
+        // to count toward revenue at all.
         $periodByDept = [
             'Rooms' => (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
-            'Spa' => (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('total'),
+            'Room Charges' => (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
+            'Spa' => (int) SpaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('total'),
             'Gym' => (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('price'),
             'Restaurant' => (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('fee'),
-            'Cinema' => (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
+            'Cinema' => (int) CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
         ];
         $periodRevenue = array_sum($periodByDept);
 
         // VAT (7.5%) collected in the selected period — tracked separately from revenue.
         $vatCollected = (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
-            + (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) SpaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
-            + (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat');
 
         $prevRevenue = (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount')
-            + (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('total')
+            + (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount')
+            + (int) SpaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('total')
             + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('price')
             + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount');
+            + (int) CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount');
 
         $revenueDelta = $prevRevenue > 0
             ? (int) round((($periodRevenue - $prevRevenue) / $prevRevenue) * 100)
@@ -456,7 +411,7 @@ class Index extends Component
             ? 'from '.$prevStart->format('M')
             : 'vs previous period';
 
-        $deptColors = ['Rooms' => '#f38c00', 'Spa' => '#7c3aed', 'Gym' => '#c2620a', 'Restaurant' => '#b91c1c', 'Cinema' => '#a16207'];
+        $deptColors = ['Rooms' => '#f38c00', 'Room Charges' => '#0891b2', 'Spa' => '#7c3aed', 'Gym' => '#c2620a', 'Restaurant' => '#b91c1c', 'Cinema' => '#a16207'];
         $departments = collect($periodByDept)
             ->map(fn (int $amt, string $label) => [
                 'label' => $label,
@@ -468,26 +423,29 @@ class Index extends Component
             ->values()
             ->all();
 
-        // Total transactions = successful payments in the period (pending/cancelled excluded).
+        // Total transactions = successful payments in the period (pending/cancelled
+        // excluded). Spa/Cinema exclude room-charge items — see {@see spaQuery()}.
         $totalTransactions = Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
-            + SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + SpaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
-            + CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->count();
 
         // Pending has no paid_at yet, so it's scoped by when it was initiated.
+        // Room-charge items excluded — they're not a standalone "pending
+        // payment", just an unsettled room-folio line; see {@see spaQuery()}.
         $pendingAmount = (int) Booking::where('status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount')
-            + (int) SpaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total')
+            + (int) SpaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total')
             + (int) GymMembership::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('price')
             + (int) RestaurantReservation::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount');
+            + (int) CinemaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount');
         $pendingCount = Booking::where('status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
-            + SpaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
+            + SpaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
             + GymMembership::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
             + RestaurantReservation::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
-            + CinemaBooking::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count();
+            + CinemaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->count();
 
         // Refunds = money actually returned. For rooms that is the completed
         // refund_amount, not the full value of every cancelled booking (many

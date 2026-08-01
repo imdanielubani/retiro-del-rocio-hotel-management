@@ -8,9 +8,11 @@ import 'package:retirodelrocioapp/features/reception/data/reception_repository.d
 import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_departure_readiness.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_room_status.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_visitor.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
@@ -185,6 +187,20 @@ final receptionVisitorsProvider = FutureProvider.autoDispose
       return repo.visitors(token);
     });
 
+/// The read-only Room Status board, keyed by the receptionist's token — every
+/// room's occupancy, housekeeping cleanliness, and open maintenance faults.
+/// Same freshness rules as the other lists — a housekeeper marking a room
+/// clean, or maintenance closing a fault, shows up without a manual refresh.
+final receptionRoomStatusProvider = FutureProvider.autoDispose
+    .family<ReceptionRoomStatusBoard, String>((ref, token) {
+      final repo = ref.watch(receptionRepositoryProvider);
+
+      final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
+
+      return repo.roomStatus(token);
+    });
+
 /// The assignable driver roster (available drivers only), for the assign-driver
 /// dialog's dropdown.
 final receptionDriversProvider = FutureProvider.autoDispose
@@ -231,6 +247,25 @@ class ReceptionActions {
     return confirmation;
   }
 
+  /// Everything the desk should see before checking [bookingId] out — the
+  /// outstanding balance, open housekeeping/maintenance items, and active
+  /// visitor passes — for the pre-checkout confirmation dialog.
+  Future<ReceptionDepartureReadiness> departureReadiness(int bookingId) =>
+      _ref.read(receptionRepositoryProvider).departureReadiness(_token, bookingId);
+
+  /// The desk records a balance the guest already paid in person, by
+  /// [method], so it no longer blocks checkout. Also refreshes the Bills
+  /// list, since it's now settled there too.
+  Future<ReceptionDepartureReadiness> settleBill(int bookingId, ReceptionDeskPaymentMethod method) async {
+    final readiness = await _ref.read(receptionRepositoryProvider).settleBill(_token, bookingId, method);
+    _ref.invalidate(receptionBillsProvider(_token));
+    return readiness;
+  }
+
+  /// Ask housekeeping to inspect the room before this guest can check out.
+  Future<ReceptionDepartureReadiness> requestInspection(int bookingId) =>
+      _ref.read(receptionRepositoryProvider).requestInspection(_token, bookingId);
+
   Future<void> checkOut(int bookingId) async {
     await _ref.read(receptionRepositoryProvider).checkOut(_token, bookingId);
     // Checking out moves the room to "available" and drops the guest's
@@ -239,6 +274,7 @@ class ReceptionActions {
     _ref.invalidate(receptionOverviewProvider(_token));
     _ref.invalidate(receptionGuestsProvider(_token));
     _ref.invalidate(receptionBookingsProvider(_token));
+    _ref.invalidate(receptionRoomStatusProvider(_token));
   }
 
   /// Acknowledge an SOS incident (help is on the way), then refresh the overview

@@ -290,13 +290,21 @@ class Bookings extends Component
     {
         $total = SpaBooking::count();
         $confirmed = SpaBooking::where('status', 'confirmed')->count();
-        $pending = SpaBooking::where('status', 'pending')->count();
+        // "Pending" tracked booking-session status ('confirmed' vs 'pending'),
+        // but every real booking path (the web checkout, the guest tablet's
+        // room-charge flow) writes 'confirmed' immediately — a session only
+        // ever lands as 'pending' for an abandoned Paystack attempt that never
+        // completes, which is rare, so the card read 0 in practice. What
+        // genuinely accumulates and needs the desk's attention is a
+        // room-charge session still sitting unpaid on the guest's folio —
+        // that's payment_status, not status.
+        $pending = SpaBooking::where('payment_status', 'pending')->count();
         $revenue = (int) SpaBooking::where('payment_status', 'paid')->sum('total');
 
         $stats = [
             ['label' => 'Total Sessions', 'value' => $total, 'sub' => 'All spa bookings', 'accent' => '#f38c00'],
             ['label' => 'Confirmed', 'value' => $confirmed, 'sub' => 'Scheduled', 'accent' => '#16a34a'],
-            ['label' => 'Pending', 'value' => $pending, 'sub' => 'Need confirmation', 'accent' => '#d97706'],
+            ['label' => 'Pending', 'value' => $pending, 'sub' => 'Awaiting payment', 'accent' => '#d97706'],
             ['label' => 'Revenue Collected', 'value' => '₦'.number_format($revenue), 'sub' => 'From paid sessions', 'accent' => '#7c3aed'],
         ];
 

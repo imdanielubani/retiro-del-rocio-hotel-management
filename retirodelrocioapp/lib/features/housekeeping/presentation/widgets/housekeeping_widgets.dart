@@ -11,6 +11,7 @@ const Color kHkSlate = Color(0xFF94A3B8);
 
 Color housekeepingStatusColor(String status) => switch (status) {
   'dirty' => AppColors.gold,
+  'preparing' => kHkBlue,
   'inspected' => kHkBlue,
   'out_of_order' => kHkRed,
   _ => kHkGreen, // clean
@@ -181,7 +182,10 @@ class HousekeepingRoomCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (room.checkoutToday) ...[
+              if (room.needsInspection) ...[
+                _tag('Inspection needed', kHkBlue),
+                const SizedBox(width: 8),
+              ] else if (room.checkoutToday) ...[
                 _tag('Checkout today', AppColors.gold),
                 const SizedBox(width: 8),
               ],
@@ -244,9 +248,10 @@ class HousekeepingRoomCard extends StatelessWidget {
   }
 
   /// The single most relevant next action, full width — dirty/out-of-order
-  /// rooms get a filled call to action; a clean room gets a quieter
-  /// "Mark Inspected" nudge; an already-inspected room just shows its pill,
-  /// nothing left for this card to ask for.
+  /// rooms get a filled call to action; a room being actively prepared gets
+  /// the "Mark Clean" hand-off once the turnover clean is done; a clean room
+  /// gets a quieter "Mark Inspected" nudge; an already-inspected room just
+  /// shows its pill, nothing left for this card to ask for.
   Widget _footer() {
     if (busy) {
       return const SizedBox(
@@ -263,7 +268,13 @@ class HousekeepingRoomCard extends StatelessWidget {
     }
 
     return switch (room.housekeepingStatus) {
-      'dirty' => _button('Mark Clean', filled: true, color: AppColors.gold, onTap: () => onMarkStatus('clean')),
+      'dirty' => _button(
+        'Mark Preparing',
+        filled: true,
+        color: AppColors.gold,
+        onTap: () => onMarkStatus('preparing'),
+      ),
+      'preparing' => _button('Mark Clean', filled: true, color: kHkBlue, onTap: () => onMarkStatus('clean')),
       'out_of_order' => _button('Mark Fixed', filled: true, color: kHkRed, onTap: () => onMarkStatus('clean')),
       'clean' => _button('Mark Inspected', filled: false, color: kHkBlue, onTap: () => onMarkStatus('inspected')),
       _ => const SizedBox.shrink(), // inspected — nothing further to do here
@@ -299,7 +310,7 @@ class HousekeepingRoomCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       onSelected: onMarkStatus,
       itemBuilder: (context) => [
-        for (final status in const ['clean', 'dirty', 'inspected', 'out_of_order'])
+        for (final status in const ['clean', 'dirty', 'preparing', 'inspected', 'out_of_order'])
           if (status != room.housekeepingStatus)
             PopupMenuItem<String>(
               value: status,
@@ -314,6 +325,7 @@ class HousekeepingRoomCard extends StatelessWidget {
 
   String _statusMenuLabel(String status) => switch (status) {
     'dirty' => 'Mark Dirty',
+    'preparing' => 'Mark Preparing',
     'inspected' => 'Mark Inspected',
     'out_of_order' => 'Mark Out of Order',
     _ => 'Mark Clean',
@@ -376,6 +388,19 @@ class HousekeepingRequestCard extends StatelessWidget {
               ],
             ],
           ),
+          if ((request.roomName ?? '').isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              request.roomName!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.45),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
           if ((request.notes ?? '').isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(

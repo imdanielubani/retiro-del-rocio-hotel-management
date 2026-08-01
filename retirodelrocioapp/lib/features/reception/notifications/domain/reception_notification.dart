@@ -34,6 +34,9 @@ class ReceptionNotification {
     required this.message,
     required this.time,
     this.read = false,
+    this.suiteName,
+    this.roomNumber,
+    this.guestName,
   });
 
   final int id;
@@ -42,6 +45,19 @@ class ReceptionNotification {
   final String message;
   final DateTime time;
   final bool read;
+
+  /// Which room and guest this notification is about, when it has one —
+  /// null for a notification not tied to a booking.
+  final String? suiteName;
+  final String? roomNumber;
+  final String? guestName;
+
+  /// True when any of [suiteName]/[roomNumber]/[guestName] is set, so the
+  /// card knows whether to render the room/guest line at all.
+  bool get hasRoomContext =>
+      (suiteName ?? '').isNotEmpty ||
+      (roomNumber ?? '').isNotEmpty ||
+      (guestName ?? '').isNotEmpty;
 
   factory ReceptionNotification.fromJson(Map<String, dynamic> json) =>
       ReceptionNotification(
@@ -55,6 +71,9 @@ class ReceptionNotification {
             DateTime.tryParse(json['created_at'] as String? ?? '') ??
             DateTime.now(),
         read: json['read'] as bool? ?? false,
+        suiteName: json['suite_name'] as String?,
+        roomNumber: json['room_number'] as String?,
+        guestName: json['guest_name'] as String?,
       );
 
   ReceptionNotification copyWith({bool? read}) => ReceptionNotification(
@@ -64,5 +83,8 @@ class ReceptionNotification {
     message: message,
     time: time,
     read: read ?? this.read,
+    suiteName: suiteName,
+    roomNumber: roomNumber,
+    guestName: guestName,
   );
 }

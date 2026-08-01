@@ -62,14 +62,24 @@ class HousekeepingNotification extends Model
         return $notification;
     }
 
-    /** The payload the housekeeping tablet renders on the Notifications screen. */
+    /**
+     * The payload the housekeeping tablet renders on the Notifications
+     * screen — including which room and guest the notification is about,
+     * when it has one, so the housekeeper doesn't have to open the message
+     * to find out.
+     */
     public function toHousekeepingArray(): array
     {
+        $booking = $this->relationLoaded('booking') ? $this->booking : $this->booking()->first();
+
         return [
             'id' => $this->id,
             'category' => $this->category,
             'title' => $this->title,
             'message' => $this->message,
+            'suite_name' => $booking?->room_name,
+            'room_number' => optional($booking?->roomUnit)->number,
+            'guest_name' => $booking?->customer_name,
             'created_at' => $this->created_at?->toIso8601String(),
             'read' => $this->read_at !== null,
         ];

@@ -3,7 +3,7 @@ import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_gues
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_room.dart';
 
 /// The housekeeping dashboard in one payload: headline counters, the rooms
-/// most needing attention, and the oldest pending guest requests
+/// most needing attention, and the newest pending guest requests
 /// (`GET /housekeeping/overview`).
 @immutable
 class HousekeepingOverview {

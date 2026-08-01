@@ -5,9 +5,11 @@ import 'package:retirodelrocioapp/core/error/messaged_exception.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_departure_readiness.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_room_status.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_visitor.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
@@ -106,6 +108,25 @@ class ReceptionRepository {
     } catch (error) {
       debugPrint('ReceptionRepository: guestProfile failed — $error');
       throw ReceptionException('Could not load the guest.');
+    }
+  }
+
+  /// The read-only Room Status board: every room's occupancy, housekeeping
+  /// cleanliness, and open maintenance faults. Failures fall back to an
+  /// empty board so the screen still renders.
+  Future<ReceptionRoomStatusBoard> roomStatus(String token) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('reception/room-status')),
+        options: _auth(token),
+      );
+      final data = (response.data?['data'] as Map?)?.cast<String, dynamic>();
+      return data != null
+          ? ReceptionRoomStatusBoard.fromJson(data)
+          : ReceptionRoomStatusBoard.empty;
+    } catch (error) {
+      debugPrint('ReceptionRepository: roomStatus failed — $error');
+      return ReceptionRoomStatusBoard.empty;
     }
   }
 
@@ -413,30 +434,97 @@ class ReceptionRepository {
     }
   }
 
-  /// Close out a departing guest — the room is freed and the departure recorded.
-  Future<void> checkOut(String token, int bookingId) => _bookingAction(
-    token,
-    bookingId,
-    'check-out',
-    'Could not check the guest out.',
-  );
-
-  Future<void> _bookingAction(
+  /// Everything the desk should see before checking a guest out — the
+  /// outstanding balance, the guest's open housekeeping requests and
+  /// maintenance faults, and any visitor passes still active against the
+  /// stay. Throws [ReceptionException] on failure so the checkout dialog can
+  /// offer a retry rather than opening on stale or missing data.
+  Future<ReceptionDepartureReadiness> departureReadiness(
     String token,
     int bookingId,
-    String action,
-    String fallback,
+  ) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(
+          ApiConfig.endpoint('reception/bookings/$bookingId/departure-readiness'),
+        ),
+        options: _auth(token),
+      );
+      return ReceptionDepartureReadiness.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw ReceptionException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('ReceptionRepository: departureReadiness failed — $error');
+      throw ReceptionException('Could not load checkout details.');
+    }
+  }
+
+  /// The desk records that a guest has already paid their outstanding
+  /// room-charge balance in person, by [method] — picked by reception before
+  /// this fires — so a balance settled outside the app doesn't block
+  /// checkout. Idempotent — settling an already-clear balance is a no-op.
+  /// Returns the refreshed readiness so the checkout dialog can re-render
+  /// immediately.
+  Future<ReceptionDepartureReadiness> settleBill(
+    String token,
+    int bookingId,
+    ReceptionDeskPaymentMethod method,
   ) async {
     try {
       await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/$action')),
+        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/settle-bill')),
+        data: {'payment_method': method.apiValue},
         options: _auth(token),
       );
     } on DioException catch (error) {
       throw ReceptionException(_messageFrom(error));
     } catch (error) {
-      debugPrint('ReceptionRepository: $action failed — $error');
-      throw ReceptionException(fallback);
+      debugPrint('ReceptionRepository: settleBill failed — $error');
+      throw ReceptionException('Could not mark this bill as paid.');
+    }
+    return departureReadiness(token, bookingId);
+  }
+
+  /// Ask housekeeping to inspect the room before this guest is allowed to
+  /// check out — raises a request on their Requests queue and notifies
+  /// them, the same way any other housekeeping ask does. Idempotent: a
+  /// second call while one is already open returns the existing one rather
+  /// than raising a duplicate. Returns the refreshed readiness so the
+  /// checkout dialog can re-render immediately.
+  Future<ReceptionDepartureReadiness> requestInspection(
+    String token,
+    int bookingId,
+  ) async {
+    try {
+      await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/request-inspection')),
+        options: _auth(token),
+      );
+    } on DioException catch (error) {
+      throw ReceptionException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('ReceptionRepository: requestInspection failed — $error');
+      throw ReceptionException('Could not request the inspection.');
+    }
+    return departureReadiness(token, bookingId);
+  }
+
+  /// Close out a departing guest — the room is freed and the departure
+  /// recorded. The server rejects this until the balance is settled and
+  /// housekeeping has completed the requested inspection.
+  Future<void> checkOut(String token, int bookingId) async {
+    try {
+      await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/check-out')),
+        options: _auth(token),
+      );
+    } on DioException catch (error) {
+      throw ReceptionException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('ReceptionRepository: check-out failed — $error');
+      throw ReceptionException('Could not check the guest out.');
     }
   }
 

@@ -219,9 +219,15 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Keep following the room: a check-out sends the tablet back to the idle
-    // welcome screen without anyone touching it, and a tablet deleted from the
-    // dashboard drops all the way back to device setup.
+    // Keep following the room for live stay-card data, and to drop a tablet
+    // deleted from the dashboard back to device setup. The pop-back-to-welcome
+    // reaction to a check-out is deliberately NOT duplicated here — WelcomeScreen
+    // (mounted underneath this and every other pushed guest screen) is the sole
+    // authority on that, watching the same provider itself. Two independent
+    // `popUntil` calls racing in the same frame — one from here, one from
+    // WelcomeScreen — could interleave with the Navigator's pop-animation state
+    // machine and leave the stack not fully unwound, so only one caller may ever
+    // own this.
     final statusAsync = ref.watch(roomStatusProvider(widget.device.token));
     unpairIfRevoked(context, statusAsync);
 
@@ -229,15 +235,6 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
     final status = (live != null && live.isOccupied && live.hasGuest)
         ? live
         : widget.status;
-
-    if (live != null && (!live.isOccupied || !live.hasGuest)) {
-      // Pop back to the welcome screen underneath. `context.go` would rebuild
-      // go_router's pages but leave this pushed route — and anything the guest
-      // opened above it — sitting on top, so the tablet would look checked in.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-      });
-    }
 
     final weather = ref.watch(weatherProvider).value;
     final guest = status.guest!;

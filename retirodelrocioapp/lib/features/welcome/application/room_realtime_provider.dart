@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/core/realtime/room_channel.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/widgets/guest_notification_toast.dart';
+import 'package:retirodelrocioapp/features/guest/service_requests/application/service_request_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 
 /// Subscribes the tablet to its own room, so a check-in or check-out lands in
@@ -66,6 +67,12 @@ Future<void> _notifyGuest(
       const {};
 
   ref.invalidate(guestNotificationsProvider(deviceToken));
+  // Housekeeping/maintenance marking a request complete lands on this same
+  // signal (see GuestNotification::notify usage in
+  // HousekeepingController/MaintenanceController), so the guest's Service
+  // Request history reflects it within a couple of seconds instead of
+  // waiting on its own 20s poll.
+  ref.invalidate(guestServiceRequestsProvider(deviceToken));
   unawaited(chime.play());
 
   try {

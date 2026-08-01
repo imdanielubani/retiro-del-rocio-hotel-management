@@ -6,11 +6,11 @@ import 'package:retirodelrocioapp/features/authentication/application/auth_provi
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
-import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_checkout_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_scaffold.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
@@ -36,10 +36,6 @@ class _ReceptionGuestProfileScreenState
     extends ConsumerState<ReceptionGuestProfileScreen> {
   late Future<ReceptionGuestProfile> _future;
 
-  /// True while a check-out request from this screen is in flight, so the
-  /// button shows a spinner and can't be double-tapped.
-  bool _checkingOut = false;
-
   String get _token => widget.session.token;
 
   @override
@@ -55,23 +51,18 @@ class _ReceptionGuestProfileScreenState
 
   /// Check the guest out from their profile — the only path that works
   /// however their stay is shaped: overdue, extended, or simply leaving
-  /// early. Reloads the profile on success so the button disappears once
-  /// `in_house` flips to false.
+  /// early. Opens the pre-checkout confirmation; reloads the profile on
+  /// success so the button disappears once `in_house` flips to false.
   Future<void> _checkOutGuest(int bookingId, String guestName) async {
-    setState(() => _checkingOut = true);
-    try {
-      await ref.read(receptionActionsProvider(_token)).checkOut(bookingId);
-      if (!mounted) return;
+    final done = await showReceptionCheckOutDialog(
+      context,
+      session: widget.session,
+      bookingId: bookingId,
+      guestName: guestName,
+    );
+    if (done == true && mounted) {
       _toast('$guestName checked out.');
       _retry();
-    } on ReceptionException catch (e) {
-      if (mounted) _toast(e.message, error: true);
-    } catch (_) {
-      if (mounted) {
-        _toast('Something went wrong. Please try again.', error: true);
-      }
-    } finally {
-      if (mounted) setState(() => _checkingOut = false);
     }
   }
 
@@ -268,30 +259,24 @@ class _ReceptionGuestProfileScreenState
         color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
-          onTap: _checkingOut ? null : () => _checkOutGuest(bookingId, guestName),
+          onTap: () => _checkOutGuest(bookingId, guestName),
           borderRadius: BorderRadius.circular(10),
           child: Center(
-            child: _checkingOut
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.logout_rounded, size: 16, color: Colors.white),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Check Out Guest',
-                        style: AppTypography.style(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.logout_rounded, size: 16, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  'Check Out Guest',
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

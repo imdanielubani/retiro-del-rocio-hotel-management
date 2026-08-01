@@ -156,6 +156,27 @@ class WorkOrder extends Model
     }
 
     /**
+     * A compact alert row for the reception dashboard's "Alerts" panel,
+     * mirroring SosAlert::toReceptionAlertArray() — a guest-reported fault is
+     * pushed to the desk the moment it lands, not left buried in the separate
+     * notifications inbox. Severity follows the fault's own priority, so an
+     * urgent fault reads the same way an SOS incident does.
+     */
+    public function toReceptionAlertArray(): array
+    {
+        $unit = $this->relationLoaded('roomUnit') ? $this->roomUnit : $this->roomUnit()->first();
+        $room = $unit?->number ? 'Room '.$unit->number : ($this->asset_label ?: 'the hotel');
+
+        return [
+            'id' => $this->id,
+            'type' => 'maintenance_request',
+            'title' => 'Maintenance Request — '.$this->title.' ('.$room.')',
+            'time_label' => optional($this->created_at)->diffForHumans(['short' => true]) ?? '',
+            'severity' => in_array($this->priority, ['urgent', 'high'], true) ? 'high' : 'medium',
+        ];
+    }
+
+    /**
      * The payload the guest tablet renders on the Service Request screen's
      * history — the same fault, from the guest's side, alongside their
      * housekeeping asks in one combined feed (see

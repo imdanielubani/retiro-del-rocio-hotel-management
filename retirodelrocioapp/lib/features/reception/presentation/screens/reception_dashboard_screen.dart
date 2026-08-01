@@ -7,12 +7,12 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
-import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_checkin_dialog.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_checkout_dialog.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_top_bar.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
@@ -39,9 +39,6 @@ class ReceptionDashboardScreen extends ConsumerStatefulWidget {
 
 class _ReceptionDashboardScreenState
     extends ConsumerState<ReceptionDashboardScreen> {
-  /// The booking whose action button is mid-request, so only that one spins.
-  int? _busyBookingId;
-
   /// Incident ids already surfaced as the priority overlay, so a still-active
   /// alert is not thrown up again on every poll — only genuinely new ones
   /// interrupt.
@@ -94,31 +91,18 @@ class _ReceptionDashboardScreenState
     if (done == true && mounted) _toast('${booking.guestName} checked in.');
   }
 
-  Future<void> _checkOut(ReceptionBooking booking) => _run(
-    booking.id,
-    () => ref.read(receptionActionsProvider(_token)).checkOut(booking.id),
-    '${booking.guestName} checked out.',
-  );
-
-  /// Runs a desk action with a per-card spinner, a success toast and a failure
-  /// toast — the list then re-renders from the refreshed overview.
-  Future<void> _run(
-    int bookingId,
-    Future<void> Function() action,
-    String ok,
-  ) async {
-    setState(() => _busyBookingId = bookingId);
-    try {
-      await action();
-      if (mounted) _toast(ok);
-    } on ReceptionException catch (e) {
-      if (mounted) _toast(e.message, error: true);
-    } catch (_) {
-      if (mounted)
-        _toast('Something went wrong. Please try again.', error: true);
-    } finally {
-      if (mounted) setState(() => _busyBookingId = null);
-    }
+  /// Opens the pre-checkout confirmation (balance, open items, room
+  /// inspection sign-off). The dialog performs the checkout itself; a
+  /// success just needs a toast here.
+  Future<void> _checkOut(ReceptionBooking booking) async {
+    final done = await showReceptionCheckOutDialog(
+      context,
+      session: widget.session,
+      bookingId: booking.id,
+      guestName: booking.guestName,
+      roomLabel: booking.roomLabel,
+    );
+    if (done == true && mounted) _toast('${booking.guestName} checked out.');
   }
 
   void _toast(String message, {bool error = false}) {
@@ -415,8 +399,8 @@ class _ReceptionDashboardScreenState
         const SizedBox(width: 16),
         Expanded(
           child: ReceptionStatCard(
-            label: 'CHECK-OUTS TODAY',
-            value: data.checkOutsToday,
+            label: 'DEPARTURES',
+            value: data.departuresToday,
             accent: AppColors.gold,
           ),
         ),
@@ -453,9 +437,8 @@ class _ReceptionDashboardScreenState
                 final b = data.arrivals[i];
                 return ReceptionBookingCard(
                   booking: b,
-                  busy: _busyBookingId == b.id,
                   onCheckIn: () => _checkIn(b),
-                  onCheckOut: () => _checkOut(b),
+                  showCheckOutAction: false,
                 );
               },
             ),
@@ -464,11 +447,11 @@ class _ReceptionDashboardScreenState
 
   Widget _departuresPanel(ReceptionOverview data) {
     return ReceptionSectionPanel(
-      title: "TODAY'S DEPARTURES",
+      title: 'DEPARTURES',
       child: data.departures.isEmpty
           ? const ReceptionSectionEmpty(
               icon: Icons.luggage_outlined,
-              message: 'No departures today',
+              message: 'No guests currently checked in',
             )
           : ListView.separated(
               padding: EdgeInsets.zero,
@@ -478,7 +461,6 @@ class _ReceptionDashboardScreenState
                 final b = data.departures[i];
                 return ReceptionBookingCard(
                   booking: b,
-                  busy: _busyBookingId == b.id,
                   onCheckIn: () => _checkIn(b),
                   onCheckOut: () => _checkOut(b),
                 );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/app/app_router.dart';
 import 'package:retirodelrocioapp/core/media/ambient_video_scope.dart';
 import 'package:retirodelrocioapp/core/navigation/root_messenger.dart';
+import 'package:retirodelrocioapp/core/session/checkout_reset_watcher.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 
@@ -32,7 +33,11 @@ class RocioTabletApp extends ConsumerWidget {
       // the tablet's system font-size setting must not resize our text — it
       // would push content past the fixed-height cards and bars.
       builder: (context, child) => MediaQuery.withNoTextScaling(
-        child: AmbientVideoScope(child: child ?? const SizedBox.shrink()),
+        child: AmbientVideoScope(
+          child: CheckoutResetWatcher(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
       ),
     );
   }

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\GuestNotification;
 use App\Models\HousekeepingNotification;
 use App\Models\HousekeepingRequest;
 use App\Models\RoomUnit;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Housekeeping tablet. Authenticated by the housekeeper's staff JWT — the JWT
@@ -24,26 +26,31 @@ class HousekeepingController extends Controller
      * GET /housekeeping/overview — the dashboard in one call: headline
      * counters, the rooms most needing attention (dirty or out of order,
      * checkout-today rooms first — a room about to turn over is more urgent
-     * than a mid-stay tidy), and the oldest pending guest requests.
+     * than a mid-stay tidy), and the newest pending guest requests.
      */
     public function overview(Request $request): JsonResponse
     {
         $this->housekeeper($request);
 
         $rooms = RoomUnit::with(['room', 'booking'])->get();
+        $inspectionBookingIds = $this->pendingInspectionBookingIds();
+
+        $needsInspection = fn (RoomUnit $u) => $u->booking_id && $inspectionBookingIds->contains($u->booking_id);
 
         $needsAttention = $rooms
-            ->filter(fn (RoomUnit $u) => in_array($u->housekeeping_status, ['dirty', 'out_of_order'], true))
+            ->filter(fn (RoomUnit $u) => in_array($u->housekeeping_status, ['dirty', 'out_of_order'], true)
+                || $needsInspection($u))
             ->sortBy(fn (RoomUnit $u) => match (true) {
-                $u->booking?->status === 'checked_in' && optional($u->booking->check_out)->isToday() => 0,
-                $u->housekeeping_status === 'out_of_order' => 1,
-                default => 2,
+                $needsInspection($u) => 0,
+                $u->booking?->status === 'checked_in' && optional($u->booking->check_out)->isToday() => 1,
+                $u->housekeeping_status === 'out_of_order' => 2,
+                default => 3,
             })
             ->values();
 
-        $requests = HousekeepingRequest::with('roomUnit')
+        $requests = HousekeepingRequest::with('roomUnit.room')
             ->where('status', HousekeepingRequest::PENDING)
-            ->oldest()
+            ->latest()
             ->limit(20)
             ->get();
 
@@ -54,9 +61,21 @@ class HousekeepingController extends Controller
                 'out_of_order' => $rooms->where('housekeeping_status', 'out_of_order')->count(),
                 'pending_requests' => HousekeepingRequest::where('status', HousekeepingRequest::PENDING)->count(),
             ],
-            'rooms' => $needsAttention->take(20)->map->toHousekeepingRoomArray()->values(),
+            'rooms' => $needsAttention->take(20)
+                ->map(fn (RoomUnit $u) => $u->toHousekeepingRoomArray($needsInspection($u)))
+                ->values(),
             'requests' => $requests->map->toHousekeepingArray()->values(),
         ]]);
+    }
+
+    /** Booking ids with an open (pending) pre-checkout inspection request. */
+    private function pendingInspectionBookingIds(): Collection
+    {
+        return HousekeepingRequest::where('type', HousekeepingRequest::CHECKOUT_INSPECTION)
+            ->where('status', HousekeepingRequest::PENDING)
+            ->whereNotNull('booking_id')
+            ->pluck('booking_id')
+            ->unique();
     }
 
     /**
@@ -81,7 +100,14 @@ class HousekeepingController extends Controller
             ->orderBy('number')
             ->get();
 
-        return response()->json(['data' => $rooms->map->toHousekeepingRoomArray()->values()]);
+        $inspectionBookingIds = $this->pendingInspectionBookingIds();
+
+        return response()->json(['data' => $rooms
+            ->map(fn (RoomUnit $u) => $u->toHousekeepingRoomArray(
+                $u->booking_id && $inspectionBookingIds->contains($u->booking_id),
+            ))
+            ->values(),
+        ]);
     }
 
     /**
@@ -105,9 +131,9 @@ class HousekeepingController extends Controller
     }
 
     /**
-     * GET /housekeeping/requests — guest requests, oldest pending first so
-     * the desk clears the longest-waiting one next. Optional `?status=`
-     * narrows to pending or completed.
+     * GET /housekeeping/requests — guest requests, newest first so the desk
+     * sees a freshly submitted ask right away. Optional `?status=` narrows
+     * to pending or completed.
      */
     public function requests(Request $request): JsonResponse
     {
@@ -115,13 +141,13 @@ class HousekeepingController extends Controller
 
         $status = $request->query('status');
 
-        $requests = HousekeepingRequest::with('roomUnit')
+        $requests = HousekeepingRequest::with('roomUnit.room')
             ->when(
                 in_array($status, [HousekeepingRequest::PENDING, HousekeepingRequest::COMPLETED], true),
                 fn ($q) => $q->where('status', $status),
             )
             ->orderByRaw("CASE status WHEN 'pending' THEN 0 ELSE 1 END")
-            ->oldest()
+            ->latest()
             ->limit(100)
             ->get();
 
@@ -159,9 +185,41 @@ class HousekeepingController extends Controller
     {
         $officer = $this->housekeeper($request);
 
-        $housekeepingRequest->complete($officer);
+        if ($housekeepingRequest->complete($officer)) {
+            $this->notifyGuestRequestCompleted($housekeepingRequest);
+        }
 
         return response()->json(['data' => $housekeepingRequest->fresh('roomUnit')->toHousekeepingArray()]);
+    }
+
+    /**
+     * Push a live signal to the guest's own tablet the moment their request is
+     * cleared, over the room's existing realtime channel, so their Service
+     * Request history updates in a couple of seconds rather than waiting on
+     * its own poll. The reception-initiated checkout inspection is skipped —
+     * it never appears in the guest's history in the first place (see
+     * {@see GuestServiceRequestController::index()}).
+     */
+    private function notifyGuestRequestCompleted(HousekeepingRequest $housekeepingRequest): void
+    {
+        if ($housekeepingRequest->type === HousekeepingRequest::CHECKOUT_INSPECTION) {
+            return;
+        }
+
+        $booking = $housekeepingRequest->booking()->first();
+        $unit = $housekeepingRequest->roomUnit()->first();
+
+        if (! $booking || ! $unit) {
+            return;
+        }
+
+        GuestNotification::notify(
+            $booking,
+            $unit,
+            'housekeeping',
+            'Housekeeping Request Completed',
+            'Your '.$housekeepingRequest->typeLabel().' request has been completed.',
+        );
     }
 
     /* ---------------- Notifications ---------------- */
@@ -177,7 +235,7 @@ class HousekeepingController extends Controller
     {
         $this->housekeeper($request);
 
-        $notifications = HousekeepingNotification::latest()->limit(100)->get();
+        $notifications = HousekeepingNotification::with('booking.roomUnit')->latest()->limit(100)->get();
 
         return response()->json(['data' => $notifications->map->toHousekeepingArray()->values()]);
     }

@@ -370,6 +370,43 @@ class TabletMyBillsTest extends TestCase
             ->assertJsonPath('data.can_pay', false);
     }
 
+    public function test_confirming_the_payment_also_marks_the_spa_booking_itself_paid(): void
+    {
+        // A genuinely still-outstanding room-charge spa session — pending,
+        // not yet paid, the way one actually looks before settlement.
+        $spa = SpaBooking::create([
+            'booking_id' => $this->booking->id,
+            'reference' => 'SPA-PENDING-1',
+            'services' => [['name' => 'Deep Tissue Massage', 'slug' => 'deep-tissue', 'price' => 35000, 'qty' => 1]],
+            'guests' => 1,
+            'date' => now()->subDays(20)->toDateString(),
+            'time' => '9:00 AM',
+            'subtotal' => 35000,
+            'vat' => 2625,
+            'total' => 35000,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'payment_method' => 'room_charge',
+        ]);
+        $this->fakePaystack(3762500);
+
+        $reference = $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/my-bills/initialize')
+            ->json('data.reference');
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/my-bills/confirm', ['reference' => $reference])
+            ->assertOk();
+
+        // Not still "pending" dated the day it was charged — the admin
+        // Payments ledger reads this column directly, not the BillPayment
+        // total, so it has to flip too, dated today.
+        $spa->refresh();
+        $this->assertSame('paid', $spa->payment_status);
+        $this->assertNotNull($spa->paid_at);
+        $this->assertTrue($spa->paid_at->isToday());
+    }
+
     public function test_verifying_the_same_reference_twice_is_idempotent(): void
     {
         $this->roomChargeSpa();

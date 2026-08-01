@@ -17,6 +17,7 @@ class ReceptionBooking {
     this.statusLabel = '',
     this.isWalkIn = false,
     this.originLabel,
+    this.isDueToday = false,
     this.isOverdue = false,
     this.overdueLabel,
   });
@@ -43,6 +44,11 @@ class ReceptionBooking {
   /// "Walk-in" / "Phone" for a desk booking, null for an ordinary online one.
   final String? originLabel;
 
+  /// True for a still-checked-in guest whose checkout is today — the
+  /// departures list holds every checked-in guest, not just today's, so this
+  /// is what lets the tablet visually separate "act now" from "coming up".
+  final bool isDueToday;
+
   /// True for a still-checked-in guest whose checkout date has passed — a
   /// departure the desk must act on, not just one due later today.
   final bool isOverdue;
@@ -63,6 +69,7 @@ class ReceptionBooking {
         originLabel: (json['origin_label'] as String?)?.trim().isNotEmpty == true
             ? json['origin_label'] as String
             : null,
+        isDueToday: json['is_due_today'] as bool? ?? false,
         isOverdue: json['is_overdue'] as bool? ?? false,
         overdueLabel: (json['overdue_label'] as String?)?.trim().isNotEmpty == true
             ? json['overdue_label'] as String
@@ -83,8 +90,9 @@ class ReceptionAlert {
 
   final int id;
 
-  /// 'sos' or 'overdue_departure' — `id` alone can collide across types since
-  /// each is a different table's primary key, so dedup keys must use both.
+  /// 'sos', 'overdue_departure', 'housekeeping_request' or
+  /// 'maintenance_request' — `id` alone can collide across types since each
+  /// is a different table's primary key, so dedup keys must use both.
   final String type;
   final String title;
   final String timeLabel;
@@ -132,7 +140,7 @@ class ReceptionOverview {
     required this.receptionistRole,
     required this.arrivalsToday,
     required this.checkInsToday,
-    required this.checkOutsToday,
+    required this.departuresToday,
     required this.visitorPassCheckIns,
     this.overdueDepartures = 0,
     required this.arrivals,
@@ -147,7 +155,11 @@ class ReceptionOverview {
 
   final int arrivalsToday;
   final int checkInsToday;
-  final int checkOutsToday;
+
+  /// Everyone scheduled to leave today, whether or not they've actually
+  /// checked out yet — arrivalsToday's departure-side counterpart, not the
+  /// count of completed checkout actions.
+  final int departuresToday;
   final int visitorPassCheckIns;
 
   /// Still checked in with a checkout date already in the past — a departure
@@ -169,7 +181,7 @@ class ReceptionOverview {
     receptionistRole: 'Reception',
     arrivalsToday: 0,
     checkInsToday: 0,
-    checkOutsToday: 0,
+    departuresToday: 0,
     visitorPassCheckIns: 0,
     overdueDepartures: 0,
     arrivals: [],
@@ -195,7 +207,7 @@ class ReceptionOverview {
       receptionistRole: receptionist['role'] as String? ?? 'Reception',
       arrivalsToday: (stats['arrivals_today'] as num?)?.toInt() ?? 0,
       checkInsToday: (stats['check_ins_today'] as num?)?.toInt() ?? 0,
-      checkOutsToday: (stats['check_outs_today'] as num?)?.toInt() ?? 0,
+      departuresToday: (stats['departures_today'] as num?)?.toInt() ?? 0,
       visitorPassCheckIns: (stats['visitor_pass_check_ins'] as num?)?.toInt() ?? 0,
       overdueDepartures: (stats['overdue_departures'] as num?)?.toInt() ?? 0,
       arrivals: parse('arrivals', ReceptionBooking.fromJson),

@@ -95,6 +95,55 @@ class PaymentSpaTransactionTest extends TestCase
     }
 
     /**
+     * A real settlement (reception's "Mark as Paid", or the guest's own My
+     * Bills payment) flips the underlying spa booking's own `payment_status`
+     * to `paid` too — needed so the Spa Bookings admin screen's own badge is
+     * accurate. But that must never let it *also* qualify as its own row
+     * here: the {@see BillPayment} settlement already represents that money,
+     * and counting both would double the revenue for a single payment.
+     */
+    public function test_a_settled_room_charge_spa_session_still_does_not_double_count(): void
+    {
+        $booking = $this->booking();
+
+        $spaBooking = SpaBooking::create([
+            'booking_id' => $booking->id,
+            'reference' => 'SPA-'.$booking->id.'-ROOMCHARGE3',
+            'services' => [['name' => 'Deep Tissue Massage', 'slug' => 'deep-tissue', 'price' => 35000, 'qty' => 1]],
+            'guests' => 1,
+            'date' => now()->subMonth()->toDateString(),
+            'time' => '9:00 AM',
+            'subtotal' => 35000,
+            'vat' => 2625,
+            'total' => 35000,
+            'status' => 'confirmed',
+            // The state a real settlement leaves it in — paid, dated today,
+            // via markRoomChargesSettled() — not the still-pending shape the
+            // other tests in this file use.
+            'payment_status' => 'paid',
+            'payment_method' => 'room_charge',
+            'paid_at' => now(),
+        ]);
+
+        $settlement = BillPayment::create([
+            'booking_id' => $booking->id,
+            'reference' => 'BILL-'.$booking->id.'-SETTLED2',
+            'amount' => 35000,
+            'vat' => 2625,
+            'status' => BillPayment::SUCCESS,
+            'payment_method' => 'cash',
+            'paid_at' => now(),
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(Index::class)
+            ->assertOk()
+            ->assertDontSee($spaBooking->txnId())
+            ->assertSee($settlement->txnId())
+            ->assertSee('₦37,625'); // the settlement's total — the only place this money appears
+    }
+
+    /**
      * Once the guest actually clears their room-charge balance from the
      * Billing module (a settled BillPayment), that settlement — not the
      * original charge-to-room booking — is what shows up as real revenue in

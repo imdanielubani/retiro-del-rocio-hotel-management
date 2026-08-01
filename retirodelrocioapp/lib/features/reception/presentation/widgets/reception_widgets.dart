@@ -5,6 +5,7 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart'
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_room_status.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_visitor.dart';
 
 const Color kReceptionBlue = Color(0xFF3B82F6);
@@ -664,9 +665,10 @@ class ReceptionBookingCard extends StatelessWidget {
   const ReceptionBookingCard({
     super.key,
     required this.booking,
-    required this.busy,
+    this.busy = false,
     this.onCheckIn,
     this.onCheckOut,
+    this.showCheckOutAction = true,
   });
 
   final ReceptionBooking booking;
@@ -676,6 +678,13 @@ class ReceptionBookingCard extends StatelessWidget {
 
   final VoidCallback? onCheckIn;
   final VoidCallback? onCheckOut;
+
+  /// False on the Arrivals list: once a guest has checked in they're done as
+  /// far as *that* list is concerned — a terminal "Checked In" pill, not a
+  /// Check Out button, which belongs to Departures only. Checking someone out
+  /// early from Arrivals isn't a flow reception uses; Departures already
+  /// lists every checked-in guest for exactly that.
+  final bool showCheckOutAction;
 
   @override
   Widget build(BuildContext context) {
@@ -695,7 +704,10 @@ class ReceptionBookingCard extends StatelessWidget {
                 receptionOriginBadge(booking.originLabel!),
                 const SizedBox(width: 6),
               ],
-              if (booking.isOverdue) _overdueBadge(),
+              if (booking.isOverdue)
+                _overdueBadge()
+              else if (booking.isDueToday)
+                _dueTodayBadge(),
               const Spacer(),
               Text(
                 booking.reference,
@@ -735,11 +747,15 @@ class ReceptionBookingCard extends StatelessWidget {
                 ? '${booking.dateLabel} · ${booking.overdueLabel}'
                 : booking.dateLabel,
             style: AppTypography.style(
-              color: booking.isOverdue
-                  ? kReceptionRed.withValues(alpha: 0.85)
-                  : Colors.white.withValues(alpha: 0.35),
+              color: switch ((booking.isOverdue, booking.isDueToday)) {
+                (true, _) => kReceptionRed.withValues(alpha: 0.85),
+                (false, true) => AppColors.gold.withValues(alpha: 0.9),
+                (false, false) => Colors.white.withValues(alpha: 0.35),
+              },
               fontSize: 12,
-              fontWeight: booking.isOverdue ? FontWeight.w600 : FontWeight.w400,
+              fontWeight: booking.isOverdue || booking.isDueToday
+                  ? FontWeight.w600
+                  : FontWeight.w400,
             ),
           ),
           const SizedBox(height: 14),
@@ -774,17 +790,46 @@ class ReceptionBookingCard extends StatelessWidget {
     );
   }
 
+  Widget _dueTodayBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        'Due Today',
+        style: AppTypography.style(
+          color: AppColors.gold,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   Widget _footer() {
     switch (booking.status) {
       case 'paid':
         return _button('Check In', filled: true, onTap: onCheckIn);
       case 'checked_in':
+        if (!showCheckOutAction) {
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: ReceptionStatusPill(
+              status: booking.status,
+              label: booking.statusLabel.isNotEmpty ? booking.statusLabel : 'Checked In',
+            ),
+          );
+        }
         // Overdue checkouts are the more urgent action — a filled red button
-        // makes it visually stand out on the departures list.
+        // makes it visually stand out; due-today gets a filled gold button so
+        // it still pops against the plain outlined button an upcoming (not
+        // yet due) departure gets.
         return _button(
           'Check Out',
-          filled: booking.isOverdue,
-          filledColor: kReceptionRed,
+          filled: booking.isOverdue || booking.isDueToday,
+          filledColor: booking.isOverdue ? kReceptionRed : null,
           onTap: onCheckOut,
         );
       default:
@@ -873,6 +918,13 @@ class ReceptionAlertRow extends StatelessWidget {
         AlertSeverity.low => kReceptionGreen,
       };
 
+  IconData get _icon => switch (alert.type) {
+        'housekeeping_request' => Icons.cleaning_services_rounded,
+        'maintenance_request' => Icons.build_rounded,
+        'overdue_departure' => Icons.schedule_rounded,
+        _ => Icons.warning_amber_rounded,
+      };
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -880,7 +932,7 @@ class ReceptionAlertRow extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Icon(Icons.warning_amber_rounded, size: 14, color: _color),
+          child: Icon(_icon, size: 14, color: _color),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -958,6 +1010,97 @@ class ReceptionRoomStatusTiles extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.5),
               fontSize: 12,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The accent colour for a room's board status on the Room Status screen.
+Color receptionBoardStatusColor(ReceptionRoomBoardStatus status) => switch (status) {
+      ReceptionRoomBoardStatus.occupied => kReceptionBlue,
+      ReceptionRoomBoardStatus.maintenance => kReceptionRed,
+      ReceptionRoomBoardStatus.preparing => kReceptionBlue,
+      ReceptionRoomBoardStatus.dirty => AppColors.gold,
+      ReceptionRoomBoardStatus.ready => kReceptionGreen,
+    };
+
+/// One room on reception's read-only Room Status board — occupancy, guest,
+/// housekeeping cleanliness and an open-maintenance flag, colour-coded by
+/// [ReceptionRoomBoardStatus]. No actions: reception watches this, it
+/// doesn't change it — housekeeping and maintenance own their own statuses.
+class ReceptionRoomStatusCard extends StatelessWidget {
+  const ReceptionRoomStatusCard({super.key, required this.room});
+
+  final ReceptionRoomStatusEntry room;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = receptionBoardStatusColor(room.boardStatus);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.3), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Room ${room.number}',
+                style: AppTypography.style(
+                  color: AppColors.gold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              if (room.hasOpenWorkOrder) ...[
+                const SizedBox(width: 6),
+                Icon(Icons.build_rounded, size: 12, color: kReceptionRed.withValues(alpha: 0.8)),
+              ],
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(room.boardStatus.icon, size: 10, color: accent),
+                    const SizedBox(width: 4),
+                    Text(
+                      room.boardStatusLabel,
+                      style: AppTypography.style(color: accent, fontSize: 10, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            (room.guestName ?? '').isNotEmpty ? room.guestName! : (room.roomName ?? 'Room ${room.number}'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            [
+              if ((room.roomName ?? '').isNotEmpty && (room.guestName ?? '').isNotEmpty) room.roomName!,
+              room.housekeepingStatusLabel,
+            ].join('  ·  '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
           ),
         ],
       ),

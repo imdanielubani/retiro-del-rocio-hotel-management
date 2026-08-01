@@ -1363,6 +1363,7 @@ class TabletController extends Controller
             'paid_at' => now(),
             'payment_method' => data_get($body, 'data.channel'),
         ]);
+        $this->markRoomChargesSettled($booking);
 
         $totalLabel = $payment->toGuestConfirmationArray()['total_label'];
 

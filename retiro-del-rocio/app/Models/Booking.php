@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\Api\V1\ReceptionController;
 use App\Observers\BookingObserver;
 use App\Support\HotelSettings;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -27,6 +28,7 @@ class Booking extends Model
         'pickup_arrival_date', 'pickup_time', 'pickup_flight_number',
         'pickup_driver_id', 'pickup_status', 'pickup_assigned_at',
         'status', 'source', 'payment_method', 'paid_at', 'checked_in_at', 'checkin_confirmation', 'checked_out_at',
+        'checkout_inspected_by', 'checkout_inspected_at',
         'refund_amount', 'refund_method', 'refund_status', 'room_unit_id',
         'passcode', 'keyboard_pwd_id', 'qr_code_id', 'qr_code_link', 'ttlock_grants', 'ttlock_status', 'ttlock_error',
     ];
@@ -40,6 +42,7 @@ class Booking extends Model
         'checked_in_at' => 'datetime',
         'identity_verified_at' => 'datetime',
         'checked_out_at' => 'datetime',
+        'checkout_inspected_at' => 'datetime',
         'amount' => 'integer',
         'vat' => 'integer',
         'nights' => 'integer',
@@ -455,7 +458,14 @@ class Booking extends Model
         ];
     }
 
-    /** A departing guest for the reception dashboard's "Today's Departures" list. */
+    /**
+     * A departing guest for the reception dashboard's "Departures" list —
+     * every checked-in guest, not just those due out today, so the desk can
+     * see who's coming up next rather than only the morning they're due
+     * (see {@see ReceptionController::overview()}).
+     * `is_due_today` lets the tablet visually separate "act now" rows from
+     * "coming up" ones in that combined list.
+     */
     public function toReceptionDepartureArray(): array
     {
         $overdueDays = $this->overdueDays();
@@ -468,6 +478,7 @@ class Booking extends Model
             'date_label' => optional($this->check_out)->format('M j, Y'),
             'status' => $this->status,
             'status_label' => $this->statusLabel(),
+            'is_due_today' => $this->status === 'checked_in' && optional($this->check_out)->isToday() === true,
             'is_overdue' => $overdueDays > 0,
             'overdue_label' => $overdueDays > 0
                 ? 'Overdue by '.$overdueDays.' '.Str::plural('day', $overdueDays)

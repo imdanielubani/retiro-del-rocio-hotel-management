@@ -15,6 +15,7 @@ class HousekeepingRoom {
     required this.housekeepingStatusLabel,
     this.guestName,
     this.checkoutToday = false,
+    this.needsInspection = false,
     this.updatedLabel,
   });
 
@@ -30,9 +31,17 @@ class HousekeepingRoom {
   /// True when the guest currently in this room checks out today — a room
   /// about to turn over is more urgent than a mid-stay tidy.
   final bool checkoutToday;
+
+  /// True when reception has asked for a pre-checkout inspection and it's
+  /// still open — cleared from the Requests queue like any other request.
+  final bool needsInspection;
   final String? updatedLabel;
 
-  bool get needsAttention => housekeepingStatus == 'dirty' || housekeepingStatus == 'out_of_order';
+  bool get needsAttention =>
+      housekeepingStatus == 'dirty' ||
+      housekeepingStatus == 'preparing' ||
+      housekeepingStatus == 'out_of_order' ||
+      needsInspection;
 
   factory HousekeepingRoom.fromJson(Map<String, dynamic> json) => HousekeepingRoom(
     id: (json['id'] as num?)?.toInt() ?? 0,
@@ -44,6 +53,7 @@ class HousekeepingRoom {
     housekeepingStatusLabel: json['housekeeping_status_label'] as String? ?? 'Clean',
     guestName: json['guest_name'] as String?,
     checkoutToday: json['checkout_today'] as bool? ?? false,
+    needsInspection: json['needs_inspection'] as bool? ?? false,
     updatedLabel: json['updated_label'] as String?,
   );
 }

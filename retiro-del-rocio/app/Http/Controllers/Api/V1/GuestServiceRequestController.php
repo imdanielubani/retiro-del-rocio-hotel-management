@@ -40,7 +40,11 @@ class GuestServiceRequestController extends Controller
             return response()->json(['data' => []]);
         }
 
-        $housekeeping = HousekeepingRequest::where('booking_id', $booking->id)->get();
+        // "Checkout inspection" is raised by reception for housekeeping, not
+        // something the guest asked for — it stays off their own history.
+        $housekeeping = HousekeepingRequest::where('booking_id', $booking->id)
+            ->where('type', '!=', HousekeepingRequest::CHECKOUT_INSPECTION)
+            ->get();
         $maintenance = WorkOrder::where('booking_id', $booking->id)->get();
 
         $all = $housekeeping->map->toGuestArray()
