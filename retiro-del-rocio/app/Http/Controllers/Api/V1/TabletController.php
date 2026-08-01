@@ -11,8 +11,12 @@ use App\Http\Resources\DeviceResource;
 use App\Jobs\SendStayExtensionReceipt;
 use App\Models\BillPayment;
 use App\Models\Booking;
+use App\Models\CinemaBooking;
+use App\Models\CinemaSeatHold;
+use App\Models\CinemaSnack;
 use App\Models\Device;
 use App\Models\GuestNotification;
+use App\Models\Movie;
 use App\Models\ReceptionNotification;
 use App\Models\RoomUnit;
 use App\Models\SpaBooking;
@@ -32,7 +36,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -402,6 +405,10 @@ class TabletController extends Controller
         $data = $request->validate(['check_out' => ['required', 'date']]);
         $q = $this->extensionQuote($booking, $unit, $data['check_out']);
 
+        // `paid_at` is left null — charging to the room applies the extension
+        // immediately but doesn't collect money; it's only really paid once the
+        // guest settles their folio (My Bills) at checkout. Stamping it now
+        // would make this look like real revenue in the admin Payments module.
         $payment = StayExtensionPayment::create([
             'booking_id' => $booking->id,
             'reference' => 'EXT-'.$booking->id.'-'.strtoupper(Str::random(10)),
@@ -410,7 +417,6 @@ class TabletController extends Controller
             'amount' => $q['base'],
             'vat' => $q['vat'],
             'status' => StayExtensionPayment::SUCCESS,
-            'paid_at' => now(),
             'payment_method' => 'room_charge',
         ]);
 
@@ -542,8 +548,11 @@ class TabletController extends Controller
     /* ---------------- Spa & Wellness ---------------- */
 
     /**
-     * The fixed appointment times the spa offers each day (Figma design — no
-     * per-slot capacity system exists yet, so every slot is always offered).
+     * Suggested quick-pick appointment times, 12-hour clock with AM/PM —
+     * matches the guest tablet's Cupertino-style time picker. No per-slot
+     * capacity system exists yet, so every slot is always offered, and the
+     * guest isn't limited to these — {@see validateSpaBooking()} accepts any
+     * time of day at all.
      */
     private const SPA_TIMES = ['9:00 AM', '10:30 AM', '12:00 PM', '2:00 PM', '3:30 PM', '5:00 PM', '6:30 PM'];
 
@@ -568,16 +577,18 @@ class TabletController extends Controller
     /**
      * GET /tablets/spa/appointments — the checked-in guest's own spa bookings,
      * newest first: every confirmed session, whether charged to the room or
-     * paid directly via Paystack. A Paystack checkout the guest never
-     * completed stays `pending`/unpaid and is left out — it was never a real
-     * appointment.
+     * paid directly via Paystack. Filtered on the booking `status`, not
+     * `payment_status` — a charge-to-room session is confirmed the moment
+     * it's booked even though the money itself is only settled later via My
+     * Bills. A Paystack checkout the guest never completed stays
+     * `pending`/unpaid and is left out — it was never a real appointment.
      */
     public function spaAppointments(Request $request): JsonResponse
     {
         [$booking] = $this->activeStay($request);
 
         $appointments = SpaBooking::where('booking_id', $booking->id)
-            ->where('payment_status', 'paid')
+            ->whereIn('status', ['confirmed', 'completed'])
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->get();
@@ -610,10 +621,13 @@ class TabletController extends Controller
             'customer_name' => $booking->customer_name,
             'customer_email' => $booking->customer_email,
             'customer_phone' => $booking->customer_phone,
+            // Confirmed the moment it's booked, but not "paid" — the charge
+            // sits on the room folio until the guest settles it (My Bills), so
+            // it must stay out of the admin Payments module's revenue until
+            // then. No `paid_at` for the same reason.
             'status' => 'confirmed',
-            'payment_status' => 'paid',
+            'payment_status' => 'pending',
             'payment_method' => 'room_charge',
-            'paid_at' => now(),
         ]);
 
         $this->notifySpaBooked($booking, $unit, $spaBooking, $service);
@@ -747,13 +761,43 @@ class TabletController extends Controller
         return response()->json(['data' => $spaBooking->fresh()->toGuestConfirmationArray()]);
     }
 
-    /** @return array{service_slug: string, time: string} */
+    /**
+     * The guest picks their own appointment time (12-hour "h:mm A", matching
+     * the guest tablet's Cupertino time picker) — {@see self::SPA_TIMES} are
+     * just quick-pick suggestions, not the only bookable times — so this
+     * only checks the pick is a real time of day, anywhere across the full
+     * 24 hours, not that it's one of the suggestions.
+     *
+     * @return array{service_slug: string, time: string}
+     */
     private function validateSpaBooking(Request $request): array
     {
         return $request->validate([
             'service_slug' => ['required', 'string'],
-            'time' => ['required', 'string', Rule::in(self::SPA_TIMES)],
+            'time' => ['required', 'string', function (string $attribute, mixed $value, Closure $fail) {
+                if (! $this->parseSpaTime((string) $value)) {
+                    $fail('Pick a valid appointment time.');
+                }
+            }],
         ]);
+    }
+
+    /**
+     * Parses a "9:05 AM" style label, rejecting anything that doesn't
+     * round-trip back to the exact same string — Carbon's 12-hour parser
+     * silently wraps out-of-range input (e.g. "13:00 AM") instead of failing.
+     */
+    private function parseSpaTime(string $value): ?Carbon
+    {
+        $normalized = strtoupper(trim($value));
+
+        try {
+            $parsed = Carbon::createFromFormat('g:i A', $normalized);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $parsed && $parsed->format('g:i A') === $normalized ? $parsed : null;
     }
 
     private function findSpaService(string $slug): SpaService
@@ -847,6 +891,350 @@ class TabletController extends Controller
         ];
 
         return $payload;
+    }
+
+    /* ---------------- Cinema ---------------- */
+
+    /**
+     * GET /tablets/cinema/movies — the cinema's bookable movies and snacks,
+     * for the guest tablet's Cinema screen. Booking is by private room (the
+     * same whole-room model the public website uses), not per-seat.
+     */
+    public function cinemaCatalog(Request $request): JsonResponse
+    {
+        $this->activeStay($request);
+
+        return response()->json(['data' => [
+            'movies' => Movie::active()->ordered()->get()->map->toGuestArray()->values(),
+            'snacks' => CinemaSnack::active()->ordered()->get()->map->toGuestArray()->values(),
+            'rooms' => Movie::ROOMS,
+            'seats_per_room' => Movie::SEATS_PER_ROOM,
+        ]]);
+    }
+
+    /**
+     * GET /tablets/cinema/{movie}/availability — which private rooms are
+     * already taken (booked or actively held) for a movie's showing, so the
+     * guest can't pick one that's gone.
+     */
+    public function cinemaRoomAvailability(Request $request, Movie $movie): JsonResponse
+    {
+        $this->activeStay($request);
+        abort_unless($movie->is_active, 404);
+
+        $data = $request->validate([
+            'date' => ['required', 'date'],
+            'time' => ['required', 'string', 'max:30'],
+        ]);
+
+        return response()->json(['data' => [
+            'taken_rooms' => CinemaSeatHold::takenSeats($movie->id, $data['date'], $data['time']),
+        ]]);
+    }
+
+    /**
+     * GET /tablets/cinema/bookings — the checked-in guest's own cinema
+     * bookings, newest first: every confirmed/used ticket, whether charged to
+     * the room or paid directly via Paystack. A Paystack checkout the guest
+     * never completed stays `pending`/unpaid and is left out.
+     */
+    public function cinemaBookings(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+
+        $bookings = CinemaBooking::where('booking_id', $booking->id)
+            ->whereIn('status', ['confirmed', 'used'])
+            ->orderByDesc('show_date')
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json(['data' => $bookings->map->toGuestAppointmentArray()->values()]);
+    }
+
+    /**
+     * POST /tablets/cinema/book — charge a private room straight to the
+     * room's folio, no Paystack round trip needed. Confirmed the moment it's
+     * recorded, the same as the spa's "Charge to Room" option.
+     */
+    public function bookCinemaToRoom(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+        $data = $this->validateCinemaBooking($request);
+        $movie = $this->findMovie($data['movie_slug']);
+        $q = $this->cinemaQuote($movie, $data['snacks'] ?? []);
+
+        $taken = CinemaSeatHold::takenSeats($movie->id, $data['date'], $data['time']);
+        abort_if(in_array($data['room'], $taken, true), 422, $data['room'].' is already booked for that showing.');
+
+        $reference = 'CIN-'.$booking->id.'-'.strtoupper(Str::random(10));
+
+        $cinemaBooking = CinemaBooking::create([
+            'booking_id' => $booking->id,
+            'code' => CinemaBooking::makeCode(),
+            'reference' => $reference,
+            'movie_id' => $movie->id,
+            'movie_title' => $movie->title,
+            'show_date' => $data['date'],
+            'show_time' => $data['time'],
+            'room' => $data['room'],
+            'guests' => $data['guests'],
+            'seats' => [],
+            'snacks' => $q['snacks'],
+            'subtotal' => $q['base'],
+            'fee' => 0,
+            'taxes' => 0,
+            'vat' => $q['vat'],
+            'amount' => $q['base'],
+            'customer_name' => $booking->customer_name,
+            'customer_email' => $booking->customer_email,
+            'customer_phone' => $booking->customer_phone,
+            // Confirmed the moment it's booked, but not "paid" — the charge
+            // sits on the room folio until the guest settles it (My Bills), so
+            // it must stay out of the admin Payments module's revenue until
+            // then. No `paid_at` for the same reason.
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'payment_method' => 'room_charge',
+        ]);
+
+        $secured = CinemaSeatHold::claimForBooking(
+            $movie->id, $data['date'], $data['time'], [$data['room']], $reference, $cinemaBooking,
+        );
+        if (! in_array($data['room'], $secured, true)) {
+            // Lost the race to another booking between the availability check
+            // and now — nothing was ever charged or promised, so just undo it.
+            $cinemaBooking->delete();
+            abort(422, 'Sorry, '.$data['room'].' was just booked for that showing. Please pick another room.');
+        }
+
+        $this->notifyCinemaBooked($booking, $unit, $cinemaBooking, $movie);
+
+        return response()->json(['data' => $cinemaBooking->toGuestConfirmationArray()]);
+    }
+
+    /**
+     * POST /tablets/cinema/initialize — price the booking and open a
+     * Paystack transaction, for the guest paying directly rather than
+     * charging the room.
+     */
+    public function initializeCinemaBooking(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+        $data = $this->validateCinemaBooking($request);
+        $movie = $this->findMovie($data['movie_slug']);
+        $q = $this->cinemaQuote($movie, $data['snacks'] ?? []);
+
+        $taken = CinemaSeatHold::takenSeats($movie->id, $data['date'], $data['time']);
+        abort_if(in_array($data['room'], $taken, true), 422, $data['room'].' is already booked for that showing.');
+
+        $secret = config('services.paystack.secret_key');
+        abort_if(blank($secret), 503, 'Online payment is not available right now.');
+
+        $reference = 'CIN-'.$booking->id.'-'.strtoupper(Str::random(10));
+        $callbackUrl = rtrim((string) config('app.url'), '/').'/tablet/extend-return';
+        $email = $booking->customer_email ?: 'guest'.$booking->id.'@retirodelrocio.ng';
+
+        try {
+            $response = Http::withToken($secret)->acceptJson()->post(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/initialize',
+                [
+                    'email' => $email,
+                    'amount' => $q['total'] * 100,
+                    'reference' => $reference,
+                    'callback_url' => $callbackUrl,
+                    'metadata' => [
+                        'booking_id' => $booking->id,
+                        'purpose' => 'cinema_booking',
+                        'movie_slug' => $movie->slug,
+                    ],
+                ],
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not start the payment. Please try again.');
+        }
+
+        $authUrl = data_get($response->json(), 'data.authorization_url');
+        abort_if(! $response->ok() || ! $authUrl, 502, 'Could not start the payment. Please try again.');
+
+        CinemaBooking::create([
+            'booking_id' => $booking->id,
+            'code' => CinemaBooking::makeCode(),
+            'reference' => $reference,
+            'movie_id' => $movie->id,
+            'movie_title' => $movie->title,
+            'show_date' => $data['date'],
+            'show_time' => $data['time'],
+            'room' => $data['room'],
+            'guests' => $data['guests'],
+            'seats' => [],
+            'snacks' => $q['snacks'],
+            'subtotal' => $q['base'],
+            'fee' => 0,
+            'taxes' => 0,
+            'vat' => $q['vat'],
+            'amount' => $q['base'],
+            'customer_name' => $booking->customer_name,
+            'customer_email' => $booking->customer_email,
+            'customer_phone' => $booking->customer_phone,
+            'status' => 'pending',
+            'payment_status' => 'pending',
+        ]);
+
+        return response()->json(['data' => [
+            'authorization_url' => $authUrl,
+            'reference' => $reference,
+            'callback_url' => $callbackUrl,
+            'subtotal' => $q['base'],
+            'subtotal_label' => 'NGN '.number_format($q['base']),
+            'vat' => $q['vat'],
+            'vat_label' => 'NGN '.number_format($q['vat']),
+            'total' => $q['total'],
+            'total_label' => 'NGN '.number_format($q['total']),
+        ]]);
+    }
+
+    /**
+     * POST /tablets/cinema/confirm — verify the Paystack charge, claim the
+     * private room and confirm the booking. Idempotent: a repeated call for
+     * an already-applied reference just returns the booking. If the room was
+     * lost to another booking while this one was paying, the charge is
+     * cancelled and labelled refunded rather than double-booking the room —
+     * the same guard the public website uses.
+     */
+    public function confirmCinemaBooking(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+
+        $data = $request->validate(['reference' => ['required', 'string']]);
+
+        $cinemaBooking = CinemaBooking::where('reference', $data['reference'])
+            ->where('booking_id', $booking->id)
+            ->first();
+        abort_unless($cinemaBooking, 404, 'We could not find that booking.');
+
+        if ($cinemaBooking->payment_status === 'paid') {
+            return response()->json(['data' => $cinemaBooking->toGuestConfirmationArray()]);
+        }
+
+        $secret = config('services.paystack.secret_key');
+        try {
+            $verify = Http::withToken($secret)->acceptJson()->get(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/verify/'.$data['reference']
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not verify the payment. Please try again.');
+        }
+
+        $body = $verify->json();
+        abort_unless(
+            $verify->ok() && data_get($body, 'data.status') === 'success',
+            402,
+            'Your payment was not completed.'
+        );
+        abort_if(
+            (int) data_get($body, 'data.amount') < ((int) $cinemaBooking->subtotal + (int) $cinemaBooking->vat) * 100,
+            402,
+            'The payment amount did not match.'
+        );
+
+        $secured = CinemaSeatHold::claimForBooking(
+            $cinemaBooking->movie_id,
+            $cinemaBooking->show_date->toDateString(),
+            $cinemaBooking->show_time,
+            [$cinemaBooking->room],
+            $data['reference'],
+            $cinemaBooking,
+        );
+
+        if (! in_array($cinemaBooking->room, $secured, true)) {
+            $cinemaBooking->update(['status' => 'cancelled', 'payment_status' => 'refunded']);
+            abort(409, 'Sorry, '.$cinemaBooking->room.' was just booked for that showing. Your payment will be refunded.');
+        }
+
+        $cinemaBooking->update([
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => data_get($body, 'data.channel'),
+            'paid_at' => now(),
+        ]);
+
+        $movie = Movie::find($cinemaBooking->movie_id);
+        $this->notifyCinemaBooked($booking, $unit, $cinemaBooking->fresh(), $movie);
+
+        return response()->json(['data' => $cinemaBooking->fresh()->toGuestConfirmationArray()]);
+    }
+
+    /**
+     * @return array{movie_slug: string, date: string, time: string, room: string, guests: int, snacks: array}
+     */
+    private function validateCinemaBooking(Request $request): array
+    {
+        return $request->validate([
+            'movie_slug' => ['required', 'string'],
+            'date' => ['required', 'date'],
+            'time' => ['required', 'string', 'max:30'],
+            'room' => ['required', 'string', 'in:'.implode(',', Movie::ROOMS)],
+            'guests' => ['required', 'integer', 'min:1', 'max:'.Movie::SEATS_PER_ROOM],
+            'snacks' => ['sometimes', 'array'],
+            'snacks.*.id' => ['required_with:snacks', 'integer'],
+            'snacks.*.qty' => ['required_with:snacks', 'integer', 'min:1', 'max:20'],
+        ]);
+    }
+
+    private function findMovie(string $slug): Movie
+    {
+        $movie = Movie::active()->where('slug', $slug)->first();
+        abort_unless($movie, 404, 'That movie is not available.');
+
+        return $movie;
+    }
+
+    /**
+     * Price a private-room cinema booking: the room's flat price plus any
+     * snacks (server-priced from the live catalogue, never trusting the
+     * client), plus VAT on top of the lot.
+     *
+     * @return array{base: int, vat: int, total: int, snacks: array}
+     */
+    private function cinemaQuote(Movie $movie, array $snackSelections): array
+    {
+        $snacks = collect($snackSelections)->map(function (array $selection) {
+            $snack = CinemaSnack::active()->find($selection['id']);
+            abort_unless($snack, 404, 'One of the selected snacks is not available.');
+
+            return ['name' => $snack->name, 'qty' => (int) $selection['qty'], 'price' => (int) $snack->price];
+        })->values()->all();
+
+        $snacksTotal = collect($snacks)->sum(fn (array $s) => $s['qty'] * $s['price']);
+        $base = (int) $movie->room_price + $snacksTotal;
+        $vat = (int) round($base * self::VAT_RATE);
+        $total = $base + $vat;
+
+        return ['base' => $base, 'vat' => $vat, 'total' => $total, 'snacks' => $snacks];
+    }
+
+    /** Notify the guest's own tablet feed and the front desk of a new cinema booking. */
+    private function notifyCinemaBooked(Booking $booking, RoomUnit $unit, CinemaBooking $cinemaBooking, ?Movie $movie): void
+    {
+        $movieTitle = $movie?->title ?: ($cinemaBooking->movie_title ?: 'a movie');
+
+        GuestNotification::notify(
+            $booking,
+            $unit,
+            'cinema',
+            'Cinema Booking Confirmed',
+            $cinemaBooking->roomLabel().' is booked for '.$movieTitle.' at '.$cinemaBooking->show_time.'.',
+        );
+
+        ReceptionNotification::notify(
+            'booking',
+            'New Cinema Booking',
+            ($booking->customer_name ?: 'A guest').' in Room '.($unit->number ?? $booking->room_name).
+                ' booked '.$cinemaBooking->roomLabel().' for '.$movieTitle.' at '.$cinemaBooking->show_time.'.',
+            $booking,
+        );
     }
 
     /* ---------------- My Bills ---------------- */

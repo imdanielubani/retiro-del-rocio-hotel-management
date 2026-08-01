@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\BillPayment;
 use App\Models\Booking;
+use App\Models\CinemaBooking;
 use App\Models\Device;
 use App\Models\DeviceType;
 use App\Models\Room;
@@ -227,6 +228,76 @@ class TabletMyBillsTest extends TestCase
             ->assertJsonPath('data.summary.total_due', 4569); // 4,250 + 319 VAT
 
         $response->assertJsonMissing(['sub' => '2 night(s) to '.now()->addDays(7)->format('M j, Y')]);
+    }
+
+    private function roomChargeCinema(): CinemaBooking
+    {
+        return CinemaBooking::create([
+            'booking_id' => $this->booking->id,
+            'code' => CinemaBooking::makeCode(),
+            'reference' => 'CIN-TEST-1',
+            'movie_title' => 'The Great Escape',
+            'show_date' => now()->toDateString(),
+            'show_time' => '2:00 PM',
+            'room' => 'Room 1',
+            'guests' => 2,
+            'snacks' => [],
+            'subtotal' => 40000,
+            'vat' => 3000, // 7.5%
+            'amount' => 40000,
+            'customer_name' => 'Daniel Ubani',
+            'customer_email' => 'daniel@example.test',
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'payment_method' => 'room_charge',
+        ]);
+    }
+
+    public function test_a_room_charge_cinema_booking_is_the_outstanding_balance(): void
+    {
+        $this->roomChargeCinema();
+
+        $this->withToken($this->token)
+            ->getJson('/api/v1/tablets/my-bills')
+            ->assertOk()
+            ->assertJsonPath('data.categories.3.key', 'cinema')
+            ->assertJsonPath('data.categories.3.has_charges', true)
+            ->assertJsonPath('data.categories.3.amount_label', 'NGN 40,000')
+            ->assertJsonPath('data.categories.3.items.0.label', 'The Great Escape')
+            // Cinema subtotal (40,000) + its VAT (3,000) — the room charge is not due.
+            ->assertJsonPath('data.summary.total_due', 43000)
+            ->assertJsonPath('data.can_pay', true);
+    }
+
+    public function test_a_paystack_cinema_booking_not_charged_to_the_room_is_excluded(): void
+    {
+        CinemaBooking::create([
+            'booking_id' => $this->booking->id,
+            'code' => CinemaBooking::makeCode(),
+            'reference' => 'CIN-TEST-2',
+            'movie_title' => 'The Great Escape',
+            'show_date' => now()->toDateString(),
+            'show_time' => '6:00 PM',
+            'room' => 'Room 2',
+            'guests' => 1,
+            'snacks' => [],
+            'subtotal' => 40000,
+            'vat' => 3000,
+            'amount' => 40000,
+            'customer_name' => 'Daniel Ubani',
+            'customer_email' => 'daniel@example.test',
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => 'card',
+            'paid_at' => now(),
+        ]);
+
+        $this->withToken($this->token)
+            ->getJson('/api/v1/tablets/my-bills')
+            ->assertOk()
+            ->assertJsonPath('data.categories.3.has_charges', false)
+            ->assertJsonPath('data.summary.total_due', 0)
+            ->assertJsonPath('data.can_pay', false);
     }
 
     public function test_a_paystack_spa_booking_not_charged_to_the_room_is_excluded(): void

@@ -6,8 +6,8 @@ import 'package:retirodelrocioapp/features/security/domain/security_visitor.dart
 const Color _green = Color(0xFF00FF00);
 
 /// A verified visitor in the Visitors Today list (Figma 252:243): initials
-/// avatar, name + verified chip, suite/room/time, pass code, and an
-/// Inside / Not Inside pill.
+/// avatar, name + verified chip, suite/room/time, pass code, and a presence
+/// pill — Inside, Exited, or Not Inside (still pending).
 class VisitorRow extends StatelessWidget {
   const VisitorRow({super.key, required this.visitor});
 
@@ -111,17 +111,26 @@ class VisitorRow extends StatelessWidget {
   }
 
   Widget _presence() {
-    final inside = visitor.isInside;
+    // Three distinct states: still inside, checked out, or never arrived yet
+    // (pending) — a departed visitor must never read the same as one who
+    // simply hasn't shown up.
+    final (label, color) = switch ((visitor.isInside, visitor.isExited)) {
+      (true, _) => ('Inside', _green),
+      (false, true) => ('Exited', Colors.white.withValues(alpha: 0.5)),
+      (false, false) => ('Not Inside', Colors.white),
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: inside ? _green.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.15),
+        color: visitor.isInside
+            ? _green.withValues(alpha: 0.15)
+            : Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        inside ? 'Inside' : 'Not Inside',
+        label,
         style: AppTypography.style(
-          color: inside ? _green : Colors.white,
+          color: color,
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),

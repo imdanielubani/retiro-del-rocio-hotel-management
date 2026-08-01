@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/bills/presentation/screens/guest_bills_screen.dart';
+import 'package:retirodelrocioapp/features/guest/cinema/presentation/screens/guest_cinema_screen.dart';
 import 'package:retirodelrocioapp/features/guest/home/domain/guest_service.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/current_stay_card.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
@@ -15,6 +16,7 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/quick
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/my_stay_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/service_requests/presentation/screens/guest_service_request_screen.dart';
 import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/guest/spa/presentation/screens/guest_spa_screen.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/presentation/screens/visitor_pass_screen.dart';
@@ -152,12 +154,42 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
       return;
     }
 
+    // Cinema is built — take the guest there rather than "coming soon".
+    if (service.id == GuestServices.cinema.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GuestCinemaScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
     // My Bills is built — take the guest there rather than "coming soon".
     if (service.id == GuestServices.bills.id) {
       final live = ref.read(roomStatusProvider(widget.device.token)).value;
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => GuestBillsScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
+    // Service Request is built — take the guest there rather than "coming soon".
+    if (service.id == GuestServices.serviceRequest.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GuestServiceRequestScreen(
             device: widget.device,
             status: live ?? widget.status,
           ),

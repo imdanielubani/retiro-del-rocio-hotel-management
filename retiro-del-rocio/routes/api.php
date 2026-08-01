@@ -3,6 +3,9 @@
 use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\GuestServiceRequestController;
+use App\Http\Controllers\Api\V1\HousekeepingController;
+use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ReceptionController;
 use App\Http\Controllers\Api\V1\SecurityController;
@@ -113,6 +116,19 @@ $api->group(function () {
         Route::post('tablets/spa/confirm', [TabletController::class, 'confirmSpaBooking'])
             ->middleware('throttle:20,1')->name('api.v1.tablets.spa.confirm');
 
+        // Cinema — browse movies + snacks and book a private room, either
+        // charged straight to the room or paid directly via Paystack.
+        Route::get('tablets/cinema/movies', [TabletController::class, 'cinemaCatalog'])->name('api.v1.tablets.cinema.movies');
+        Route::get('tablets/cinema/bookings', [TabletController::class, 'cinemaBookings'])->name('api.v1.tablets.cinema.bookings');
+        Route::get('tablets/cinema/{movie:slug}/availability', [TabletController::class, 'cinemaRoomAvailability'])
+            ->name('api.v1.tablets.cinema.availability');
+        Route::post('tablets/cinema/book', [TabletController::class, 'bookCinemaToRoom'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.cinema.book');
+        Route::post('tablets/cinema/initialize', [TabletController::class, 'initializeCinemaBooking'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.cinema.initialize');
+        Route::post('tablets/cinema/confirm', [TabletController::class, 'confirmCinemaBooking'])
+            ->middleware('throttle:20,1')->name('api.v1.tablets.cinema.confirm');
+
         // My Bills — the guest's itemised folio, with an optional Paystack
         // pre-settlement of the outstanding balance ahead of checkout.
         Route::get('tablets/my-bills', [TabletController::class, 'myBills'])->name('api.v1.tablets.my-bills');
@@ -144,6 +160,14 @@ $api->group(function () {
             ->name('api.v1.visitor-passes.index');
         Route::post('visitor-passes', [VisitorPassController::class, 'store'])
             ->middleware('throttle:30,1')->name('api.v1.visitor-passes.store');
+
+        // Service requests raised from a guest's in-room tablet — housekeeping
+        // asks (towels, amenities, DND, make-up room) and maintenance faults,
+        // both landing straight on the relevant staff tablet's own board.
+        Route::get('service-requests', [GuestServiceRequestController::class, 'index'])
+            ->name('api.v1.service-requests.index');
+        Route::post('service-requests', [GuestServiceRequestController::class, 'store'])
+            ->middleware('throttle:20,1')->name('api.v1.service-requests.store');
 
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])
@@ -183,6 +207,17 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.security.visitors.grant');
         Route::post('security/visitors/{pass}/deny', [SecurityController::class, 'deny'])
             ->middleware('throttle:60,1')->name('api.v1.security.visitors.deny');
+        Route::post('security/visitors/{pass}/exit', [SecurityController::class, 'exit'])
+            ->middleware('throttle:60,1')->name('api.v1.security.visitors.exit');
+
+        // Security's notification feed — today, only "a guest invited a
+        // visitor".
+        Route::get('security/notifications', [SecurityController::class, 'notifications'])
+            ->name('api.v1.security.notifications');
+        Route::post('security/notifications/read-all', [SecurityController::class, 'markAllNotificationsRead'])
+            ->name('api.v1.security.notifications.read-all');
+        Route::post('security/notifications/{notification}/read', [SecurityController::class, 'markNotificationRead'])
+            ->whereNumber('notification')->name('api.v1.security.notifications.read');
 
         // --- Reception tablet (staff JWT, reception role) ---
         // The receptionist signs in on the reception station; their JWT authorises
@@ -213,6 +248,11 @@ $api->group(function () {
         Route::get('reception/bookings/{booking}/bill', [ReceptionController::class, 'bookingBill'])
             ->name('api.v1.reception.booking-bill');
 
+        // Visitor Pass — every visitor invited or arrived, read-only (gate
+        // access itself stays with security).
+        Route::get('reception/visitors', [ReceptionController::class, 'visitors'])
+            ->name('api.v1.reception.visitors');
+
         // SOS incidents: hotel-wide emergencies. Reception sees the same alerts as
         // security and can acknowledge / resolve them from the front desk.
         Route::get('reception/incidents', [ReceptionController::class, 'incidents'])
@@ -241,5 +281,50 @@ $api->group(function () {
             ->name('api.v1.reception.notifications.read-all');
         Route::post('reception/notifications/{notification}/read', [ReceptionController::class, 'markNotificationRead'])
             ->whereNumber('notification')->name('api.v1.reception.notifications.read');
+
+        // --- Housekeeping tablet (staff JWT, housekeeping role) ---
+        // The housekeeper signs in on the housekeeping station; their JWT
+        // authorises the room-status board and guest-request queue. The role
+        // is re-checked in the controller on every call.
+        Route::get('housekeeping/overview', [HousekeepingController::class, 'overview'])
+            ->name('api.v1.housekeeping.overview');
+        Route::get('housekeeping/rooms', [HousekeepingController::class, 'rooms'])
+            ->name('api.v1.housekeeping.rooms');
+        Route::post('housekeeping/rooms/{unit}/status', [HousekeepingController::class, 'updateRoomStatus'])
+            ->middleware('throttle:60,1')->name('api.v1.housekeeping.rooms.status');
+        Route::get('housekeeping/requests', [HousekeepingController::class, 'requests'])
+            ->name('api.v1.housekeeping.requests');
+        Route::post('housekeeping/requests', [HousekeepingController::class, 'createRequest'])
+            ->middleware('throttle:30,1')->name('api.v1.housekeeping.requests.create');
+        Route::post('housekeeping/requests/{housekeepingRequest}/complete', [HousekeepingController::class, 'completeRequest'])
+            ->middleware('throttle:60,1')->name('api.v1.housekeeping.requests.complete');
+
+        // Housekeeping's notification feed — today, only "a guest raised a
+        // housekeeping request".
+        Route::get('housekeeping/notifications', [HousekeepingController::class, 'notifications'])
+            ->name('api.v1.housekeeping.notifications');
+        Route::post('housekeeping/notifications/read-all', [HousekeepingController::class, 'markAllNotificationsRead'])
+            ->name('api.v1.housekeeping.notifications.read-all');
+        Route::post('housekeeping/notifications/{notification}/read', [HousekeepingController::class, 'markNotificationRead'])
+            ->whereNumber('notification')->name('api.v1.housekeeping.notifications.read');
+
+        // --- Maintenance tablet (staff JWT, maintenance role) ---
+        // The technician signs in on the maintenance station; their JWT
+        // authorises the work-order board. The role is re-checked in the
+        // controller on every call.
+        Route::get('maintenance/overview', [MaintenanceController::class, 'overview'])
+            ->name('api.v1.maintenance.overview');
+        Route::get('maintenance/work-orders', [MaintenanceController::class, 'workOrders'])
+            ->name('api.v1.maintenance.work-orders');
+        Route::post('maintenance/work-orders', [MaintenanceController::class, 'createWorkOrder'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.work-orders.create');
+        Route::post('maintenance/work-orders/{workOrder}/accept', [MaintenanceController::class, 'acceptWorkOrder'])
+            ->middleware('throttle:60,1')->name('api.v1.maintenance.work-orders.accept');
+        Route::post('maintenance/work-orders/{workOrder}/start', [MaintenanceController::class, 'startWorkOrder'])
+            ->middleware('throttle:60,1')->name('api.v1.maintenance.work-orders.start');
+        Route::post('maintenance/work-orders/{workOrder}/complete', [MaintenanceController::class, 'completeWorkOrder'])
+            ->middleware('throttle:60,1')->name('api.v1.maintenance.work-orders.complete');
+        Route::get('maintenance/rooms', [MaintenanceController::class, 'rooms'])
+            ->name('api.v1.maintenance.rooms');
     });
 });

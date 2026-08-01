@@ -15,6 +15,7 @@ class SecurityVisitor {
     this.arrivalLabel,
     this.isInside = false,
     this.isVerified = true,
+    this.isExited = false,
   });
 
   final int id;
@@ -28,6 +29,11 @@ class SecurityVisitor {
   final String? arrivalLabel;
   final bool isInside;
   final bool isVerified;
+
+  /// True once a verified visitor has been checked out — distinct from
+  /// simply not being inside yet, which is what a still-pending visitor
+  /// shows too.
+  final bool isExited;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -45,6 +51,7 @@ class SecurityVisitor {
         arrivalLabel: json['arrival_label'] as String?,
         isInside: json['is_inside'] as bool? ?? false,
         isVerified: json['is_verified'] as bool? ?? true,
+        isExited: json['is_exited'] as bool? ?? false,
       );
 }
 

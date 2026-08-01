@@ -647,6 +647,49 @@ class ReceptionController extends Controller
         ]]);
     }
 
+    /* ---------------- Visitor Pass ---------------- */
+
+    /**
+     * GET /reception/visitors — every visitor pass, most recently invited
+     * first, so the desk can see who is expected as well as who has already
+     * arrived. Unlike security's gate queue this is not scoped to today —
+     * reception needs to see visitors coming later too. Optional `?status=`
+     * narrows by pass status; `?search=` narrows by visitor, host or room.
+     */
+    public function visitors(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $status = $request->query('status');
+        $search = trim((string) $request->query('search', ''));
+
+        $passes = VisitorPass::query()
+            ->when(
+                in_array($status, [
+                    VisitorPass::PENDING, VisitorPass::VERIFIED, VisitorPass::DENIED,
+                    VisitorPass::CANCELLED, VisitorPass::EXPIRED,
+                ], true),
+                fn ($q) => $q->where('status', $status),
+            )
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('visitor_name', 'like', "%{$search}%")
+                ->orWhere('host_name', 'like', "%{$search}%")
+                ->orWhere('room_number', 'like', "%{$search}%")
+                ->orWhere('suite_name', 'like', "%{$search}%")))
+            ->orderByDesc('created_at')
+            ->limit(150)
+            ->get();
+
+        return response()->json(['data' => [
+            'summary' => [
+                'expected' => VisitorPass::where('status', VisitorPass::PENDING)->count(),
+                'inside' => VisitorPass::where('status', VisitorPass::VERIFIED)->whereNull('exited_at')->count(),
+                'today' => VisitorPass::whereDate('created_at', today())->count(),
+            ],
+            'visitors' => $passes->map->toReceptionVisitorArray()->values(),
+        ]]);
+    }
+
     /* ---------------- Notifications ---------------- */
 
     /**

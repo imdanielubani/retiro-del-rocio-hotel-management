@@ -5,6 +5,7 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
 import 'package:retirodelrocioapp/features/guest/sos/application/sos_providers.dart';
 import 'package:retirodelrocioapp/features/guest/sos/data/sos_repository.dart';
 import 'package:retirodelrocioapp/features/guest/sos/domain/sos_alert.dart';
@@ -38,6 +39,14 @@ class _SosScreenState extends ConsumerState<SosScreen> {
   RoomStatus get status => widget.status;
 
   String? get _roomNumber => status.roomNumber ?? device.roomNumber;
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestNotificationScreen(device: device, status: status),
+      ),
+    );
+  }
 
   Future<void> _raise() async {
     final confirmed = await showConfirmEmergencyDialog(
@@ -114,7 +123,7 @@ class _SosScreenState extends ConsumerState<SosScreen> {
                     roomNumber: _roomNumber ?? '—',
                     guestName: status.guest?.name ?? 'Guest',
                     weather: ref.watch(weatherProvider).value,
-                    onNotifications: () {},
+                    onNotifications: _openNotifications,
                     onProfile: () {},
                     hasUnreadNotifications:
                         ref.watch(

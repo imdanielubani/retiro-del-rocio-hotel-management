@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\SecurityNotification;
 use App\Models\SosAlert;
 use App\Models\User;
 use App\Models\VisitorPass;
@@ -172,6 +173,22 @@ class SecurityController extends Controller
     }
 
     /**
+     * POST /security/visitors/{pass}/exit — the officer marks a verified visitor
+     * as having left the property. Only valid for a visitor who is actually
+     * inside (verified, not already marked as exited); a second tap is a no-op.
+     */
+    public function exit(Request $request, VisitorPass $pass): JsonResponse
+    {
+        $this->officer($request);
+
+        abort_unless($pass->status === VisitorPass::VERIFIED, 409, 'This visitor was never checked in.');
+
+        $pass->markExited();
+
+        return response()->json(['data' => $pass->fresh()->toSecurityArray()]);
+    }
+
+    /**
      * GET /security/incidents — the SOS Alert Logs: every emergency ever raised,
      * most recent first, with its full timeline. Optionally narrowed by
      * `?status=` (active | acknowledged | resolved | cancelled | open).
@@ -223,6 +240,48 @@ class SecurityController extends Controller
         $alert->resolve($officer);
 
         return response()->json(['data' => $alert->fresh()->toSecurityArray()]);
+    }
+
+    /* ---------------- Notifications ---------------- */
+
+    /**
+     * GET /security/notifications — security's notification feed, newest
+     * first. Today the only trigger is a guest inviting a visitor; security
+     * is one shared station, so the feed (and its read state) is shared
+     * across whoever is signed in, not scoped to a single officer.
+     */
+    public function notifications(Request $request): JsonResponse
+    {
+        $this->officer($request);
+
+        $notifications = SecurityNotification::latest()->limit(100)->get();
+
+        return response()->json(['data' => $notifications->map->toSecurityArray()->values()]);
+    }
+
+    /** POST /security/notifications/{notification}/read — mark one as read. */
+    public function markNotificationRead(Request $request, int $notification): JsonResponse
+    {
+        $this->officer($request);
+
+        $record = SecurityNotification::find($notification);
+        abort_unless($record, 404, 'Notification not found.');
+
+        if (! $record->read_at) {
+            $record->update(['read_at' => now()]);
+        }
+
+        return response()->json(['data' => $record->toSecurityArray()]);
+    }
+
+    /** POST /security/notifications/read-all — "Mark all read". */
+    public function markAllNotificationsRead(Request $request): JsonResponse
+    {
+        $this->officer($request);
+
+        SecurityNotification::whereNull('read_at')->update(['read_at' => now()]);
+
+        return response()->json(['ok' => true]);
     }
 
     /** The authenticated staffer, who must hold the `security` role. */

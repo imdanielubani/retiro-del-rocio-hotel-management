@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\BillPayment;
 use App\Models\Booking;
+use App\Models\CinemaBooking;
 use App\Models\SpaBooking;
 use App\Models\StayExtensionPayment;
 use Illuminate\Support\Carbon;
@@ -17,9 +18,9 @@ use Illuminate\Support\Carbon;
  * The room rate and airport pickup are settled at booking time and never
  * appear on this bill at all — they aren't a "charge to the room", they're
  * how the room was paid for in the first place. Only what's actually charged
- * to the room *during the stay* — a self-service stay extension or a spa
- * session picked "Charge to Room" — shows up here, and that's what has to be
- * zero before the guest can check out.
+ * to the room *during the stay* — a self-service stay extension, a spa
+ * session or a cinema booking picked "Charge to Room" — shows up here, and
+ * that's what has to be zero before the guest can check out.
  */
 trait ComputesBookingBill
 {
@@ -56,13 +57,24 @@ trait ComputesBookingBill
             'amount_label' => 'NGN '.number_format((int) $b->subtotal),
         ])->values()->all();
 
+        $cinemaBookings = CinemaBooking::where('booking_id', $booking->id)
+            ->where('payment_method', 'room_charge')
+            ->get();
+        $cinemaLines = $cinemaBookings->map(fn (CinemaBooking $b) => [
+            'label' => $b->movie_title ?: 'Cinema booking',
+            'sub' => $b->show_time.' • '.optional($b->show_date)->format('M j, Y'),
+            'amount_label' => 'NGN '.number_format((int) $b->subtotal),
+        ])->values()->all();
+
         // "Room Charges" totals only extensions actually charged to the room
         // — a Paystack-paid extension never shows up here, matching the same
-        // rule Spa already follows.
+        // rule Spa and Cinema already follow.
         $outstandingExtensionBase = (int) $outstandingExtensions->sum('amount');
         $roomTotal = $outstandingExtensionBase;
         $spaSubtotal = (int) $spaBookings->sum('subtotal');
         $spaVat = (int) $spaBookings->sum('vat');
+        $cinemaSubtotal = (int) $cinemaBookings->sum('subtotal');
+        $cinemaVat = (int) $cinemaBookings->sum('vat');
 
         $categories = [
             [
@@ -95,11 +107,11 @@ trait ComputesBookingBill
             [
                 'key' => 'cinema',
                 'label' => 'Cinema',
-                'item_count' => 0,
-                'amount' => 0,
-                'amount_label' => null,
-                'has_charges' => false,
-                'items' => [],
+                'item_count' => $cinemaBookings->count(),
+                'amount' => $cinemaSubtotal,
+                'amount_label' => $cinemaBookings->isNotEmpty() ? 'NGN '.number_format($cinemaSubtotal) : null,
+                'has_charges' => $cinemaBookings->isNotEmpty(),
+                'items' => $cinemaLines,
             ],
             [
                 'key' => 'gym',
@@ -113,8 +125,8 @@ trait ComputesBookingBill
         ];
 
         $outstandingExtensionVat = (int) $outstandingExtensions->sum('vat');
-        $outstandingBase = $outstandingExtensionBase + $spaSubtotal;
-        $outstandingVat = $outstandingExtensionVat + $spaVat;
+        $outstandingBase = $outstandingExtensionBase + $spaSubtotal + $cinemaSubtotal;
+        $outstandingVat = $outstandingExtensionVat + $spaVat + $cinemaVat;
         $raw = $outstandingBase + $outstandingVat;
 
         $paid = (int) BillPayment::where('booking_id', $booking->id)
@@ -132,6 +144,9 @@ trait ComputesBookingBill
         }
         if ($spaSubtotal > 0) {
             $summaryLines[] = ['label' => 'Spa & Wellness', 'amount_label' => 'NGN '.number_format($spaSubtotal)];
+        }
+        if ($cinemaSubtotal > 0) {
+            $summaryLines[] = ['label' => 'Cinema', 'amount_label' => 'NGN '.number_format($cinemaSubtotal)];
         }
         if ($outstandingVat > 0) {
             $summaryLines[] = ['label' => 'VAT (7.5%)', 'amount_label' => 'NGN '.number_format($outstandingVat)];

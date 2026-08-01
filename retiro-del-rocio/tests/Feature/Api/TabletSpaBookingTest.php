@@ -151,7 +151,11 @@ class TabletSpaBookingTest extends TestCase
 
         $booking = SpaBooking::where('booking_id', $this->booking->id)->first();
         $this->assertNotNull($booking);
-        $this->assertSame('paid', $booking->payment_status);
+        $this->assertSame('confirmed', $booking->status);
+        // Charged to the room folio, not actually paid yet — it must not
+        // register as revenue in the admin Payments module until settled.
+        $this->assertSame('pending', $booking->payment_status);
+        $this->assertNull($booking->paid_at);
         $this->assertSame(35000, (int) $booking->subtotal);
         $this->assertSame(2625, (int) $booking->vat);
 
@@ -291,16 +295,80 @@ class TabletSpaBookingTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_an_invalid_time_slot_is_rejected(): void
+    public function test_a_malformed_time_is_rejected(): void
     {
         $service = $this->service();
 
         $this->withToken($this->token)
             ->postJson('/api/v1/tablets/spa/book', [
                 'service_slug' => $service->slug,
-                'time' => '4:15 AM',
+                'time' => 'not a time',
             ])
             ->assertStatus(422);
+    }
+
+    /**
+     * The guest picks the time on a 12-hour clock with AM/PM, matching the
+     * guest tablet's Cupertino time picker — a 24-hour "HH:mm" style value
+     * is not accepted.
+     */
+    public function test_a_24_hour_style_time_is_rejected(): void
+    {
+        $service = $this->service();
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/spa/book', [
+                'service_slug' => $service->slug,
+                'time' => '09:00',
+            ])
+            ->assertStatus(422);
+    }
+
+    /**
+     * The guest picks their own time — {@see TabletController::SPA_TIMES}
+     * is just quick-pick suggestions, not the only bookable times, and there
+     * is no operating-hours restriction: any time of day is bookable.
+     */
+    public function test_a_custom_time_not_in_the_suggested_list_can_be_booked(): void
+    {
+        $service = $this->service();
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/spa/book', [
+                'service_slug' => $service->slug,
+                'time' => '11:05 AM',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.time', '11:05 AM');
+
+        $booking = SpaBooking::where('booking_id', $this->booking->id)->first();
+        $this->assertSame('11:05 AM', $booking->time);
+    }
+
+    /**
+     * There's no spa "operating window" — the guest can pick any time across
+     * the full 24-hour clock, including well outside the old fixed slots.
+     */
+    public function test_a_time_outside_the_old_9am_to_630pm_slots_can_be_booked(): void
+    {
+        $service = $this->service();
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/spa/book', [
+                'service_slug' => $service->slug,
+                'time' => '10:45 PM',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.time', '10:45 PM');
+
+        $secondService = $this->service();
+        $this->withToken($this->token)
+            ->postJson('/api/v1/tablets/spa/book', [
+                'service_slug' => $secondService->slug,
+                'time' => '5:30 AM',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.time', '5:30 AM');
     }
 
     public function test_paying_via_paystack_confirms_the_booking_after_verification(): void

@@ -76,10 +76,12 @@ void main() {
     expect(find.text('Extend Stay'), findsOneWidget);
     expect(find.text('Emergency'), findsOneWidget);
 
-    // All 11 service tiles, in three rows (Figma 84:3429).
-    expect(find.byType(QuickServiceCard), findsNWidgets(11));
+    // All 12 service tiles, in three rows of four (Figma 84:3429 + Service
+    // Request, added later).
+    expect(find.byType(QuickServiceCard), findsNWidgets(12));
     expect(find.text('Dining'), findsOneWidget);
     expect(find.text('Hotel Information'), findsOneWidget);
+    expect(find.text('Service Request'), findsOneWidget);
 
     expect(tester.takeException(), isNull);
   });

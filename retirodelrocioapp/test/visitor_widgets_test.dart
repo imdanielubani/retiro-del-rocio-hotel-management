@@ -64,6 +64,33 @@ void main() {
       expect(find.text('Inside'), findsOneWidget);
       expect(find.text('Pending'), findsNothing);
     });
+
+    testWidgets('a visitor who has checked out shows Exited, not Not Inside', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          const VisitorRow(
+            visitor: SecurityVisitor(
+              id: 3,
+              name: 'Grace Hopper',
+              reference: 'VP-2607-013',
+              suiteName: 'Alba Suite',
+              roomNumber: '101',
+              arrivalLabel: '02:00PM',
+              isInside: false,
+              isVerified: true,
+              isExited: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('✓ Verified'), findsOneWidget);
+      expect(find.text('Exited'), findsOneWidget);
+      expect(find.text('Not Inside'), findsNothing);
+      expect(find.text('Inside'), findsNothing);
+    });
   });
 
   group('VisitorPassRequestCard (Visitor Pass Requests)', () {

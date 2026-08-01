@@ -12,6 +12,8 @@ import 'package:retirodelrocioapp/features/security/data/security_repository.dar
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_visitor.dart';
+import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
+import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/dialogs/sos_alert_overlay.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/incident_response_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
@@ -64,6 +66,14 @@ class _SecurityDashboardScreenState
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)));
+  }
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SecurityNotificationScreen(session: widget.session),
+      ),
+    );
   }
 
   void _onNav(SecurityNavItem item) {
@@ -208,6 +218,11 @@ class _SecurityDashboardScreenState
   Widget build(BuildContext context) {
     // Keep the live socket alive for as long as the dashboard is on screen.
     ref.watch(securityRealtimeProvider(_token));
+    ref.watch(securityNotificationsRealtimeProvider(_token));
+    // Rings the chime and toasts a new notification wherever the officer is —
+    // owned here (the root security screen, always mounted) same as the SOS
+    // announcer below.
+    ref.watch(securityNotificationChimeProvider(_token));
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on
     // first load and on every refresh (socket or poll); the guards inside make it
@@ -218,6 +233,7 @@ class _SecurityDashboardScreenState
 
     final overviewAsync = ref.watch(securityOverviewProvider(_token));
     final weather = ref.watch(weatherProvider).value;
+    final unreadNotifications = ref.watch(securityUnreadNotificationsProvider(_token));
 
     // Prefer the session's name until the first fetch resolves the officer.
     final overview = overviewAsync.value;
@@ -256,6 +272,8 @@ class _SecurityDashboardScreenState
                                 overview?.officerRole ?? 'Security Office',
                             weather: weather,
                             hasAlert: (overview?.activeIncidents ?? 0) > 0,
+                            hasUnreadNotifications: unreadNotifications > 0,
+                            onNotifications: _openNotifications,
                           ),
                           const SizedBox(height: 20),
                           _header(stale: overviewAsync.hasError && overview != null),

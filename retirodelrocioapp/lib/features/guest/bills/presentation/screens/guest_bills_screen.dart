@@ -11,6 +11,7 @@ import 'package:retirodelrocioapp/features/guest/bills/presentation/widgets/bill
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/paystack_checkout_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -66,6 +67,17 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestNotificationScreen(
+          device: widget.device,
+          status: widget.status,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final billAsync = ref.watch(billProvider(_token));
@@ -94,7 +106,7 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
                         '—',
                     guestName: guest?.name ?? 'Guest',
                     weather: weather,
-                    onNotifications: () {},
+                    onNotifications: _openNotifications,
                     onProfile: () {},
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,

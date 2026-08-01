@@ -306,7 +306,11 @@ class TabletMyStayTest extends TestCase
         $this->assertSame(1125, (int) $payment->vat); // 7.5% of 15,000
         $this->assertSame('success', $payment->status);
         $this->assertSame('room_charge', $payment->payment_method);
-        $this->assertNotNull($payment->paid_at);
+        // Applied immediately, but not actually paid yet — it's charged to the
+        // room folio and only settled at checkout, so no paid_at and it must
+        // not register as revenue in the admin Payments module.
+        $this->assertNull($payment->paid_at);
+        $this->assertFalse($payment->isPaid());
 
         Bus::assertDispatchedSync(SendStayExtensionReceipt::class);
     }

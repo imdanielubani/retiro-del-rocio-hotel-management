@@ -5,6 +5,7 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
 import 'package:retirodelrocioapp/features/guest/spa/application/spa_providers.dart';
 import 'package:retirodelrocioapp/features/guest/spa/domain/spa_service.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
@@ -24,6 +25,14 @@ class GuestSpaAppointmentsScreen extends ConsumerWidget {
   final RoomStatus status;
 
   String get _token => device.token;
+
+  void _openNotifications(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestNotificationScreen(device: device, status: status),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -51,7 +60,7 @@ class GuestSpaAppointmentsScreen extends ConsumerWidget {
                         status.roomNumber ?? device.roomNumber ?? '—',
                     guestName: guest?.name ?? 'Guest',
                     weather: weather,
-                    onNotifications: () {},
+                    onNotifications: () => _openNotifications(context),
                     onProfile: () {},
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) >

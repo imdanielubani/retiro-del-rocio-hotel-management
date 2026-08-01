@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/security/data/security_repository.dar
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
 import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
+import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
 
 final securityRepositoryProvider =
     Provider<SecurityRepository>((ref) => SecurityRepository());
@@ -76,6 +77,31 @@ final securityRealtimeProvider =
   ref.onDispose(channel.dispose);
 });
 
+/// Subscribes the tablet to the hotel-wide `security` channel and refreshes
+/// the notification feed the instant a new one lands (today, only "a guest
+/// invited a visitor"). A separate subscription from [securityRealtimeProvider]
+/// — that one watches `sos` for incidents, this one watches `security` for
+/// notifications, exactly like the reception tablet's `reception` channel
+/// multiplexes `booking.changed` and `notification.created`. Pure
+/// accelerator: if no broadcaster is configured, or the socket drops, the
+/// periodic poll in [securityNotificationsProvider] still carries the feed.
+final securityNotificationsRealtimeProvider =
+    FutureProvider.family<void, String>((ref, token) async {
+  final config = (await ref.watch(appConfigProvider.future)).realtime;
+  if (config == null) {
+    debugPrint('securityNotificationsRealtime: no broadcaster configured — polling only.');
+    return;
+  }
+
+  final channel = SosChannel(config: config, channel: 'security', events: const {});
+  channel.connect(
+    onChanged: () {},
+    onNotification: () => ref.invalidate(securityNotificationsProvider(token)),
+  );
+
+  ref.onDispose(channel.dispose);
+});
+
 /// Respond to and resolve incidents. Both refresh the overview so the screen
 /// always renders from the server — the one source of truth during an incident.
 class SecurityActions {
@@ -119,6 +145,15 @@ class SecurityActions {
   Future<VisitorPassRecord> denyVisitor(int passId) async {
     final pass =
         await _ref.read(securityRepositoryProvider).denyVisitor(_token, passId);
+    _ref.invalidate(securityVisitorsProvider(_token));
+    _ref.invalidate(securityOverviewProvider(_token));
+    return pass;
+  }
+
+  /// Mark a verified visitor as having left, then refresh the list.
+  Future<VisitorPassRecord> exitVisitor(int passId) async {
+    final pass =
+        await _ref.read(securityRepositoryProvider).exitVisitor(_token, passId);
     _ref.invalidate(securityVisitorsProvider(_token));
     _ref.invalidate(securityOverviewProvider(_token));
     return pass;

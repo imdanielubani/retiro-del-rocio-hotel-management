@@ -40,6 +40,16 @@ class StayExtensionPayment extends Model
         return $this->status === self::SUCCESS;
     }
 
+    /**
+     * Whether real money has actually landed. A charge-to-room extension is
+     * "successful" (applied to the stay) the instant it's created, but the
+     * guest hasn't paid anything yet — only a Paystack extension has.
+     */
+    public function isPaid(): bool
+    {
+        return $this->isSuccessful() && $this->payment_method !== 'room_charge';
+    }
+
     /* ---------------- Admin Payments module ---------------- */
 
     /**
@@ -103,12 +113,12 @@ class StayExtensionPayment extends Model
 
     public function paymentStatusLabel(): string
     {
-        return $this->isSuccessful() ? 'Paid' : 'Pending';
+        return $this->isPaid() ? 'Paid' : 'Pending';
     }
 
     public function paymentStatusBadge(): string
     {
-        return $this->isSuccessful()
+        return $this->isPaid()
             ? 'bg-[#dcfce7] text-[#16a34a]'
             : 'bg-[#fef3c7] text-[#d97706]';
     }

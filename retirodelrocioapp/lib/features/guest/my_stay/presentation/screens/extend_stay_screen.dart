@@ -12,7 +12,10 @@ import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/pa
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/widgets/extend_calendar.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/widgets/extend_stay_dialogs.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
+import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
 /// 2.6a — Extend Stay (Figma 137:1157 → 137:1437). The guest picks a new
 /// checkout date on the calendar; the extension summary prices the extra nights
@@ -63,6 +66,30 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
 
   void _stepMonth(int delta) =>
       setState(() => _month = DateTime(_month.year, _month.month + delta));
+
+  /// This screen only carries a [GuestStay], not the tablet's [RoomStatus] —
+  /// so prefer the live status the rest of the app already keeps warm, and
+  /// fall back to a status built from the stay itself if it hasn't loaded yet.
+  void _openNotifications() {
+    final live = ref.read(roomStatusProvider(widget.device.token)).value;
+    final status =
+        live ??
+        RoomStatus(
+          occupancy: Occupancy.occupied,
+          suiteName: _r.roomName,
+          roomNumber: _roomNumber,
+          guest: GuestInfo(name: widget.stay.guests.primaryName),
+        );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestNotificationScreen(
+          device: widget.device,
+          status: status,
+        ),
+      ),
+    );
+  }
 
   void _selectPayment(_ExtendPaymentMethod method) =>
       setState(() => _paymentMethod = method);
@@ -217,7 +244,7 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
                     roomNumber: _roomNumber,
                     guestName: widget.stay.guests.primaryName,
                     weather: ref.watch(weatherProvider).value,
-                    onNotifications: () {},
+                    onNotifications: _openNotifications,
                     onProfile: () {},
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) >

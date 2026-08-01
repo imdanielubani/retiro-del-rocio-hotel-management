@@ -161,4 +161,16 @@ void main() {
     expect(find.text('No spa appointments yet'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('tapping the notification bell opens the notification screen', (
+    tester,
+  ) async {
+    await pumpScreen(tester, const []);
+
+    await tester.tap(find.byIcon(Icons.notifications_none_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notification'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -1,3 +1,4 @@
+import 'package:cupertino_calendar_picker/cupertino_calendar_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +8,7 @@ import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_devic
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/paystack_checkout_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
 import 'package:retirodelrocioapp/features/guest/spa/application/spa_providers.dart';
 import 'package:retirodelrocioapp/features/guest/spa/domain/spa_service.dart';
 import 'package:retirodelrocioapp/features/guest/spa/presentation/screens/guest_spa_appointments_screen.dart';
@@ -37,14 +39,52 @@ class _GuestSpaScreenState extends ConsumerState<GuestSpaScreen> {
   /// null = the "All" chip — every category shown.
   int? _selectedCategoryId;
 
+  /// Seeds the Cupertino time picker button with whatever's already picked
+  /// (from a chip or a previous picker use) — kept in sync with
+  /// [_selectedTime] rather than being the source of truth itself.
+  TimeOfDay? _pickedTime;
+
+  static final _timeLabelFormat = DateFormat('h:mm a', 'en_US');
+
   String get _token => widget.device.token;
 
   void _selectService(SpaService service) {
     setState(() => _selectedServiceSlug = service.slug);
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestNotificationScreen(
+          device: widget.device,
+          status: widget.status,
+        ),
+      ),
+    );
+  }
+
+  /// A suggested chip was tapped — selects its label verbatim (e.g.
+  /// "9:00 AM") and updates the picker button so reopening it starts there.
   void _selectTime(String time) {
-    setState(() => _selectedTime = time);
+    setState(() {
+      _selectedTime = time;
+      try {
+        final parsed = _timeLabelFormat.parseStrict(time);
+        _pickedTime = TimeOfDay(hour: parsed.hour, minute: parsed.minute);
+      } catch (_) {
+        // Not one of our own labels — leave the picker's seed alone.
+      }
+    });
+  }
+
+  /// The Cupertino time picker closed with a pick — format it the same way
+  /// the suggested chips already are ("9:05 AM") so the two are interchangeable.
+  void _onTimePicked(TimeOfDay time) {
+    final asDate = DateTime(2000, 1, 1, time.hour, time.minute);
+    setState(() {
+      _pickedTime = time;
+      _selectedTime = _timeLabelFormat.format(asDate);
+    });
   }
 
   void _selectPayment(SpaPaymentMethod method) {
@@ -88,6 +128,7 @@ class _GuestSpaScreenState extends ConsumerState<GuestSpaScreen> {
       setState(() {
         _selectedServiceSlug = null;
         _selectedTime = null;
+        _pickedTime = null;
         _paymentMethod = null;
       });
       ref.invalidate(guestNotificationsProvider(_token));
@@ -147,7 +188,7 @@ class _GuestSpaScreenState extends ConsumerState<GuestSpaScreen> {
                         '—',
                     guestName: guest?.name ?? 'Guest',
                     weather: weather,
-                    onNotifications: () {},
+                    onNotifications: _openNotifications,
                     onProfile: () {},
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
@@ -437,38 +478,29 @@ class _GuestSpaScreenState extends ConsumerState<GuestSpaScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.calendar_today_rounded,
-                size: 12,
-                color: Colors.white.withValues(alpha: 0.35),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'AVAILABLE TIMES',
-                style: AppTypography.style(
-                  color: Colors.white.withValues(alpha: 0.35),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4,
-                ),
-              ),
-            ],
+          Text(
+            'TIME',
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+            ),
           ),
-          const SizedBox(height: 12),
-          if (times.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'No times available today.',
-                style: AppTypography.style(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 12,
-                ),
+          const SizedBox(height: 10),
+          _timeField(),
+          if (times.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              'SUGGESTED',
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.4,
               ),
-            )
-          else
+            ),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -477,6 +509,75 @@ class _GuestSpaScreenState extends ConsumerState<GuestSpaScreen> {
                   SizedBox(width: 123, child: _timeChip(time)),
               ],
             ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// The time field — a Cupertino-style wheel picker (`cupertino_calendar_picker`),
+  /// always shown with AM/PM (`use24hFormat: false`) rather than the
+  /// system's 24-hour setting. The button's own label *is* the time value —
+  /// "9:00 AM" style — so a tap both shows and lets the guest change it.
+  Widget _timeField() {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _selectedTime != null
+              ? AppColors.gold.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.12),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.access_time_rounded,
+            size: 18,
+            color: _selectedTime != null
+                ? AppColors.gold
+                : Colors.white.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Time',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          CupertinoTimePickerButton(
+            initialTime: _pickedTime,
+            use24hFormat: false,
+            mainColor: AppColors.gold,
+            buttonDecoration: PickerButtonDecoration(
+              backgroundColor: _selectedTime != null
+                  ? AppColors.gold.withValues(alpha: 0.14)
+                  : Colors.white.withValues(alpha: 0.1),
+              textStyle: AppTypography.style(
+                color: _selectedTime != null ? AppColors.gold : Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            containerDecoration: PickerContainerDecoration(
+              backgroundColor: const Color(0xFF1A1A1A),
+              backgroundType: PickerBackgroundType.plainColor,
+            ),
+            onCompleted: (time) {
+              if (time != null) _onTimePicked(time);
+            },
+          ),
         ],
       ),
     );

@@ -115,10 +115,17 @@ abstract final class GuestServices {
     icon: Icons.info_outline_rounded,
   );
 
+  static const serviceRequest = GuestService(
+    id: 'service-request',
+    title: 'Service Request',
+    tagline: 'Housekeeping & Maintenance',
+    icon: Icons.support_agent_rounded,
+  );
+
   /// Row 1 · Row 2 · Row 3, exactly as the design orders them.
   static const List<List<GuestService>> grid = [
     [dining, smartRoom, spa, cinema],
     [gym, visitorPass, bills, chat],
-    [intercom, myStay, hotelInfo],
+    [intercom, myStay, hotelInfo, serviceRequest],
   ];
 }

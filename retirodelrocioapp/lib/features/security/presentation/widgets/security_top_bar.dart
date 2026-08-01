@@ -17,6 +17,7 @@ class SecurityTopBar extends StatelessWidget {
     required this.officerRole,
     required this.weather,
     this.hasAlert = false,
+    this.hasUnreadNotifications = false,
     this.onNotifications,
   });
 
@@ -26,6 +27,10 @@ class SecurityTopBar extends StatelessWidget {
 
   /// A live incident tints the bell red instead of gold.
   final bool hasAlert;
+
+  /// An unread notification (today, only "a guest invited a visitor") lights
+  /// the bell's dot gold when there is no live incident to outrank it.
+  final bool hasUnreadNotifications;
   final VoidCallback? onNotifications;
 
   String get _initials {
@@ -131,6 +136,9 @@ class SecurityTopBar extends StatelessWidget {
   }
 
   Widget _bell() {
+    // A live incident always outranks a plain unread notification — it is
+    // never just informational, so it wins the dot's colour when both are true.
+    final showDot = hasAlert || hasUnreadNotifications;
     final dot = hasAlert ? const Color(0xFFFF0000) : AppColors.gold;
     return SizedBox(
       width: 35,
@@ -150,17 +158,18 @@ class SecurityTopBar extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            right: 6,
-            top: 5,
-            child: SizedBox(
-              width: 6,
-              height: 6,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          if (showDot)
+            Positioned(
+              right: 6,
+              top: 5,
+              child: SizedBox(
+                width: 6,
+                height: 6,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

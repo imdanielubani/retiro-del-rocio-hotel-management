@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\RoomUnit;
 use App\Models\Room;
+use App\Models\RoomUnit;
 use App\Models\User;
 use App\Models\VisitorPass;
 use App\Services\JwtService;
@@ -156,6 +156,31 @@ class SecurityVisitorVerificationTest extends TestCase
             ->assertJsonCount(2, 'data.pass_requests');
     }
 
+    public function test_an_exited_visitor_reads_differently_from_one_still_pending(): void
+    {
+        // Checked out — must not read the same as "never arrived".
+        $exited = $this->pass(['code' => '333333', 'visitor_name' => 'Already Left']);
+        $exited->forceFill(['status' => VisitorPass::VERIFIED, 'verified_at' => now()->subHour()])->save();
+        $exited->markExited();
+
+        // Still expected — genuinely "Not Inside".
+        $this->pass(['code' => '444444', 'visitor_name' => 'Not Yet Here']);
+
+        $data = $this->withToken($this->officerToken())
+            ->getJson('/api/v1/security/overview')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.visitors')
+            ->json('data.visitors');
+
+        $left = collect($data)->firstWhere('name', 'Already Left');
+        $this->assertFalse($left['is_inside']);
+        $this->assertTrue($left['is_exited']);
+
+        $notHere = collect($data)->firstWhere('name', 'Not Yet Here');
+        $this->assertFalse($notHere['is_inside']);
+        $this->assertFalse($notHere['is_exited']);
+    }
+
     public function test_the_requests_column_keeps_showing_visitors_after_they_are_verified(): void
     {
         // Figma 257:1336 shows verified entries alongside pending ones — working
@@ -235,6 +260,44 @@ class SecurityVisitorVerificationTest extends TestCase
         $this->withToken($this->officerToken())
             ->postJson('/api/v1/security/visitors/verify', ['code' => $pass->code])
             ->assertNotFound();
+    }
+
+    public function test_officer_can_check_out_a_visitor_who_is_inside(): void
+    {
+        $pass = $this->pass(['status' => VisitorPass::VERIFIED, 'verified_at' => now()->subHour()]);
+
+        $this->withToken($this->officerToken())
+            ->postJson("/api/v1/security/visitors/{$pass->id}/exit")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'verified')
+            ->assertJsonPath('data.is_inside', false);
+
+        $this->assertNotNull($pass->fresh()->exited_at);
+    }
+
+    public function test_checking_out_a_visitor_who_never_arrived_is_rejected(): void
+    {
+        $pass = $this->pass(); // pending — never granted
+
+        $this->withToken($this->officerToken())
+            ->postJson("/api/v1/security/visitors/{$pass->id}/exit")
+            ->assertStatus(409);
+
+        $this->assertNull($pass->fresh()->exited_at);
+    }
+
+    public function test_checking_out_an_already_exited_visitor_is_a_no_op(): void
+    {
+        $pass = $this->pass(['status' => VisitorPass::VERIFIED, 'verified_at' => now()->subHours(2)]);
+        $pass->markExited();
+        $firstExit = $pass->fresh()->exited_at;
+
+        $this->withToken($this->officerToken())
+            ->postJson("/api/v1/security/visitors/{$pass->id}/exit")
+            ->assertOk()
+            ->assertJsonPath('data.is_inside', false);
+
+        $this->assertTrue($pass->fresh()->exited_at->equalTo($firstExit));
     }
 
     public function test_a_non_security_user_cannot_verify(): void

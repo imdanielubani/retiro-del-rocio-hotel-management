@@ -151,6 +151,10 @@ class SecurityRepository {
   Future<VisitorPassRecord> denyVisitor(String token, int passId) =>
       _visitorAction(token, passId, 'deny', 'Could not deny access.');
 
+  /// Mark a verified visitor as having left the property.
+  Future<VisitorPassRecord> exitVisitor(String token, int passId) =>
+      _visitorAction(token, passId, 'exit', 'Could not check out this visitor.');
+
   Future<VisitorPassRecord> _visitorAction(
     String token,
     int passId,

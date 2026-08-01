@@ -11,6 +11,7 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.da
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_visitor.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
@@ -170,6 +171,18 @@ final receptionBillsProvider = FutureProvider.autoDispose
       ref.onDispose(timer.cancel);
 
       return repo.bills(token);
+    });
+
+/// Every visitor pass, invited or arrived, keyed by the receptionist's token
+/// — not scoped to today, so the desk can see who is coming later too.
+final receptionVisitorsProvider = FutureProvider.autoDispose
+    .family<ReceptionVisitorsOverview, String>((ref, token) {
+      final repo = ref.watch(receptionRepositoryProvider);
+
+      final timer = Timer(const Duration(seconds: 2), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
+
+      return repo.visitors(token);
     });
 
 /// The assignable driver roster (available drivers only), for the assign-driver

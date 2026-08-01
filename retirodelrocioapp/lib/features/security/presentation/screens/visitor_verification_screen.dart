@@ -10,6 +10,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/s
 import 'package:retirodelrocioapp/features/security/application/security_providers.dart';
 import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
+import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
+import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_code_keypad.dart';
@@ -63,6 +65,7 @@ class _VisitorVerificationScreenState
 
   int? _expandedId;
   _ListFilter _filter = _ListFilter.all;
+  int? _checkingOutId;
 
   String get _token => widget.session.token;
 
@@ -105,6 +108,17 @@ class _VisitorVerificationScreenState
           ),
         );
     }
+  }
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SecurityNotificationScreen(
+          session: widget.session,
+          current: SecurityNavItem.verifiedPass,
+        ),
+      ),
+    );
   }
 
   // --- Keypad ---------------------------------------------------------------
@@ -199,6 +213,19 @@ class _VisitorVerificationScreenState
     }
   }
 
+  Future<void> _checkOut(VisitorPassRecord pass) async {
+    setState(() => _checkingOutId = pass.id);
+    try {
+      await ref.read(securityActionsProvider(_token)).exitVisitor(pass.id);
+    } on SecurityException catch (e) {
+      _showFailure(e.message);
+    } catch (_) {
+      _showFailure('Could not check out this visitor.');
+    } finally {
+      if (mounted) setState(() => _checkingOutId = null);
+    }
+  }
+
   void _reset() {
     setState(() {
       _code = '';
@@ -225,10 +252,14 @@ class _VisitorVerificationScreenState
   @override
   Widget build(BuildContext context) {
     ref.watch(securityRealtimeProvider(_token));
+    ref.watch(securityNotificationsRealtimeProvider(_token));
+    ref.watch(securityNotificationChimeProvider(_token));
     final passes =
         ref.watch(securityVisitorsProvider(_token)).value ?? const [];
     final overview = ref.watch(securityOverviewProvider(_token)).value;
     final weather = ref.watch(weatherProvider).value;
+    final unreadNotifications =
+        ref.watch(securityUnreadNotificationsProvider(_token));
 
     return SessionGuard(
       child: Scaffold(
@@ -260,6 +291,8 @@ class _VisitorVerificationScreenState
                                 overview?.officerRole ?? 'Security Office',
                             weather: weather,
                             hasAlert: (overview?.activeIncidents ?? 0) > 0,
+                            hasUnreadNotifications: unreadNotifications > 0,
+                            onNotifications: _openNotifications,
                           ),
                           const SizedBox(height: 20),
                           _header(),
@@ -383,6 +416,8 @@ class _VisitorVerificationScreenState
                             ? null
                             : pass.id,
                       ),
+                      onCheckOut: () => _checkOut(pass),
+                      checkingOut: _checkingOutId == pass.id,
                     );
                   },
                 ),

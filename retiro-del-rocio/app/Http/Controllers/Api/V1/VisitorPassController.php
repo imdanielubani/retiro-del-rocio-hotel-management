@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProvisionVisitorPass;
 use App\Models\Device;
 use App\Models\ReceptionNotification;
+use App\Models\SecurityNotification;
 use App\Models\VisitorPass;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,6 +109,21 @@ class VisitorPassController extends Controller
             ReceptionNotification::notify(
                 'guest',
                 'Visitor Pass Issued',
+                ($booking->customer_name ?: 'A guest').' in Room '.($unit?->number ?? '—').
+                    ' invited '.$pass->visitor_name.'.',
+                $booking,
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        // Security needs to know a pass is coming before the visitor reaches
+        // the gate — a notification of its own, independent of reception's,
+        // so a hiccup in one never silences the other.
+        try {
+            SecurityNotification::notify(
+                'guest',
+                'New Visitor Invited',
                 ($booking->customer_name ?: 'A guest').' in Room '.($unit?->number ?? '—').
                     ' invited '.$pass->visitor_name.'.',
                 $booking,

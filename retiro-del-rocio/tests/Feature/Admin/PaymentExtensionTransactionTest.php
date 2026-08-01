@@ -83,4 +83,33 @@ class PaymentExtensionTransactionTest extends TestCase
             ->assertOk()
             ->assertDontSee('TXN-EXT-'.str_pad((string) StayExtensionPayment::first()->id, 4, '0', STR_PAD_LEFT));
     }
+
+    /**
+     * A charge-to-room extension is applied to the stay immediately, but no
+     * money has actually landed — it's only settled later via My Bills. It
+     * must not appear as a paid transaction in the Payments ledger.
+     */
+    public function test_a_room_charge_extension_is_not_shown_as_a_paid_transaction(): void
+    {
+        $booking = $this->booking();
+
+        $payment = StayExtensionPayment::create([
+            'booking_id' => $booking->id,
+            'reference' => 'EXT-'.$booking->id.'-ROOMCHARGE1',
+            'nights' => 2,
+            'new_check_out' => now()->addDays(5)->toDateString(),
+            'amount' => 16125,
+            'vat' => 1125,
+            'status' => StayExtensionPayment::SUCCESS,
+            'payment_method' => 'room_charge',
+        ]);
+
+        $this->assertFalse($payment->isPaid());
+
+        Livewire::actingAs($this->admin())
+            ->test(Index::class)
+            ->assertOk()
+            ->assertDontSee('TXN-EXT-'.str_pad((string) $payment->id, 4, '0', STR_PAD_LEFT))
+            ->assertDontSee('₦17,250');
+    }
 }

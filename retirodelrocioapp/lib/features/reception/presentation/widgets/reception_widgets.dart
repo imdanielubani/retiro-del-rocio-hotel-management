@@ -5,6 +5,7 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart'
 import 'package:retirodelrocioapp/features/reception/domain/reception_booking_row.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_visitor.dart';
 
 const Color kReceptionBlue = Color(0xFF3B82F6);
 const Color kReceptionGreen = Color(0xFF22C55E);
@@ -37,9 +38,10 @@ Widget receptionOriginBadge(String label) {
 /// The accent colour for a booking status, shared by pills across the module.
 Color receptionStatusColor(String status) => switch (status) {
       'paid' => kReceptionGreen,
-      'checked_in' => kReceptionBlue,
-      'checked_out' => kReceptionSlate,
-      'cancelled' => kReceptionRed,
+      'checked_in' || 'inside' => kReceptionBlue,
+      'checked_out' || 'exited' => kReceptionSlate,
+      'cancelled' || 'denied' => kReceptionRed,
+      'expired' => kReceptionSlate,
       _ => AppColors.gold, // pending
     };
 
@@ -436,6 +438,103 @@ class ReceptionBillRowCard extends StatelessWidget {
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+  }
+}
+
+/// One visitor pass in the Visitor Pass list — who they are, who they're
+/// visiting, and whether they've arrived. Read-only: reception doesn't grant
+/// or deny gate access, that stays with security's own tablet.
+class ReceptionVisitorRowCard extends StatelessWidget {
+  const ReceptionVisitorRowCard({super.key, required this.visitor});
+
+  final ReceptionVisitor visitor;
+
+  @override
+  Widget build(BuildContext context) {
+    final visiting = [
+      if ((visitor.hostName ?? '').isNotEmpty) 'Visiting ${visitor.hostName}',
+      if ((visitor.suiteName ?? '').isNotEmpty)
+        visitor.suiteName!
+      else if ((visitor.roomNumber ?? '').isNotEmpty)
+        'Room ${visitor.roomNumber}',
+    ].join('  ·  ');
+
+    final timeLabel = visitor.isInside && visitor.arrivalLabel != null
+        ? 'Arrived ${visitor.arrivalLabel}'
+        : (visitor.invitedLabel != null ? 'Invited ${visitor.invitedLabel}' : null);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+      ),
+      child: Row(
+        children: [
+          ReceptionAvatar(initials: visitor.initials),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        visitor.visitorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.style(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      visitor.reference,
+                      style: AppTypography.style(
+                        color: AppColors.gold,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+                if (visiting.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    visiting,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+                if (timeLabel != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    timeLabel,
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ReceptionStatusPill(status: visitor.status, label: visitor.statusLabel),
+        ],
+      ),
+    );
   }
 }
 

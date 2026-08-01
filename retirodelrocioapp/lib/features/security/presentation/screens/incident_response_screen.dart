@@ -10,6 +10,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/s
 import 'package:retirodelrocioapp/features/security/application/security_providers.dart';
 import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
+import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
+import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_detail_panel.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_log_row.dart';
@@ -68,6 +70,17 @@ class _IncidentResponseScreenState
   void _comingSoon(String title) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)),
+    );
+  }
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SecurityNotificationScreen(
+          session: widget.session,
+          current: SecurityNavItem.incidentResponse,
+        ),
+      ),
     );
   }
 
@@ -162,8 +175,12 @@ class _IncidentResponseScreenState
   @override
   Widget build(BuildContext context) {
     ref.watch(securityRealtimeProvider(_token));
+    ref.watch(securityNotificationsRealtimeProvider(_token));
+    ref.watch(securityNotificationChimeProvider(_token));
     final logsAsync = ref.watch(incidentLogsProvider(_token));
     final weather = ref.watch(weatherProvider).value;
+    final unreadNotifications =
+        ref.watch(securityUnreadNotificationsProvider(_token));
 
     final all = logsAsync.value ?? const <SecurityIncident>[];
     final visible =
@@ -204,6 +221,8 @@ class _IncidentResponseScreenState
                             officerRole: 'Security Office',
                             weather: weather,
                             hasAlert: all.any((i) => i.isActive),
+                            hasUnreadNotifications: unreadNotifications > 0,
+                            onNotifications: _openNotifications,
                           ),
                           const SizedBox(height: 20),
                           _header(),

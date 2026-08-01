@@ -78,8 +78,9 @@ class SpaService {
   );
 }
 
-/// The spa catalogue: bookable services (with their real categories) plus
-/// today's fixed appointment slots.
+/// The spa catalogue: bookable services (with their real categories) plus a
+/// handful of suggested quick-pick times — the guest isn't limited to these,
+/// they can pick any time of their own across the full 24-hour clock.
 @immutable
 class SpaCatalog {
   const SpaCatalog({

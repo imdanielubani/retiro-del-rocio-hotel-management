@@ -1,3 +1,4 @@
+import 'package:cupertino_calendar_picker/cupertino_calendar_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -181,6 +182,8 @@ void main() {
 
       expect(find.text('BOOK NOW'), findsOneWidget);
 
+      await tester.ensureVisible(find.text('BOOK NOW'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('BOOK NOW'));
       await tester.pumpAndSettle();
 
@@ -204,6 +207,50 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Payment Summary'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('tapping the notification bell opens the notification screen', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.byIcon(Icons.notifications_none_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notification'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'the Cupertino time picker button opens the wheel picker without error',
+    (tester) async {
+      await pumpScreen(tester);
+
+      // The compact time button shows AM/PM, not a 24-hour clock.
+      expect(find.textContaining('AM'), findsWidgets);
+
+      await tester.tap(find.byType(CupertinoTimePickerButton));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'tapping a suggested chip selects an AM/PM time and enables booking',
+    (tester) async {
+      await pumpScreen(tester);
+
+      await tester.tap(find.text('Signature Deep Tissue Massage'));
+      await tester.pump();
+      await tester.tap(find.text('10:30 AM'));
+      await tester.pump();
+      await tester.tap(find.text('Charge to Room'));
+      await tester.pump();
+
+      expect(find.text('BOOK NOW'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

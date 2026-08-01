@@ -158,4 +158,43 @@ void main() {
       expect(find.text('My Bill'), findsOneWidget);
     },
   );
+
+  testWidgets('tapping the notification bell opens the notification screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myStayRepositoryProvider.overrideWithValue(_FakeMyStayRepository(stay)),
+          billsRepositoryProvider.overrideWithValue(_FakeBillsRepository()),
+          guestNotificationRepositoryProvider.overrideWithValue(
+            _EmptyGuestNotificationRepository(),
+          ),
+          weatherProvider.overrideWith(
+            (ref) async => const Weather(
+              temperatureC: 34,
+              condition: 'Clear',
+              emoji: '☀️',
+              city: 'Jos',
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          home: MyStayScreen(device: device, status: status),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.notifications_none_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notification'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

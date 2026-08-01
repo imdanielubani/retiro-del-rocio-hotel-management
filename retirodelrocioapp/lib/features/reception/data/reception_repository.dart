@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_checkin.da
 import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_pickup.dart';
+import 'package:retirodelrocioapp/features/reception/domain/reception_visitor.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 
 /// Raised when a reception action could not be completed, carrying a
@@ -157,6 +158,36 @@ class ReceptionRepository {
     } catch (error) {
       debugPrint('ReceptionRepository: bills failed — $error');
       return ReceptionBillsOverview.empty;
+    }
+  }
+
+  /// Every visitor pass, invited or arrived — not scoped to today, unlike
+  /// security's gate queue, so the desk can see who is coming later too.
+  /// Optional `status` narrows by pass status.
+  Future<ReceptionVisitorsOverview> visitors(
+    String token, {
+    String? search,
+    String? status,
+  }) async {
+    try {
+      final query = {
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (status != null && status.isNotEmpty) 'status': status,
+      };
+      final uri = Uri.parse(ApiConfig.endpoint('reception/visitors')).replace(
+        queryParameters: query.isEmpty ? null : query,
+      );
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        uri,
+        options: _auth(token),
+      );
+      final data = (response.data?['data'] as Map?)?.cast<String, dynamic>();
+      return data != null
+          ? ReceptionVisitorsOverview.fromJson(data)
+          : ReceptionVisitorsOverview.empty;
+    } catch (error) {
+      debugPrint('ReceptionRepository: visitors failed — $error');
+      return ReceptionVisitorsOverview.empty;
     }
   }
 

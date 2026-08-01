@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin\Payment;
 
+use App\Models\BillPayment;
 use App\Models\Booking;
 use App\Models\CinemaBooking;
 use App\Models\GymMembership;
@@ -232,7 +233,10 @@ class Index extends Component
 
     // Guest-paid stay extensions, filtered. Each successful extension is its own
     // dated transaction; only 'success' rows are real payments, so pending ones
-    // (the guest abandoned Paystack) never surface. Date column = paid_at.
+    // (the guest abandoned Paystack) never surface. A charge-to-room extension
+    // is excluded too — it was never actually paid, just added to the room
+    // folio, so it can't count as ledger revenue until settled. Date column =
+    // paid_at.
     protected function stayExtensionQuery()
     {
         $dateCol = 'paid_at';
@@ -240,6 +244,42 @@ class Index extends Component
         return StayExtensionPayment::query()
             ->with('booking')
             ->where('status', StayExtensionPayment::SUCCESS)
+            ->where('payment_method', '!=', 'room_charge')
+            ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
+                ->where('reference', 'like', "%{$this->search}%")
+                ->orWhere('id', 'like', "%{$this->search}%")
+                ->orWhereHas('booking', fn ($b) => $b
+                    ->where('reference', 'like', "%{$this->search}%")
+                    ->orWhere('customer_name', 'like', "%{$this->search}%")
+                    ->orWhere('customer_email', 'like', "%{$this->search}%"))))
+            // Only 'paid' keeps them; a pending/cancelled filter excludes all.
+            ->when($this->status, fn ($q) => $this->status === 'paid' ? $q : $q->whereRaw('1 = 0'))
+            ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
+            ->when($this->year, fn ($q) => $q->whereYear($dateCol, $this->year))
+            ->when($this->month, fn ($q) => $q->whereMonth($dateCol, $this->month))
+            ->when($this->day, fn ($q) => $q->whereDay($dateCol, $this->day))
+            ->when($this->from, fn ($q) => $q->whereDate($dateCol, '>=', $this->from))
+            ->when($this->to, fn ($q) => $q->whereDate($dateCol, '<=', $this->to))
+            ->when($this->range, function ($q) use ($dateCol) {
+                [$start, $end] = $this->rangeBounds();
+                if ($start) {
+                    $q->whereBetween($dateCol, [$start, $end]);
+                }
+            });
+    }
+
+    // A guest settling their outstanding room-charge folio from My Bills —
+    // this is what actually turns a "Charged to Room" spa session or stay
+    // extension into real revenue. Each successful settlement is its own
+    // dated transaction; only 'success' rows are real payments, so an
+    // abandoned Paystack attempt never surfaces. Date column = paid_at.
+    protected function billPaymentQuery()
+    {
+        $dateCol = 'paid_at';
+
+        return BillPayment::query()
+            ->with('booking')
+            ->where('status', BillPayment::SUCCESS)
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('reference', 'like', "%{$this->search}%")
                 ->orWhere('id', 'like', "%{$this->search}%")
@@ -394,7 +434,8 @@ class Index extends Component
             + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
-            + (int) StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat');
+            + (int) StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat');
 
         $prevRevenue = (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount')
             + (int) SpaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('total')
@@ -433,7 +474,8 @@ class Index extends Component
             + GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + CinemaBooking::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
-            + StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->count();
+            + StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->count();
 
         // Pending has no paid_at yet, so it's scoped by when it was initiated.
         $pendingAmount = (int) Booking::where('status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount')
@@ -493,13 +535,14 @@ class Index extends Component
         // ---- Filtered summary (both sources) ----
         // The guest's actual total paid (base + VAT), matching the "Total Paid"
         // column in the transaction table below — not just the pre-VAT subtotal.
-        $summaryCount = (clone $this->roomQuery())->count() + (clone $this->spaQuery())->count() + (clone $this->gymQuery())->count() + (clone $this->restaurantQuery())->count() + (clone $this->cinemaQuery())->count() + (clone $this->stayExtensionQuery())->count();
+        $summaryCount = (clone $this->roomQuery())->count() + (clone $this->spaQuery())->count() + (clone $this->gymQuery())->count() + (clone $this->restaurantQuery())->count() + (clone $this->cinemaQuery())->count() + (clone $this->stayExtensionQuery())->count() + (clone $this->billPaymentQuery())->count();
         $summaryAmount = $this->sumWithVat($this->roomQuery(), 'amount')
             + $this->sumWithVat($this->spaQuery(), 'total')
             + $this->sumWithVat($this->gymQuery(), 'price')
             + $this->sumWithVat($this->restaurantQuery(), 'fee')
             + $this->sumWithVat($this->cinemaQuery(), 'amount')
-            + $this->sumWithVat($this->stayExtensionQuery(), 'amount');
+            + $this->sumWithVat($this->stayExtensionQuery(), 'amount')
+            + $this->sumWithVat($this->billPaymentQuery(), 'amount');
 
         // Whether any filter is active (drives the "Clear all" button).
         $hasFilters = (bool) ($this->search || $this->range || $this->year || $this->month
@@ -512,6 +555,7 @@ class Index extends Component
             ->concat($this->restaurantQuery()->get())
             ->concat($this->cinemaQuery()->get())
             ->concat($this->stayExtensionQuery()->get())
+            ->concat($this->billPaymentQuery()->get())
             ->sortByDesc(fn ($t) => ($t->paid_at ?? $t->created_at)?->timestamp ?? 0)
             ->values();
 
@@ -540,6 +584,7 @@ class Index extends Component
             ->merge($yearsOf(RestaurantReservation::class))
             ->merge($yearsOf(CinemaBooking::class))
             ->merge($yearsOf(StayExtensionPayment::class))
+            ->merge($yearsOf(BillPayment::class))
             ->filter()->unique()->sortDesc()->values();
 
         $methods = Booking::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method')
@@ -548,6 +593,7 @@ class Index extends Component
             ->merge(RestaurantReservation::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
             ->merge(CinemaBooking::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
             ->merge(StayExtensionPayment::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
+            ->merge(BillPayment::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
             ->filter()->unique()->sort()->values();
 
         return view('admin.payment.index', [

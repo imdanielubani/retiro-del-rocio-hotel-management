@@ -215,7 +215,6 @@ Tabs: **My Tasks · Rooms · Requests · Supplies · More**.
 - Guest requests (towels, amenities, DND, make-up room)
 - Linen & minibar restock, Supplies request
 - Inspection screen, Lost & found report, Maintenance handoff
-- Schedule / shift
 
 ### Dialogs
 Mark clean confirm · Report issue to maintenance · Request supplies · DND override.

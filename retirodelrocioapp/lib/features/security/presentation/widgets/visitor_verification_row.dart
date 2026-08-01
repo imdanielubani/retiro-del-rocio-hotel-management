@@ -30,11 +30,20 @@ class VisitorVerificationRow extends StatelessWidget {
     required this.pass,
     required this.expanded,
     required this.onTap,
+    this.onCheckOut,
+    this.checkingOut = false,
   });
 
   final VisitorPassRecord pass;
   final bool expanded;
   final VoidCallback onTap;
+
+  /// Checks this visitor out — only offered while they are actually inside
+  /// (verified, not already checked out) and the row is expanded.
+  final VoidCallback? onCheckOut;
+
+  /// True while this row's check-out request is in flight.
+  final bool checkingOut;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +82,10 @@ class VisitorVerificationRow extends StatelessWidget {
                 Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 12),
                 _contactDetails(),
+              ],
+              if (expanded && pass.isVerified && pass.isInside && onCheckOut != null) ...[
+                const SizedBox(height: 14),
+                _checkOutButton(),
               ],
             ],
           ),
@@ -127,6 +140,10 @@ class VisitorVerificationRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             _badge(accent),
+            if (pass.isVerified && pass.isInside) ...[
+              const SizedBox(width: 6),
+              _insideTag(),
+            ],
           ],
         ),
         const SizedBox(height: 5),
@@ -217,6 +234,67 @@ class VisitorVerificationRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _insideTag() {
+    const green = Color(0xFF22C55E);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: green.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'Inside',
+        style: AppTypography.style(
+          color: green,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _checkOutButton() {
+    const red = Color(0xFFEF4444);
+    return Material(
+      color: red.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: checkingOut ? null : onCheckOut,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: red.withValues(alpha: 0.35), width: 0.8),
+          ),
+          child: checkingOut
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: red),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.logout_rounded, size: 15, color: red),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Check Out Visitor',
+                      style: AppTypography.style(
+                        color: red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }

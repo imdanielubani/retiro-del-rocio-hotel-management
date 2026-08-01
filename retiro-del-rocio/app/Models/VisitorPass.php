@@ -348,6 +348,10 @@ class VisitorPass extends Model
             'phone' => $this->visitor_phone,
             'submitted_label' => optional($this->created_at)->format('h:iA'),
             'created_at' => optional($this->created_at)->toIso8601String(),
+            // Lets the tablet offer "Check Out" only for a visitor who is
+            // actually inside — verified, and not already marked as left.
+            'is_inside' => $this->isInside(),
+            'arrival_label' => optional($this->verified_at)->format('h:iA'),
         ];
     }
 
@@ -373,6 +377,10 @@ class VisitorPass extends Model
             'arrival_label' => optional($this->verified_at ?? $this->created_at)->format('h:iA'),
             'is_inside' => $this->isInside(),
             'is_verified' => $this->status === self::VERIFIED,
+            // Distinguishes "checked out" from "never arrived" — both read as
+            // `is_inside: false`, but the tablet must not show a departed
+            // visitor as merely "Not Inside".
+            'is_exited' => $this->status === self::VERIFIED && $this->exited_at !== null,
         ];
     }
 
@@ -424,6 +432,31 @@ class VisitorPass extends Model
                 'expired' => 'Expired',
                 default => ucfirst($status),
             },
+        ];
+    }
+
+    /**
+     * A visitor row for the reception tablet's Visitor Pass screen — every
+     * visitor invited, arrived or otherwise, read-only (reception doesn't
+     * grant or deny gate access; that stays with security).
+     */
+    public function toReceptionVisitorArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'reference' => $this->caseNumber(),
+            'visitor_name' => $this->visitor_name,
+            'initials' => $this->initials(),
+            'host_name' => $this->host_name,
+            'room_number' => $this->room_number,
+            'suite_name' => $this->suite_name,
+            'email' => $this->visitor_email,
+            'phone' => $this->visitor_phone,
+            'status' => $this->adminStatus(),
+            'status_label' => $this->adminStatusLabel(),
+            'invited_label' => optional($this->created_at)->format('M j, h:iA'),
+            'arrival_label' => optional($this->verified_at)->format('h:iA'),
+            'is_inside' => $this->isInside(),
         ];
     }
 

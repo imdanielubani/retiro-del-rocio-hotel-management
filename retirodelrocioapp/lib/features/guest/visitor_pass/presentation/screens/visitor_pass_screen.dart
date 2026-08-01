@@ -9,6 +9,7 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
+import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/application/visitor_pass_providers.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/data/visitor_pass_repository.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/domain/visitor_pass.dart';
@@ -71,6 +72,14 @@ class _VisitorPassScreenState extends ConsumerState<VisitorPassScreen> {
   }
 
   void _openForm() => setState(() => _panel = _Panel.form);
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GuestNotificationScreen(device: device, status: status),
+      ),
+    );
+  }
 
   void _reset() {
     _nameController.clear();
@@ -212,7 +221,7 @@ class _VisitorPassScreenState extends ConsumerState<VisitorPassScreen> {
                                 status.roomNumber ?? device.roomNumber ?? '—',
                             guestName: _guestName,
                             weather: ref.watch(weatherProvider).value,
-                            onNotifications: () {},
+                            onNotifications: _openNotifications,
                             onProfile: () {},
                             hasUnreadNotifications:
                                 ref.watch(

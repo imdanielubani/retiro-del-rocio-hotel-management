@@ -8,7 +8,16 @@ use Throwable;
 
 class RoomUnit extends Model
 {
-    protected $fillable = ['room_id', 'number', 'status', 'booking_id', 'lock_id', 'lock_alias'];
+    protected $fillable = [
+        'room_id', 'number', 'status', 'booking_id', 'lock_id', 'lock_alias',
+        'housekeeping_status', 'housekeeping_status_at',
+    ];
+
+    protected $casts = [
+        'housekeeping_status_at' => 'datetime',
+    ];
+
+    public const HOUSEKEEPING_STATUSES = ['clean', 'dirty', 'inspected', 'out_of_order'];
 
     /**
      * Whenever a room's occupancy changes — a check-in, a check-out, a
@@ -82,6 +91,11 @@ class RoomUnit extends Model
         return $q->where('status', 'available');
     }
 
+    public function scopeNeedsAttention($q)
+    {
+        return $q->whereIn('housekeeping_status', ['dirty', 'out_of_order']);
+    }
+
     public function statusBadge(): string
     {
         return match ($this->status) {
@@ -94,5 +108,64 @@ class RoomUnit extends Model
     public function statusLabel(): string
     {
         return ucfirst($this->status);
+    }
+
+    /** Guest requests raised for this room (towels, amenities, DND, …). */
+    public function housekeepingRequests()
+    {
+        return $this->hasMany(HousekeepingRequest::class);
+    }
+
+    /** Faults reported against this room. */
+    public function workOrders()
+    {
+        return $this->hasMany(WorkOrder::class);
+    }
+
+    public function housekeepingStatusLabel(): string
+    {
+        return match ($this->housekeeping_status) {
+            'dirty' => 'Dirty',
+            'inspected' => 'Inspected',
+            'out_of_order' => 'Out of Order',
+            default => 'Clean',
+        };
+    }
+
+    /** [text, background] hex for the housekeeping status pill. */
+    public function housekeepingStatusColors(): array
+    {
+        return match ($this->housekeeping_status) {
+            'dirty' => ['#d97706', '#fef3c7'],
+            'inspected' => ['#2563eb', '#dbeafe'],
+            'out_of_order' => ['#dc2626', '#fee2e2'],
+            default => ['#16a34a', '#dcfce7'],
+        };
+    }
+
+    /**
+     * The payload the housekeeping tablet renders for the room grid and the
+     * room detail screen — this room's occupancy and cleanliness, plus
+     * whether the guest currently in it is checking out today (a room due to
+     * turn over is more urgent than one merely due a mid-stay tidy).
+     */
+    public function toHousekeepingRoomArray(): array
+    {
+        $room = $this->relationLoaded('room') ? $this->room : $this->room()->first();
+        $booking = $this->relationLoaded('booking') ? $this->booking : null;
+
+        return [
+            'id' => $this->id,
+            'number' => $this->number,
+            'room_name' => $room?->name,
+            'occupancy' => $this->status,
+            'occupancy_label' => $this->statusLabel(),
+            'housekeeping_status' => $this->housekeeping_status,
+            'housekeeping_status_label' => $this->housekeepingStatusLabel(),
+            'guest_name' => $booking?->customer_name,
+            'checkout_today' => $booking && $booking->status === 'checked_in'
+                && optional($booking->check_out)->isToday(),
+            'updated_label' => optional($this->housekeeping_status_at)->diffForHumans(),
+        ];
     }
 }
