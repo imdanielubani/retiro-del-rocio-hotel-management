@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
+import 'package:retirodelrocioapp/features/maintenance/presentation/screens/assets_screen.dart';
+import 'package:retirodelrocioapp/features/maintenance/presentation/screens/requests_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/screens/work_orders_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_nav_rail.dart';
 
@@ -50,6 +52,8 @@ class MaintenanceNavigation {
 
   static Widget? _pageFor(MaintenanceNavItem item, StaffSession session) => switch (item) {
     MaintenanceNavItem.workOrders => WorkOrdersScreen(session: session),
+    MaintenanceNavItem.assets => AssetsScreen(session: session),
+    MaintenanceNavItem.requests => RequestsScreen(session: session),
     _ => null,
   };
 
@@ -65,6 +69,8 @@ class MaintenanceNavigation {
   static String _label(MaintenanceNavItem item) => switch (item) {
     MaintenanceNavItem.dashboard => 'Dashboard',
     MaintenanceNavItem.workOrders => 'Work Orders',
+    MaintenanceNavItem.assets => 'Assets',
+    MaintenanceNavItem.requests => 'Requests',
     MaintenanceNavItem.chat => 'Chat',
   };
 }

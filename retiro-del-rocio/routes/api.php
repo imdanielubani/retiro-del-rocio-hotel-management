@@ -341,6 +341,10 @@ $api->group(function () {
             ->name('api.v1.maintenance.work-orders');
         Route::post('maintenance/work-orders', [MaintenanceController::class, 'createWorkOrder'])
             ->middleware('throttle:30,1')->name('api.v1.maintenance.work-orders.create');
+        Route::get('maintenance/work-orders/{workOrder}', [MaintenanceController::class, 'workOrderDetail'])
+            ->name('api.v1.maintenance.work-orders.show');
+        Route::post('maintenance/work-orders/{workOrder}/attachments', [MaintenanceController::class, 'uploadAttachment'])
+            ->middleware('throttle:20,1')->name('api.v1.maintenance.work-orders.attachments.create');
         Route::post('maintenance/work-orders/{workOrder}/accept', [MaintenanceController::class, 'acceptWorkOrder'])
             ->middleware('throttle:60,1')->name('api.v1.maintenance.work-orders.accept');
         Route::post('maintenance/work-orders/{workOrder}/start', [MaintenanceController::class, 'startWorkOrder'])
@@ -349,5 +353,44 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.maintenance.work-orders.complete');
         Route::get('maintenance/rooms', [MaintenanceController::class, 'rooms'])
             ->name('api.v1.maintenance.rooms');
+
+        // Assets registry: the picker for "report a fault against an asset",
+        // and its own tab with service history + preventive-maintenance due
+        // list.
+        Route::get('maintenance/assets', [MaintenanceController::class, 'assets'])
+            ->name('api.v1.maintenance.assets');
+        Route::post('maintenance/assets', [MaintenanceController::class, 'createAsset'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.assets.create');
+        Route::get('maintenance/assets/{asset}', [MaintenanceController::class, 'assetDetail'])
+            ->name('api.v1.maintenance.assets.show');
+        Route::post('maintenance/assets/{asset}/mark-serviced', [MaintenanceController::class, 'markAssetServiced'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.assets.mark-serviced');
+
+        // Requests tab: parts requests a technician raised against a work
+        // order, and the fulfil/deny actions on them.
+        Route::get('maintenance/parts-requests', [MaintenanceController::class, 'partsRequests'])
+            ->name('api.v1.maintenance.parts-requests');
+        Route::post('maintenance/work-orders/{workOrder}/parts-requests', [MaintenanceController::class, 'createPartsRequest'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.parts-requests.create');
+        Route::post('maintenance/parts-requests/{partsRequest}/fulfill', [MaintenanceController::class, 'fulfillPartsRequest'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.parts-requests.fulfill');
+        Route::post('maintenance/parts-requests/{partsRequest}/deny', [MaintenanceController::class, 'denyPartsRequest'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.parts-requests.deny');
+
+        Route::post('maintenance/work-orders/{workOrder}/escalate', [MaintenanceController::class, 'escalateWorkOrder'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.work-orders.escalate');
+        Route::post('maintenance/work-orders/{workOrder}/status', [MaintenanceController::class, 'updateWorkOrderStatus'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.work-orders.status');
+        Route::post('maintenance/work-orders/{workOrder}/assign', [MaintenanceController::class, 'assignWorkOrder'])
+            ->middleware('throttle:30,1')->name('api.v1.maintenance.work-orders.assign');
+        Route::get('maintenance/technicians', [MaintenanceController::class, 'technicians'])
+            ->name('api.v1.maintenance.technicians');
+
+        Route::get('maintenance/notifications', [MaintenanceController::class, 'notifications'])
+            ->name('api.v1.maintenance.notifications');
+        Route::post('maintenance/notifications/read-all', [MaintenanceController::class, 'markAllNotificationsRead'])
+            ->name('api.v1.maintenance.notifications.read-all');
+        Route::post('maintenance/notifications/{notification}/read', [MaintenanceController::class, 'markNotificationRead'])
+            ->whereNumber('notification')->name('api.v1.maintenance.notifications.read');
     });
 });

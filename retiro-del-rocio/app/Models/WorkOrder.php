@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Http\Controllers\Api\V1\GuestServiceRequestController;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * A maintenance fault, from report through to completion:
@@ -21,6 +22,9 @@ class WorkOrder extends Model
 
     public const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
+    /** Hours to resolution before an open order is considered SLA-breached, by priority. */
+    public const SLA_HOURS = ['urgent' => 2, 'high' => 8, 'medium' => 24, 'low' => 72];
+
     // Matches the migration's column defaults. Without this, a freshly
     // `create()`d instance has null `status`/`priority` in memory until
     // re-fetched — `accept()`/`start()` would then see null !== NEW and
@@ -31,7 +35,7 @@ class WorkOrder extends Model
     ];
 
     protected $fillable = [
-        'room_unit_id', 'booking_id', 'asset_label', 'title', 'description', 'priority', 'status',
+        'room_unit_id', 'booking_id', 'asset_label', 'asset_id', 'title', 'description', 'priority', 'status',
         'reported_by', 'assigned_to', 'accepted_at', 'started_at', 'completed_at',
     ];
 
@@ -41,6 +45,27 @@ class WorkOrder extends Model
         'completed_at' => 'datetime',
     ];
 
+    /**
+     * A single hook for every creation path (the maintenance tablet's own
+     * "Report Fault", a guest's Service Request, a housekeeper's fault
+     * report) so the notification always fires no matter which screen raised
+     * the order — no scattering `MaintenanceNotification::notify()` calls
+     * across three different controllers where one could be missed.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (self $order) {
+            $urgent = $order->priority === 'urgent';
+
+            MaintenanceNotification::notify(
+                $urgent ? 'urgent_work_order' : 'new_work_order',
+                ($urgent ? 'Urgent Work Order — ' : 'New Work Order — ').$order->title,
+                $order->title.' ('.$order->locationLabel().')',
+                $order,
+            );
+        });
+    }
+
     public function booking()
     {
         return $this->belongsTo(Booking::class);
@@ -49,6 +74,16 @@ class WorkOrder extends Model
     public function roomUnit()
     {
         return $this->belongsTo(RoomUnit::class);
+    }
+
+    public function asset()
+    {
+        return $this->belongsTo(Asset::class);
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(WorkOrderAttachment::class)->latest('id');
     }
 
     public function assignedTo()
@@ -95,6 +130,52 @@ class WorkOrder extends Model
         return $this->update(['status' => self::DONE, 'completed_at' => now()]);
     }
 
+    /** Bump the order up one priority level (e.g. a technician flags it worse than first reported). No-op once already urgent. */
+    public function escalate(): bool
+    {
+        $levels = self::PRIORITIES; // low, medium, high, urgent
+        $index = array_search($this->priority, $levels, true);
+        if ($index === false || $index >= count($levels) - 1) {
+            return false;
+        }
+
+        return $this->update(['priority' => $levels[$index + 1]]);
+    }
+
+    /**
+     * A manual override for the desk to jump the order straight to a given
+     * status — the accept/start/complete chain covers the common path, but a
+     * technician sometimes needs to correct a mis-tap without walking back
+     * through every step.
+     */
+    public function setStatus(string $status): bool
+    {
+        if (! in_array($status, [self::NEW, self::ACCEPTED, self::IN_PROGRESS, self::DONE], true)) {
+            return false;
+        }
+
+        $timestamps = match ($status) {
+            self::ACCEPTED => ['accepted_at' => $this->accepted_at ?? now()],
+            self::IN_PROGRESS => ['started_at' => $this->started_at ?? now()],
+            self::DONE => ['completed_at' => $this->completed_at ?? now()],
+            default => [],
+        };
+
+        return $this->update(['status' => $status, ...$timestamps]);
+    }
+
+    /** The deadline an open order needs resolving by, per its priority's SLA. */
+    public function slaDueAt(): Carbon
+    {
+        return $this->created_at->copy()->addHours(self::SLA_HOURS[$this->priority] ?? self::SLA_HOURS['medium']);
+    }
+
+    /** Still open, and past its priority's SLA deadline. */
+    public function isSlaBreached(): bool
+    {
+        return $this->isOpen() && $this->slaDueAt()->isPast();
+    }
+
     public function statusLabel(): string
     {
         return match ($this->status) {
@@ -132,19 +213,35 @@ class WorkOrder extends Model
         };
     }
 
+    /** Where this order points at — a room, a named asset, or hotel-wide. */
+    public function locationLabel(): string
+    {
+        $unit = $this->relationLoaded('roomUnit') ? $this->roomUnit : $this->roomUnit()->first();
+        if ($unit?->number) {
+            return 'Room '.$unit->number;
+        }
+
+        $asset = $this->relationLoaded('asset') ? $this->asset : $this->asset()->first();
+
+        return $asset?->name ?? $this->asset_label ?: 'Hotel-wide';
+    }
+
     /** The payload the maintenance tablet renders on the Work Orders screen. */
     public function toMaintenanceArray(): array
     {
         $unit = $this->relationLoaded('roomUnit') ? $this->roomUnit : $this->roomUnit()->first();
         $technician = $this->relationLoaded('assignedTo') ? $this->assignedTo : $this->assignedTo()->first();
+        $asset = $this->relationLoaded('asset') ? $this->asset : $this->asset()->first();
 
         return [
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
             'room_number' => $unit?->number,
-            'asset_label' => $this->asset_label,
-            'location_label' => $unit?->number ? 'Room '.$unit->number : ($this->asset_label ?: 'Hotel-wide'),
+            'asset_id' => $this->asset_id,
+            'asset_label' => $asset?->name ?? $this->asset_label,
+            'asset_category' => $asset?->category,
+            'location_label' => $this->locationLabel(),
             'priority' => $this->priority,
             'priority_label' => $this->priorityLabel(),
             'status' => $this->status,
@@ -152,6 +249,18 @@ class WorkOrder extends Model
             'reported_by' => $this->reported_by,
             'assigned_to_name' => $technician?->name,
             'created_label' => optional($this->created_at)->diffForHumans(),
+            'sla_breached' => $this->isSlaBreached(),
+        ];
+    }
+
+    /** The Work Order detail screen: everything in {@see toMaintenanceArray()} plus its attachments. */
+    public function toMaintenanceDetailArray(): array
+    {
+        $attachments = $this->relationLoaded('attachments') ? $this->attachments : $this->attachments()->get();
+
+        return [
+            ...$this->toMaintenanceArray(),
+            'attachments' => $attachments->map->toMaintenanceArray()->values(),
         ];
     }
 

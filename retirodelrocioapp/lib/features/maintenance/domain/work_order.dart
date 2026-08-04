@@ -10,6 +10,7 @@ class WorkOrder {
     this.description,
     this.roomNumber,
     this.assetLabel,
+    this.assetCategory,
     required this.locationLabel,
     required this.priority,
     required this.priorityLabel,
@@ -18,6 +19,8 @@ class WorkOrder {
     this.reportedBy,
     this.assignedToName,
     this.createdLabel,
+    this.attachments = const [],
+    this.slaBreached = false,
   });
 
   final int id;
@@ -25,6 +28,7 @@ class WorkOrder {
   final String? description;
   final String? roomNumber;
   final String? assetLabel;
+  final String? assetCategory;
   final String locationLabel;
   final String priority;
   final String priorityLabel;
@@ -33,6 +37,11 @@ class WorkOrder {
   final String? reportedBy;
   final String? assignedToName;
   final String? createdLabel;
+
+  /// Populated only on the work order detail response.
+  final List<WorkOrderAttachment> attachments;
+
+  final bool slaBreached;
 
   bool get isNew => status == 'new';
   bool get isAccepted => status == 'accepted';
@@ -45,6 +54,7 @@ class WorkOrder {
     description: json['description'] as String?,
     roomNumber: json['room_number'] as String?,
     assetLabel: json['asset_label'] as String?,
+    assetCategory: json['asset_category'] as String?,
     locationLabel: json['location_label'] as String? ?? 'Hotel-wide',
     priority: json['priority'] as String? ?? 'medium',
     priorityLabel: json['priority_label'] as String? ?? 'Medium',
@@ -52,6 +62,38 @@ class WorkOrder {
     statusLabel: json['status_label'] as String? ?? 'New',
     reportedBy: json['reported_by'] as String?,
     assignedToName: json['assigned_to_name'] as String?,
+    createdLabel: json['created_label'] as String?,
+    attachments: ((json['attachments'] as List?) ?? const [])
+        .map((a) => WorkOrderAttachment.fromJson((a as Map).cast()))
+        .toList(),
+    slaBreached: json['sla_breached'] as bool? ?? false,
+  );
+}
+
+/// A photo or video a technician attached to a work order.
+@immutable
+class WorkOrderAttachment {
+  const WorkOrderAttachment({
+    required this.id,
+    required this.type,
+    required this.url,
+    this.uploadedBy,
+    this.createdLabel,
+  });
+
+  final int id;
+  final String type; // photo | video
+  final String url;
+  final String? uploadedBy;
+  final String? createdLabel;
+
+  bool get isVideo => type == 'video';
+
+  factory WorkOrderAttachment.fromJson(Map<String, dynamic> json) => WorkOrderAttachment(
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    type: json['type'] as String? ?? 'photo',
+    url: json['url'] as String? ?? '',
+    uploadedBy: json['uploaded_by'] as String?,
     createdLabel: json['created_label'] as String?,
   );
 }

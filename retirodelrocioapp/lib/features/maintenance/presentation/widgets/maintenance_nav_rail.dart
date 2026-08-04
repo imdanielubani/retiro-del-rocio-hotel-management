@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/widgets/staff_nav_rail.dart';
 
 /// The maintenance tablet's navigable modules.
-enum MaintenanceNavItem { dashboard, workOrders, chat }
+enum MaintenanceNavItem { dashboard, workOrders, assets, requests, chat }
 
 /// The maintenance tablet's left navigation rail, built on the shared
 /// [StaffNavRail] shell so it stays visually identical to reception,
@@ -26,6 +26,8 @@ class MaintenanceNavRail extends StatelessWidget {
       items: [
         _entry(MaintenanceNavItem.dashboard, Icons.grid_view_rounded, 'Dashboard'),
         _entry(MaintenanceNavItem.workOrders, Icons.build_rounded, 'Work\nOrders'),
+        _entry(MaintenanceNavItem.assets, Icons.inventory_2_rounded, 'Assets'),
+        _entry(MaintenanceNavItem.requests, Icons.assignment_outlined, 'Requests'),
         _entry(MaintenanceNavItem.chat, Icons.chat_bubble_outline_rounded, 'Chat'),
       ],
     );

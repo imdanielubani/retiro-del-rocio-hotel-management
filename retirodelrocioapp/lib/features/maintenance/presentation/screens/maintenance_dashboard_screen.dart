@@ -12,8 +12,11 @@ import 'package:retirodelrocioapp/features/maintenance/application/maintenance_p
 import 'package:retirodelrocioapp/features/maintenance/data/maintenance_repository.dart';
 import 'package:retirodelrocioapp/features/maintenance/domain/maintenance_overview.dart';
 import 'package:retirodelrocioapp/features/maintenance/domain/work_order.dart';
+import 'package:retirodelrocioapp/features/maintenance/notifications/application/maintenance_notification_providers.dart';
+import 'package:retirodelrocioapp/features/maintenance/notifications/presentation/screens/maintenance_notification_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/dialogs/report_fault_dialog.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/maintenance_navigation.dart';
+import 'package:retirodelrocioapp/features/maintenance/presentation/screens/work_order_detail_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_nav_rail.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_widgets.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
@@ -55,6 +58,14 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
     await showReportFaultDialog(context, token: _token);
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MaintenanceNotificationScreen(session: widget.session, current: MaintenanceNavItem.dashboard),
+      ),
+    );
+  }
+
   Future<void> _run(WorkOrder order, Future<WorkOrder> Function() action) async {
     setState(() => _busyOrderId = order.id);
     try {
@@ -81,9 +92,14 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(maintenanceNotificationsRealtimeProvider(_token));
+    ref.watch(maintenanceNotificationChimeProvider(_token));
+    ref.watch(maintenanceSlaBreachChimeProvider(_token));
+
     final overviewAsync = ref.watch(maintenanceOverviewProvider(_token));
     final overview = overviewAsync.value ?? MaintenanceOverview.empty;
     final weather = ref.watch(weatherProvider).value;
+    final unreadNotifications = ref.watch(maintenanceUnreadNotificationsProvider(_token));
 
     return SessionGuard(
       child: Scaffold(
@@ -115,6 +131,8 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
                             brandLabel: 'MAINTENANCE',
                             weather: weather,
                             hasAlert: overview.urgent > 0,
+                            hasUnreadNotifications: unreadNotifications > 0,
+                            onNotifications: _openNotifications,
                             initialsFallback: 'MT',
                           ),
                           const SizedBox(height: 20),
@@ -214,6 +232,10 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
             Expanded(
               child: MaintenanceStatCard(label: 'COMPLETED TODAY', value: data.completedToday, accent: kMtGreen),
             ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: MaintenanceStatCard(label: 'SLA BREACHES', value: data.slaBreaches, accent: kMtRed),
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -240,6 +262,11 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
                       onAccept: () => _run(order, () => actions.accept(order.id)),
                       onStart: () => _run(order, () => actions.start(order.id)),
                       onComplete: () => _run(order, () => actions.complete(order.id)),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => WorkOrderDetailScreen(session: widget.session, orderId: order.id),
+                        ),
+                      ),
                     );
                   },
                 ),

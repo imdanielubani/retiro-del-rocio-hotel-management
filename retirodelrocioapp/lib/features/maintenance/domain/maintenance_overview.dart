@@ -10,6 +10,7 @@ class MaintenanceOverview {
     required this.inProgress,
     required this.urgent,
     required this.completedToday,
+    required this.slaBreaches,
     required this.workOrders,
   });
 
@@ -17,6 +18,7 @@ class MaintenanceOverview {
   final int inProgress;
   final int urgent;
   final int completedToday;
+  final int slaBreaches;
   final List<WorkOrder> workOrders;
 
   static const empty = MaintenanceOverview(
@@ -24,6 +26,7 @@ class MaintenanceOverview {
     inProgress: 0,
     urgent: 0,
     completedToday: 0,
+    slaBreaches: 0,
     workOrders: [],
   );
 
@@ -35,6 +38,7 @@ class MaintenanceOverview {
       inProgress: (stats['in_progress'] as num?)?.toInt() ?? 0,
       urgent: (stats['urgent'] as num?)?.toInt() ?? 0,
       completedToday: (stats['completed_today'] as num?)?.toInt() ?? 0,
+      slaBreaches: (stats['sla_breaches'] as num?)?.toInt() ?? 0,
       workOrders: ((json['work_orders'] as List?) ?? const [])
           .map((o) => WorkOrder.fromJson((o as Map).cast()))
           .toList(),

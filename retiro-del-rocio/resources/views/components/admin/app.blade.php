@@ -126,9 +126,9 @@
                 ['label' => 'Request Types', 'href' => route('admin.housekeeping.request-types'), 'active' => request()->routeIs('admin.housekeeping.request-types')],
             ]],
             ['key' => 'maintenance', 'label' => 'Maintenance', 'icon' => 'wrench', 'children' => [
-                ['label' => 'Tasks', 'href' => '#'],
-                ['label' => 'Assets', 'href' => '#'],
-                ['label' => 'Service History', 'href' => '#'],
+                ['label' => 'Tasks', 'href' => route('admin.maintenance.work-orders'), 'active' => request()->routeIs('admin.maintenance.work-orders')],
+                ['label' => 'Assets', 'href' => route('admin.maintenance.assets'), 'active' => request()->routeIs('admin.maintenance.assets')],
+                ['label' => 'Parts Requests', 'href' => route('admin.maintenance.parts-requests'), 'active' => request()->routeIs('admin.maintenance.parts-requests')],
             ]],
             ['label' => 'Security', 'icon' => 'shield', 'href' => route('admin.security.incidents'), 'active' => request()->routeIs('admin.security.incidents')],
             ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users')],

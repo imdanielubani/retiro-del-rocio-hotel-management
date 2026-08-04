@@ -26,6 +26,8 @@ class MaintenanceScaffold extends ConsumerWidget {
     this.subtitle = 'Maintenance',
     this.onBack,
     this.trailing,
+    this.hasUnreadNotifications = false,
+    this.onNotifications,
   });
 
   final StaffSession session;
@@ -41,6 +43,13 @@ class MaintenanceScaffold extends ConsumerWidget {
 
   /// An optional widget pinned to the right of the heading (e.g. an action button).
   final Widget? trailing;
+
+  /// Lights the top bar's bell badge gold when maintenance has an unread notification.
+  final bool hasUnreadNotifications;
+
+  /// Opens the maintenance Notifications screen. Left null on a screen that
+  /// doesn't wire it up yet, in which case the bell is inert.
+  final VoidCallback? onNotifications;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -71,6 +80,8 @@ class MaintenanceScaffold extends ConsumerWidget {
                             role: subtitle,
                             brandLabel: subtitle.toUpperCase(),
                             weather: weather,
+                            hasUnreadNotifications: hasUnreadNotifications,
+                            onNotifications: onNotifications,
                             initialsFallback: 'MT',
                           ),
                           const SizedBox(height: 20),

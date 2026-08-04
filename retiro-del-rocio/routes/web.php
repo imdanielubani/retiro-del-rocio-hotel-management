@@ -22,6 +22,9 @@ use App\Livewire\Admin\Housekeeping\Requests;
 use App\Livewire\Admin\Housekeeping\RequestTypes;
 use App\Livewire\Admin\Housekeeping\RoomStatus;
 use App\Livewire\Admin\Housekeeping\StaffWorkload;
+use App\Livewire\Admin\Maintenance\Assets as MaintenanceAssets;
+use App\Livewire\Admin\Maintenance\PartsRequests as MaintenancePartsRequests;
+use App\Livewire\Admin\Maintenance\WorkOrders as MaintenanceWorkOrders;
 use App\Livewire\Admin\Restaurant\Lounge;
 use App\Livewire\Admin\Restaurant\Reservations;
 use App\Livewire\Admin\Restaurant\Tables;
@@ -1163,6 +1166,12 @@ $adminRoutes->group(function () {
         Route::get('housekeeping/room-status', RoomStatus::class)->name('housekeeping.room-status');
         Route::get('housekeeping/lost-found', LostFound::class)->name('housekeeping.lost-found');
         Route::get('housekeeping/staff-workload', StaffWorkload::class)->name('housekeeping.staff-workload');
+
+        // Maintenance — the admin mirror of the maintenance tablet's own
+        // Work Orders board, Assets tab and Requests (parts) tab.
+        Route::get('maintenance/work-orders', MaintenanceWorkOrders::class)->name('maintenance.work-orders');
+        Route::get('maintenance/assets', MaintenanceAssets::class)->name('maintenance.assets');
+        Route::get('maintenance/parts-requests', MaintenancePartsRequests::class)->name('maintenance.parts-requests');
 
         // Gym & Fitness — plans + memberships
         Route::get('gym/plans', Plans::class)->name('gym.plans');
