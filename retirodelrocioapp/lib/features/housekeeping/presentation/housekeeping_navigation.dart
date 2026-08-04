@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
+import 'package:retirodelrocioapp/features/housekeeping/lost_found/presentation/screens/housekeeping_lost_found_screen.dart';
+import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_inspection_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_requests_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_rooms_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
@@ -63,6 +65,8 @@ class HousekeepingNavigation {
   static Widget? _pageFor(HousekeepingNavItem item, StaffSession session) => switch (item) {
     HousekeepingNavItem.rooms => HousekeepingRoomsScreen(session: session),
     HousekeepingNavItem.requests => HousekeepingRequestsScreen(session: session),
+    HousekeepingNavItem.inspection => HousekeepingInspectionScreen(session: session),
+    HousekeepingNavItem.lostFound => HousekeepingLostFoundScreen(session: session),
     _ => null,
   };
 
@@ -79,6 +83,8 @@ class HousekeepingNavigation {
     HousekeepingNavItem.dashboard => 'Dashboard',
     HousekeepingNavItem.rooms => 'Rooms',
     HousekeepingNavItem.requests => 'Requests',
+    HousekeepingNavItem.inspection => 'Inspection',
+    HousekeepingNavItem.lostFound => 'Lost & Found',
     HousekeepingNavItem.chat => 'Chat',
   };
 }

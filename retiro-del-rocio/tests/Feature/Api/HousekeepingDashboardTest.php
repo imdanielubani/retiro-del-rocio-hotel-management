@@ -203,6 +203,59 @@ class HousekeepingDashboardTest extends TestCase
             ->assertJsonPath('data.0.room_name', 'Alba Suite');
     }
 
+    public function test_a_request_shows_which_guest_it_is_about(): void
+    {
+        $unit = $this->unit();
+        $booking = Booking::create([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Grace Hopper',
+            'room_id' => $unit->room_id,
+            'room_name' => 'Alba Suite',
+            'room_unit_id' => $unit->id,
+            'check_in' => now()->subDay()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'nights' => 2,
+            'guests' => 1,
+            'amount' => 300000,
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDay(),
+        ]);
+        HousekeepingRequest::create(['room_unit_id' => $unit->id, 'booking_id' => $booking->id, 'type' => 'towels']);
+
+        $this->withToken($this->housekeeperToken())
+            ->getJson('/api/v1/housekeeping/requests')
+            ->assertOk()
+            ->assertJsonPath('data.0.guest_name', 'Grace Hopper');
+    }
+
+    public function test_the_type_filter_narrows_requests_to_checkout_inspection_only(): void
+    {
+        $unit = $this->unit();
+        HousekeepingRequest::create(['room_unit_id' => $unit->id, 'type' => 'towels']);
+        $inspection = HousekeepingRequest::create([
+            'room_unit_id' => $unit->id,
+            'type' => HousekeepingRequest::CHECKOUT_INSPECTION,
+        ]);
+
+        $this->withToken($this->housekeeperToken())
+            ->getJson('/api/v1/housekeeping/requests?type=checkout_inspection')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $inspection->id)
+            ->assertJsonPath('data.0.type_label', 'Checkout Inspection');
+    }
+
+    public function test_an_unrecognised_type_filter_is_ignored(): void
+    {
+        $unit = $this->unit();
+        HousekeepingRequest::create(['room_unit_id' => $unit->id, 'type' => 'towels']);
+
+        $this->withToken($this->housekeeperToken())
+            ->getJson('/api/v1/housekeeping/requests?type=not-a-real-type')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
     public function test_a_request_can_be_created_and_then_completed(): void
     {
         $unit = $this->unit();

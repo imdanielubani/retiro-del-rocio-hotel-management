@@ -1,19 +1,48 @@
 import 'package:flutter/material.dart';
 
-/// A housekeeping ask a guest can raise — mirrors the backend's
-/// `HousekeepingRequest::TYPES`.
-enum HousekeepingRequestType {
-  towels('towels', 'Towels', Icons.dry_cleaning_rounded),
-  amenities('amenities', 'Amenities', Icons.soap_rounded),
-  dnd('dnd', 'Do Not Disturb', Icons.do_not_disturb_on_rounded),
-  makeUpRoom('make_up_room', 'Make Up Room', Icons.cleaning_services_rounded),
-  other('other', 'Other', Icons.more_horiz_rounded);
+/// Maps the admin catalog's icon keys (`HousekeepingRequestType::ICONS` on
+/// the backend) to the Material icon this app renders for it. Any key the
+/// admin catalog returns that isn't in this map — or none at all, if the
+/// fetch fails — falls back to the generic cleaning icon.
+const Map<String, IconData> _housekeepingIconsByKey = {
+  'dry_cleaning': Icons.dry_cleaning_rounded,
+  'soap': Icons.soap_rounded,
+  'do_not_disturb_on': Icons.do_not_disturb_on_rounded,
+  'cleaning_services': Icons.cleaning_services_rounded,
+  'more_horiz': Icons.more_horiz_rounded,
+  'bed': Icons.bed_rounded,
+  'iron': Icons.iron_rounded,
+  'local_laundry_service': Icons.local_laundry_service_rounded,
+  'bathtub': Icons.bathtub_rounded,
+  'water_drop': Icons.water_drop_rounded,
+  'coffee': Icons.coffee_rounded,
+  'checkroom': Icons.checkroom_rounded,
+  'fact_check': Icons.fact_check_rounded,
+  'room_service': Icons.room_service_rounded,
+};
 
-  const HousekeepingRequestType(this.value, this.label, this.icon);
+/// A housekeeping ask a guest can raise — fetched from the admin-managed
+/// catalog (`GET /service-requests/types`), so a new type an admin adds
+/// shows up here without an app update.
+@immutable
+class HousekeepingRequestTypeOption {
+  const HousekeepingRequestTypeOption({required this.key, required this.label, required this.icon});
 
-  final String value;
+  final String key;
   final String label;
   final IconData icon;
+
+  factory HousekeepingRequestTypeOption.fromJson(Map<String, dynamic> json) => HousekeepingRequestTypeOption(
+    key: json['key'] as String? ?? 'other',
+    label: json['label'] as String? ?? 'Other',
+    icon: _housekeepingIconsByKey[json['icon'] as String?] ?? Icons.cleaning_services_rounded,
+  );
+
+  @override
+  bool operator ==(Object other) => other is HousekeepingRequestTypeOption && other.key == key;
+
+  @override
+  int get hashCode => key.hashCode;
 }
 
 /// How urgent a maintenance fault is — mirrors `WorkOrder::PRIORITIES`.

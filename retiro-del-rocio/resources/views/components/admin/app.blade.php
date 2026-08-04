@@ -63,7 +63,7 @@
         ]],
         ['label' => 'Guest Management', 'items' => [
             ['label' => 'Guests', 'icon' => 'guests', 'href' => route('admin.guests.index'), 'active' => request()->routeIs('admin.guests.*')],
-            ['label' => 'Service Requests', 'icon' => 'requests', 'href' => '#'],
+            ['label' => 'Service Requests', 'icon' => 'requests', 'href' => route('admin.housekeeping.requests'), 'active' => request()->routeIs('admin.housekeeping.requests')],
             ['label' => 'Stay History', 'icon' => 'history', 'href' => route('admin.stay-history.index'), 'active' => request()->routeIs('admin.stay-history.*')],
         ]],
         ['label' => 'Property Management', 'items' => [
@@ -90,10 +90,6 @@
         ['label' => 'Inventory Management', 'items' => [
             ['label' => 'Kitchen Inventory', 'icon' => 'box', 'href' => '#'],
             ['label' => 'Bar Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Spa Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Cinema Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Housekeeping Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Suppliers', 'icon' => 'truck', 'href' => '#'],
         ]],
         ['label' => 'Facility Management', 'items' => [
             ['key' => 'spa', 'label' => 'Spa & Wellness', 'icon' => 'spa', 'children' => [
@@ -123,7 +119,12 @@
             ['label' => 'Access Logs', 'icon' => 'list', 'href' => '#'],
         ]],
         ['label' => 'Staff Management', 'items' => [
-            ['label' => 'Housekeeping', 'icon' => 'cleaning', 'href' => '#'],
+            ['key' => 'housekeeping', 'label' => 'Housekeeping', 'icon' => 'cleaning', 'children' => [
+                ['label' => 'Room Status', 'href' => route('admin.housekeeping.room-status'), 'active' => request()->routeIs('admin.housekeeping.room-status')],
+                ['label' => 'Lost & Found', 'href' => route('admin.housekeeping.lost-found'), 'active' => request()->routeIs('admin.housekeeping.lost-found')],
+                ['label' => 'Staff Workload', 'href' => route('admin.housekeeping.staff-workload'), 'active' => request()->routeIs('admin.housekeeping.staff-workload')],
+                ['label' => 'Request Types', 'href' => route('admin.housekeeping.request-types'), 'active' => request()->routeIs('admin.housekeeping.request-types')],
+            ]],
             ['key' => 'maintenance', 'label' => 'Maintenance', 'icon' => 'wrench', 'children' => [
                 ['label' => 'Tasks', 'href' => '#'],
                 ['label' => 'Assets', 'href' => '#'],
@@ -131,7 +132,6 @@
             ]],
             ['label' => 'Security', 'icon' => 'shield', 'href' => route('admin.security.incidents'), 'active' => request()->routeIs('admin.security.incidents')],
             ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users')],
-            ['label' => 'Departments', 'icon' => 'dashboard', 'href' => '#'],
         ]],
         ['label' => 'Device Management', 'items' => [
             ['label' => 'Tablets', 'icon' => 'tablet', 'href' => route('admin.devices.tablets'), 'active' => request()->routeIs('admin.devices.tablets') || request()->routeIs('admin.devices.dashboard') || request()->routeIs('admin.devices.show')],
@@ -139,7 +139,6 @@
         ]],
         ['label' => 'Access Control', 'items' => [
             ['label' => 'Gate Pass', 'icon' => 'lock', 'href' => route('admin.ttlock.locks'), 'active' => request()->routeIs('admin.ttlock.*')],
-            ['label' => 'RFID Cards', 'icon' => 'card', 'href' => '#'],
             ['label' => 'Visitor Access', 'icon' => 'door', 'href' => route('admin.security.visitor-access'), 'active' => request()->routeIs('admin.security.visitor-access')],
             ['label' => 'Access Logs', 'icon' => 'list', 'href' => '#'],
         ]],

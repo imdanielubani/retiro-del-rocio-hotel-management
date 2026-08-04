@@ -236,7 +236,7 @@ Global. Success: room marked clean/inspected. Empty: no assigned rooms.
 # 6. Maintenance Tablet
 
 ### Main Navigation
-Tabs: **Work Orders · Assets · Requests · Schedule · More**.
+Tabs: **Work Orders · Assets · Requests**.
 
 ### Screens
 - Work-order board (New → Accepted → In-progress → Done)

@@ -3,19 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
-import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
-import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/maintenance/application/maintenance_providers.dart';
 import 'package:retirodelrocioapp/features/maintenance/data/maintenance_repository.dart';
 import 'package:retirodelrocioapp/features/maintenance/domain/work_order.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/dialogs/report_fault_dialog.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/maintenance_navigation.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_nav_rail.dart';
+import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_scaffold.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_widgets.dart';
-import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 enum _StatusFilter { all, newOrder, accepted, inProgress, done }
 
@@ -94,112 +92,65 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(maintenanceWorkOrdersProvider(_token));
     final orders = ordersAsync.value ?? const <WorkOrder>[];
-    final weather = ref.watch(weatherProvider).value;
 
-    return SessionGuard(
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
-            const ColoredBox(color: Color(0xF2000000)),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    MaintenanceNavRail(
-                      active: MaintenanceNavItem.workOrders,
-                      onSelect: _onNav,
-                      onLogout: _logout,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          StaffTopBar(
-                            name: widget.session.name,
-                            role: 'Maintenance',
-                            brandLabel: 'MAINTENANCE',
-                            weather: weather,
-                            initialsFallback: 'MT',
-                          ),
-                          const SizedBox(height: 20),
-                          _header(),
-                          const SizedBox(height: 16),
-                          _filterChips(),
-                          const SizedBox(height: 16),
-                          Expanded(
-                            child: ordersAsync.when(
-                              data: (data) => _list(data),
-                              loading: () => orders.isNotEmpty
-                                  ? _list(orders)
-                                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-                              error: (_, _) => orders.isNotEmpty
-                                  ? _list(orders)
-                                  : Center(
-                                      child: TextButton(
-                                        onPressed: () => ref.invalidate(maintenanceWorkOrdersProvider(_token)),
-                                        child: const Text(
-                                          'Could not load work orders. Retry',
-                                          style: TextStyle(color: AppColors.gold),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
+    return MaintenanceScaffold(
+      session: widget.session,
+      active: MaintenanceNavItem.workOrders,
+      onNav: _onNav,
+      onLogout: _logout,
+      title: 'Work Orders',
+      trailing: _reportButton(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _filterChips(),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ordersAsync.when(
+              data: (data) => _list(data),
+              loading: () => orders.isNotEmpty
+                  ? _list(orders)
+                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              error: (_, _) => orders.isNotEmpty
+                  ? _list(orders)
+                  : Center(
+                      child: TextButton(
+                        onPressed: () => ref.invalidate(maintenanceWorkOrdersProvider(_token)),
+                        child: const Text(
+                          'Could not load work orders. Retry',
+                          style: TextStyle(color: AppColors.gold),
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _header() {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-        ),
-        Expanded(
-          child: Text(
-            'Work Orders',
-            style: AppTypography.style(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700),
-          ),
-        ),
-        Material(
-          color: AppColors.gold,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: _reportFault,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.add_rounded, size: 16, color: Colors.black),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Report Fault',
-                    style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
-                ],
+  Widget _reportButton() {
+    return Material(
+      color: AppColors.gold,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: _reportFault,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add_rounded, size: 16, color: Colors.black),
+              const SizedBox(width: 6),
+              Text(
+                'Report Fault',
+                style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
               ),
-            ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 

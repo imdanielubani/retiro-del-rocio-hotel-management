@@ -9,6 +9,7 @@ import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_gues
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_overview.dart';
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_room.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/application/housekeeping_notification_providers.dart';
+import 'package:retirodelrocioapp/features/maintenance/domain/work_order.dart';
 
 final housekeepingRepositoryProvider = Provider<HousekeepingRepository>(
   (ref) => HousekeepingRepository(),
@@ -51,6 +52,22 @@ final housekeepingRequestsProvider = FutureProvider.family<List<HousekeepingGues
   return repo.requests(token);
 });
 
+/// Just the pre-checkout inspection requests reception has raised, keyed by
+/// the housekeeper's token — the dedicated Inspection screen's own list, kept
+/// separate from [housekeepingRequestsProvider] so a busy day of towel/DND
+/// asks can never push an inspection off the general Requests feed.
+final housekeepingInspectionRequestsProvider = FutureProvider.family<List<HousekeepingGuestRequest>, String>((
+  ref,
+  token,
+) async {
+  final repo = ref.watch(housekeepingRepositoryProvider);
+
+  final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+  ref.onDispose(timer.cancel);
+
+  return repo.requests(token, type: 'checkout_inspection');
+});
+
 /// Subscribes the tablet to the hotel-wide `housekeeping` channel and
 /// refreshes the notification feed, the Requests list and the dashboard the
 /// instant a new one lands (today, only "a guest raised a housekeeping
@@ -71,6 +88,7 @@ final housekeepingNotificationsRealtimeProvider = FutureProvider.family<void, St
     onNotification: () {
       ref.invalidate(housekeepingNotificationsProvider(token));
       ref.invalidate(housekeepingRequestsProvider(token));
+      ref.invalidate(housekeepingInspectionRequestsProvider(token));
       ref.invalidate(housekeepingOverviewProvider(token));
     },
   );
@@ -109,8 +127,24 @@ class HousekeepingActions {
   Future<HousekeepingGuestRequest> completeRequest(int id) async {
     final request = await _ref.read(housekeepingRepositoryProvider).completeRequest(_token, id);
     _ref.invalidate(housekeepingRequestsProvider(_token));
+    _ref.invalidate(housekeepingInspectionRequestsProvider(_token));
     _ref.invalidate(housekeepingOverviewProvider(_token));
     return request;
+  }
+
+  /// Report a fault noticed while turning over a room — routed straight to
+  /// maintenance's own Work Orders board. Nothing on the housekeeping
+  /// tablet's own lists changes as a result, so no invalidation is needed
+  /// here.
+  Future<WorkOrder> reportFault({
+    required int roomUnitId,
+    required String title,
+    String? description,
+    String priority = 'medium',
+  }) {
+    return _ref
+        .read(housekeepingRepositoryProvider)
+        .reportFault(_token, roomUnitId: roomUnitId, title: title, description: description, priority: priority);
   }
 }
 

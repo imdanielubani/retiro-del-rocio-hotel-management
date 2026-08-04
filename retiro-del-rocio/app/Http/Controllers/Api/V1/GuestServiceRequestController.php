@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Device;
 use App\Models\HousekeepingNotification;
 use App\Models\HousekeepingRequest;
+use App\Models\HousekeepingRequestType;
 use App\Models\ReceptionNotification;
 use App\Models\WorkOrder;
 use Illuminate\Http\JsonResponse;
@@ -53,6 +54,21 @@ class GuestServiceRequestController extends Controller
             ->values();
 
         return response()->json(['data' => $all]);
+    }
+
+    /**
+     * GET /service-requests/types — the housekeeping request types the guest
+     * may pick from, admin-managed so a new ask can be added without a
+     * deploy. Ordered for direct rendering; the reception-raised checkout
+     * inspection never appears here.
+     */
+    public function types(Request $request): JsonResponse
+    {
+        $this->guestDevice($request);
+
+        $types = HousekeepingRequestType::guestVisible()->ordered()->get();
+
+        return response()->json(['data' => $types->map->toGuestArray()->values()]);
     }
 
     /**
@@ -113,7 +129,7 @@ class GuestServiceRequestController extends Controller
     private function createHousekeepingRequest(Request $request, Device $device, Booking $booking): HousekeepingRequest
     {
         $data = $request->validate([
-            'type' => ['required', 'in:'.implode(',', HousekeepingRequest::TYPES)],
+            'type' => ['required', 'in:'.implode(',', HousekeepingRequest::guestVisibleTypeKeys())],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 

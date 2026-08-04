@@ -468,8 +468,6 @@ class Booking extends Model
      */
     public function toReceptionDepartureArray(): array
     {
-        $overdueDays = $this->overdueDays();
-
         return [
             'id' => $this->id,
             'reference' => $this->bookingCode(),
@@ -479,10 +477,8 @@ class Booking extends Model
             'status' => $this->status,
             'status_label' => $this->statusLabel(),
             'is_due_today' => $this->status === 'checked_in' && optional($this->check_out)->isToday() === true,
-            'is_overdue' => $overdueDays > 0,
-            'overdue_label' => $overdueDays > 0
-                ? 'Overdue by '.$overdueDays.' '.Str::plural('day', $overdueDays)
-                : null,
+            'is_overdue' => $this->isOverdueForCheckout(),
+            'overdue_label' => $this->overdueLabel(),
         ];
     }
 
@@ -493,28 +489,62 @@ class Booking extends Model
      */
     public function toReceptionAlertArray(): array
     {
-        $overdueDays = $this->overdueDays();
-
         return [
             'id' => $this->id,
             'type' => 'overdue_departure',
             'title' => 'Overdue Checkout — '.$this->customer_name.' ('.$this->receptionRoomLabel().')',
-            'time_label' => 'Overdue by '.$overdueDays.' '.Str::plural('day', $overdueDays),
-            'severity' => $overdueDays >= 2 ? 'high' : 'medium',
+            'time_label' => $this->overdueLabel(),
+            'severity' => $this->overdueDays() >= 2 ? 'high' : 'medium',
         ];
     }
 
     /**
-     * Days past checkout a still-checked-in guest is, or 0 when they are not
-     * overdue (checked out already, or their checkout date is today or later).
+     * Whether a still-checked-in guest is past their departure deadline —
+     * their checkout date has already gone, or it's today but past the
+     * hotel's configured checkout time (see {@see HotelSettings::checkOutTime()}).
+     * A guest merely due out later today is not overdue yet.
+     */
+    public function isOverdueForCheckout(): bool
+    {
+        if ($this->status !== 'checked_in' || ! $this->check_out) {
+            return false;
+        }
+
+        $deadline = HotelSettings::departureFor($this->check_out);
+
+        return $deadline !== null && Carbon::now()->greaterThan($deadline);
+    }
+
+    /**
+     * Full days past the checkout date a still-checked-in guest is. Can be 0
+     * while {@see isOverdueForCheckout()} is still true — overdue by hours,
+     * not yet a full day past their checkout date.
      */
     public function overdueDays(): int
     {
-        if ($this->status !== 'checked_in' || ! $this->check_out) {
+        if (! $this->isOverdueForCheckout()) {
             return 0;
         }
 
         return max(0, (int) $this->check_out->diffInDays(Carbon::today(), false));
+    }
+
+    /**
+     * "Overdue by 2 days" once a full day has passed, "Overdue since 12:00 PM"
+     * for a guest still within their checkout day but past the deadline hour,
+     * or null when they are not overdue at all.
+     */
+    public function overdueLabel(): ?string
+    {
+        if (! $this->isOverdueForCheckout()) {
+            return null;
+        }
+
+        $days = $this->overdueDays();
+
+        return $days > 0
+            ? 'Overdue by '.$days.' '.Str::plural('day', $days)
+            : 'Overdue since '.HotelSettings::checkOutLabel();
     }
 
     /** "Brisa Residence · Room 201" — the room type plus the assigned unit. */

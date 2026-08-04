@@ -90,7 +90,7 @@ class ReceptionController extends Controller
         // there's no extra query. SOS always sorts first — a real emergency
         // outranks an operational reminder.
         $overdueBookings = $departures->filter(
-            fn (Booking $booking) => $booking->status === 'checked_in' && $booking->overdueDays() > 0
+            fn (Booking $booking) => $booking->isOverdueForCheckout()
         );
 
         // Guest-raised housekeeping asks and maintenance faults belong on the
@@ -138,11 +138,12 @@ class ReceptionController extends Controller
                 // Visitors admitted at the gate today (verified passes).
                 'visitor_pass_check_ins' => VisitorPass::where('status', VisitorPass::VERIFIED)
                     ->whereDate('verified_at', $today)->count(),
-                // Still checked in with a checkout date already in the past —
-                // strictly before today, so a guest merely due out today isn't
-                // counted as overdue yet.
-                'overdue_departures' => Booking::where('status', 'checked_in')
-                    ->whereDate('check_out', '<', $today)->count(),
+                // Still checked in past their departure deadline — a full day
+                // gone, or just past the hotel's checkout time on their own
+                // checkout day. Reused off $overdueBookings (already the same
+                // rows, same rule) so the count can never drift from what the
+                // Alerts panel actually lists.
+                'overdue_departures' => $overdueBookings->count(),
             ],
             'arrivals' => $arrivals->map->toReceptionArrivalArray()->values(),
             'departures' => $departures->map->toReceptionDepartureArray()->values(),

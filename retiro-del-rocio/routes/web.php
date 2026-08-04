@@ -17,6 +17,11 @@ use App\Livewire\Admin\Devices\SmartTvs;
 use App\Livewire\Admin\Devices\Tablets;
 use App\Livewire\Admin\Gym\Memberships;
 use App\Livewire\Admin\Gym\Plans;
+use App\Livewire\Admin\Housekeeping\LostFound;
+use App\Livewire\Admin\Housekeeping\Requests;
+use App\Livewire\Admin\Housekeeping\RequestTypes;
+use App\Livewire\Admin\Housekeeping\RoomStatus;
+use App\Livewire\Admin\Housekeeping\StaffWorkload;
 use App\Livewire\Admin\Restaurant\Lounge;
 use App\Livewire\Admin\Restaurant\Reservations;
 use App\Livewire\Admin\Restaurant\Tables;
@@ -1149,6 +1154,15 @@ $adminRoutes->group(function () {
         // Spa & Wellness — services fleet + reservations
         Route::get('spa-wellness/services', Services::class)->name('spa.services');
         Route::get('spa-wellness/bookings', App\Livewire\Admin\Spa\Bookings::class)->name('spa.bookings');
+
+        // Housekeeping — every guest housekeeping/maintenance service request
+        // (the admin mirror of the guest tablet's own Service Request
+        // history) + the admin-managed catalog behind its request-type tiles.
+        Route::get('housekeeping/requests', Requests::class)->name('housekeeping.requests');
+        Route::get('housekeeping/request-types', RequestTypes::class)->name('housekeeping.request-types');
+        Route::get('housekeeping/room-status', RoomStatus::class)->name('housekeeping.room-status');
+        Route::get('housekeeping/lost-found', LostFound::class)->name('housekeeping.lost-found');
+        Route::get('housekeeping/staff-workload', StaffWorkload::class)->name('housekeeping.staff-workload');
 
         // Gym & Fitness — plans + memberships
         Route::get('gym/plans', Plans::class)->name('gym.plans');

@@ -52,6 +52,27 @@ class ServiceRequestRepository {
     }
   }
 
+  /// The admin-managed catalog of housekeeping request types this guest can
+  /// pick from. Failures fall back to an empty list — the housekeeping form
+  /// still renders, just without any tiles to choose from.
+  Future<List<HousekeepingRequestTypeOption>> types(String deviceToken) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('service-requests/types')),
+        options: _auth(deviceToken),
+      );
+      final data = response.data?['data'];
+      if (data is! List) return const [];
+      return data
+          .whereType<Map>()
+          .map((e) => HousekeepingRequestTypeOption.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    } catch (error) {
+      debugPrint('ServiceRequestRepository: types failed — $error');
+      return const [];
+    }
+  }
+
   /// Raise a housekeeping ask against this room.
   Future<GuestServiceRequest> createHousekeeping(
     String deviceToken, {

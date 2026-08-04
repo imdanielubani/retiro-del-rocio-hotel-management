@@ -5,6 +5,7 @@ import 'package:retirodelrocioapp/core/error/messaged_exception.dart';
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_guest_request.dart';
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_overview.dart';
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_room.dart';
+import 'package:retirodelrocioapp/features/maintenance/domain/work_order.dart';
 
 /// Raised when a housekeeping action could not be completed, carrying a
 /// user-facing [message].
@@ -90,13 +91,17 @@ class HousekeepingRepository {
   }
 
   /// Guest requests, newest pending first. Optional [status] narrows to
-  /// pending or completed.
-  Future<List<HousekeepingGuestRequest>> requests(String token, {String? status}) async {
+  /// pending or completed; [type] narrows to one request type (e.g.
+  /// `checkout_inspection` for the dedicated Inspection screen).
+  Future<List<HousekeepingGuestRequest>> requests(String token, {String? status, String? type}) async {
     try {
+      final query = {
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (type != null && type.isNotEmpty) 'type': type,
+      };
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('housekeeping/requests')).replace(
-          queryParameters: (status != null && status.isNotEmpty) ? {'status': status} : null,
-        ),
+        Uri.parse(ApiConfig.endpoint('housekeeping/requests'))
+            .replace(queryParameters: query.isEmpty ? null : query),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
@@ -146,6 +151,35 @@ class HousekeepingRepository {
     } catch (error) {
       debugPrint('HousekeepingRepository: completeRequest failed — $error');
       throw HousekeepingException('Could not update this request.');
+    }
+  }
+
+  /// Report a fault noticed while turning over a room — routed straight to
+  /// maintenance's own Work Orders board.
+  Future<WorkOrder> reportFault(
+    String token, {
+    required int roomUnitId,
+    required String title,
+    String? description,
+    String priority = 'medium',
+  }) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('housekeeping/work-orders')),
+        data: {
+          'room_unit_id': roomUnitId,
+          'title': title,
+          if (description != null && description.isNotEmpty) 'description': description,
+          'priority': priority,
+        },
+        options: _auth(token),
+      );
+      return WorkOrder.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+    } on DioException catch (error) {
+      throw HousekeepingException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('HousekeepingRepository: reportFault failed — $error');
+      throw HousekeepingException('Could not report this fault.');
     }
   }
 

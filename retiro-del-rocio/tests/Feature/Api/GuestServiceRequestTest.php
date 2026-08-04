@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\DeviceType;
 use App\Models\HousekeepingNotification;
 use App\Models\HousekeepingRequest;
+use App\Models\HousekeepingRequestType;
 use App\Models\ReceptionNotification;
 use App\Models\Room;
 use App\Models\RoomUnit;
@@ -155,6 +156,52 @@ class GuestServiceRequestTest extends TestCase
             ->postJson('/api/v1/service-requests', ['category' => 'housekeeping', 'type' => 'champagne'])
             ->assertStatus(422)
             ->assertJsonValidationErrorFor('type');
+    }
+
+    public function test_the_reception_raised_checkout_inspection_type_cannot_be_self_submitted(): void
+    {
+        // The catalog seeds this type as guest_visible=false — a guest must
+        // never be able to POST it themselves and short-circuit reception's
+        // own inspection gate.
+        $this->withToken($this->token)
+            ->postJson('/api/v1/service-requests', [
+                'category' => 'housekeeping',
+                'type' => HousekeepingRequest::CHECKOUT_INSPECTION,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrorFor('type');
+    }
+
+    public function test_the_types_endpoint_lists_only_guest_visible_active_types_in_order(): void
+    {
+        HousekeepingRequestType::where('key', 'other')->update(['is_active' => false]);
+
+        $data = $this->withToken($this->token)
+            ->getJson('/api/v1/service-requests/types')
+            ->assertOk()
+            ->json('data');
+
+        $keys = array_column($data, 'key');
+        $this->assertSame(['towels', 'amenities', 'dnd', 'make_up_room'], $keys);
+        $this->assertNotContains('checkout_inspection', $keys, 'staff-only type must never reach the guest');
+    }
+
+    public function test_a_freshly_added_catalog_type_can_immediately_be_submitted(): void
+    {
+        HousekeepingRequestType::create([
+            'key' => 'extra_pillow',
+            'label' => 'Extra Pillow',
+            'icon' => 'bed',
+            'guest_visible' => true,
+            'is_active' => true,
+            'sort_order' => 99,
+        ]);
+        HousekeepingRequest::flushTypeCatalogCache();
+
+        $this->withToken($this->token)
+            ->postJson('/api/v1/service-requests', ['category' => 'housekeeping', 'type' => 'extra_pillow'])
+            ->assertCreated()
+            ->assertJsonPath('data.title', 'Extra Pillow');
     }
 
     public function test_a_maintenance_fault_requires_a_title(): void

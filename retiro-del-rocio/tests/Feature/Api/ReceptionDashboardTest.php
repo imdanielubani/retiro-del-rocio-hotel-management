@@ -14,6 +14,7 @@ use App\Models\VisitorPass;
 use App\Models\WorkOrder;
 use App\Services\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -39,6 +40,13 @@ class ReceptionDashboardTest extends TestCase
             'type' => 'suite',
             'price' => 150000,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     private function receptionToken(): string
@@ -125,6 +133,11 @@ class ReceptionDashboardTest extends TestCase
 
     public function test_the_overview_reports_todays_arrivals_departures_and_counters(): void
     {
+        // Frozen before the hotel's 12:00 PM checkout deadline so Grace's
+        // same-day departure isn't yet overdue — that edge case has its own
+        // dedicated test below.
+        Carbon::setTestNow(today()->setTime(9, 0));
+
         $unit = $this->unit('201', 'available');
 
         // Arriving today, not yet checked in.
@@ -354,6 +367,10 @@ class ReceptionDashboardTest extends TestCase
 
     public function test_a_guest_departing_today_is_not_flagged_overdue(): void
     {
+        // Frozen before the hotel's 12:00 PM checkout deadline — due today,
+        // but the deadline itself hasn't passed yet.
+        Carbon::setTestNow(today()->setTime(9, 0));
+
         $unit = $this->unit('205', 'occupied');
         $this->booking([
             'customer_name' => 'On Time Tade',
@@ -371,8 +388,40 @@ class ReceptionDashboardTest extends TestCase
             ->assertJsonPath('data.departures.0.is_due_today', true)
             ->assertJsonPath('data.departures.0.is_overdue', false)
             ->assertJsonPath('data.departures.0.overdue_label', null)
-            // Due today is not overdue yet — the stat must not count it.
+            // Due today but the deadline hasn't passed — the stat must not count it.
             ->assertJsonPath('data.stats.overdue_departures', 0);
+    }
+
+    public function test_a_guest_still_checked_in_past_todays_checkout_deadline_is_flagged_overdue(): void
+    {
+        // Frozen just after the hotel's 12:00 PM checkout deadline, same
+        // checkout day — no full day has passed yet, but the guest has
+        // missed the deadline and the desk needs to see that now, not
+        // tomorrow morning.
+        Carbon::setTestNow(today()->setTime(14, 0));
+
+        $unit = $this->unit('208', 'occupied');
+        $this->booking([
+            'customer_name' => 'Overdue Precious',
+            'room_unit_id' => $unit->id,
+            'check_in' => today()->subDays(2)->toDateString(),
+            'check_out' => today()->toDateString(),
+            'status' => 'checked_in',
+            'checked_in_at' => now()->subDays(2),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->getJson('/api/v1/reception/overview')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.departures')
+            ->assertJsonPath('data.departures.0.is_due_today', true)
+            ->assertJsonPath('data.departures.0.is_overdue', true)
+            ->assertJsonPath('data.departures.0.overdue_label', 'Overdue since 12:00 PM')
+            ->assertJsonPath('data.stats.overdue_departures', 1)
+            ->assertJsonCount(1, 'data.alerts')
+            ->assertJsonPath('data.alerts.0.type', 'overdue_departure')
+            ->assertJsonPath('data.alerts.0.severity', 'medium')
+            ->assertJsonPath('data.alerts.0.time_label', 'Overdue since 12:00 PM');
     }
 
     public function test_a_guest_not_due_to_leave_yet_still_appears_in_departures_as_upcoming(): void

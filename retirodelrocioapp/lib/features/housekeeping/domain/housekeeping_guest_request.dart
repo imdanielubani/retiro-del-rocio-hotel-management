@@ -9,6 +9,7 @@ class HousekeepingGuestRequest {
     required this.roomUnitId,
     this.roomNumber,
     this.roomName,
+    this.guestName,
     required this.type,
     required this.typeLabel,
     this.notes,
@@ -21,6 +22,10 @@ class HousekeepingGuestRequest {
   final int roomUnitId;
   final String? roomNumber;
   final String? roomName;
+
+  /// The guest the request was raised for, when the room has an active
+  /// booking — null for a request logged against an empty room.
+  final String? guestName;
   final String type;
   final String typeLabel;
   final String? notes;
@@ -33,6 +38,7 @@ class HousekeepingGuestRequest {
     roomUnitId: (json['room_unit_id'] as num?)?.toInt() ?? 0,
     roomNumber: json['room_number'] as String?,
     roomName: json['room_name'] as String?,
+    guestName: json['guest_name'] as String?,
     type: json['type'] as String? ?? 'other',
     typeLabel: json['type_label'] as String? ?? 'Other',
     notes: json['notes'] as String?,

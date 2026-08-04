@@ -52,7 +52,7 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
 
   _Panel _panel = _Panel.category;
   bool _busy = false;
-  HousekeepingRequestType _selectedType = HousekeepingRequestType.towels;
+  HousekeepingRequestTypeOption? _selectedType;
   MaintenancePriority _selectedPriority = MaintenancePriority.medium;
   GuestServiceRequest? _submitted;
 
@@ -84,7 +84,7 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
     _titleController.clear();
     _descriptionController.clear();
     setState(() {
-      _selectedType = HousekeepingRequestType.towels;
+      _selectedType = null;
       _selectedPriority = MaintenancePriority.medium;
       _submitted = null;
       _panel = _Panel.category;
@@ -92,11 +92,14 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
   }
 
   Future<void> _submitHousekeeping() async {
+    final type = _selectedType;
+    if (type == null) return;
+
     setState(() => _busy = true);
     try {
       final request = await ref
           .read(serviceRequestActionsProvider(device.token))
-          .createHousekeeping(type: _selectedType.value, notes: _notesController.text.trim());
+          .createHousekeeping(type: type.key, notes: _notesController.text.trim());
       if (!mounted) return;
       setState(() {
         _submitted = request;
@@ -154,6 +157,10 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
   @override
   Widget build(BuildContext context) {
     final requests = ref.watch(guestServiceRequestsProvider(device.token)).value ?? const [];
+    final housekeepingTypes = ref.watch(housekeepingRequestTypesProvider(device.token)).value ?? const [];
+    if (_selectedType == null && housekeepingTypes.isNotEmpty) {
+      _selectedType = housekeepingTypes.first;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -194,7 +201,7 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
                               children: [
                                 Expanded(
                                   flex: 52,
-                                  child: SingleChildScrollView(child: _leftPanel()),
+                                  child: SingleChildScrollView(child: _leftPanel(housekeepingTypes)),
                                 ),
                                 const SizedBox(width: 28),
                                 Expanded(flex: 48, child: _history(requests)),
@@ -267,9 +274,9 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
 
   // --- Left panel ---------------------------------------------------------
 
-  Widget _leftPanel() => switch (_panel) {
+  Widget _leftPanel(List<HousekeepingRequestTypeOption> housekeepingTypes) => switch (_panel) {
     _Panel.category => _categoryPicker(),
-    _Panel.housekeeping => _housekeepingForm(),
+    _Panel.housekeeping => _housekeepingForm(housekeepingTypes),
     _Panel.maintenance => _maintenanceForm(),
     _Panel.success => _success(),
   };
@@ -351,7 +358,7 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
     );
   }
 
-  Widget _housekeepingForm() {
+  Widget _housekeepingForm(List<HousekeepingRequestTypeOption> types) {
     return _formShell(
       title: 'Housekeeping Request',
       accent: _housekeepingGold,
@@ -368,14 +375,17 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final type in HousekeepingRequestType.values)
-                _typeChip(type),
-            ],
-          ),
+          if (types.isEmpty)
+            Text(
+              'Could not load request types. Please try again shortly.',
+              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [for (final type in types) _typeChip(type)],
+            ),
           const SizedBox(height: 16),
           _textField(
             label: 'NOTES (OPTIONAL)',
@@ -384,13 +394,18 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
             maxLines: 3,
           ),
           const SizedBox(height: 20),
-          _primaryButton(label: 'Send Request', accent: _housekeepingGold, busy: _busy, onTap: _submitHousekeeping),
+          _primaryButton(
+            label: 'Send Request',
+            accent: _housekeepingGold,
+            busy: _busy,
+            onTap: _selectedType == null ? null : _submitHousekeeping,
+          ),
         ],
       ),
     );
   }
 
-  Widget _typeChip(HousekeepingRequestType type) {
+  Widget _typeChip(HousekeepingRequestTypeOption type) {
     final selected = _selectedType == type;
     return Material(
       color: selected ? _housekeepingGold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.05),
@@ -561,13 +576,13 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
     required String label,
     required Color accent,
     required bool busy,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return Material(
       color: accent,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: busy ? null : onTap,
+        onTap: (busy || onTap == null) ? null : onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
           height: 48,

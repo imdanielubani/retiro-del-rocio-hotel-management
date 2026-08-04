@@ -185,6 +185,35 @@ void main() {
     expect(completed, isTrue);
   });
 
+  testWidgets('the overflow menu offers Report Fault when wired up, and reports the tap', (tester) async {
+    var faultReported = false;
+    await tester.pumpWidget(
+      _host(
+        HousekeepingRoomCard(
+          room: dirtyRoom,
+          onMarkStatus: (_) {},
+          onReportFault: () => faultReported = true,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Report Fault'), findsOneWidget);
+
+    await tester.tap(find.text('Report Fault'));
+    await tester.pumpAndSettle();
+    expect(faultReported, isTrue);
+  });
+
+  testWidgets('the overflow menu omits Report Fault when it is not wired up', (tester) async {
+    await tester.pumpWidget(_host(HousekeepingRoomCard(room: dirtyRoom, onMarkStatus: (_) {})));
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Report Fault'), findsNothing);
+  });
+
   testWidgets('a completed request shows Completed instead of a Mark Complete button', (tester) async {
     await tester.pumpWidget(
       _host(HousekeepingRequestCard(request: completedRequest, onComplete: () {})),
@@ -193,5 +222,38 @@ void main() {
     expect(find.text('Do Not Disturb'), findsOneWidget);
     expect(find.text('Completed'), findsOneWidget);
     expect(find.text('Mark Complete'), findsNothing);
+  });
+
+  test('HousekeepingGuestRequest.fromJson parses the requesting guest', () {
+    final request = HousekeepingGuestRequest.fromJson({
+      'id': 7,
+      'room_unit_id': 1,
+      'room_number': '204',
+      'guest_name': 'Grace Hopper',
+      'type': 'towels',
+      'type_label': 'Towels',
+      'status': 'pending',
+      'is_pending': true,
+    });
+
+    expect(request.guestName, 'Grace Hopper');
+  });
+
+  testWidgets('a request card shows the guest it was raised for', (tester) async {
+    const request = HousekeepingGuestRequest(
+      id: 8,
+      roomUnitId: 1,
+      roomNumber: '204',
+      roomName: 'Brisa Residence',
+      guestName: 'Grace Hopper',
+      type: 'towels',
+      typeLabel: 'Towels',
+      status: 'pending',
+      isPending: true,
+    );
+
+    await tester.pumpWidget(_host(HousekeepingRequestCard(request: request, onComplete: () {})));
+
+    expect(find.textContaining('Grace Hopper'), findsOneWidget);
   });
 }

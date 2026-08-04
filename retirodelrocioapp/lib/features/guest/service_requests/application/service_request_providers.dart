@@ -23,6 +23,20 @@ final guestServiceRequestsProvider = FutureProvider.family<List<GuestServiceRequ
   return repo.list(deviceToken);
 });
 
+/// The admin-managed catalog of housekeeping request types, keyed by device
+/// token. Re-polled every 60 seconds — far less often than the request
+/// history, since the catalog only changes when an admin edits it — so an
+/// admin's edit reaches an already-open tablet within a minute.
+final housekeepingRequestTypesProvider =
+    FutureProvider.family<List<HousekeepingRequestTypeOption>, String>((ref, deviceToken) async {
+      final repo = ref.watch(serviceRequestRepositoryProvider);
+
+      final timer = Timer(const Duration(seconds: 60), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
+
+      return repo.types(deviceToken);
+    });
+
 class ServiceRequestActions {
   const ServiceRequestActions(this._ref, this._deviceToken);
 

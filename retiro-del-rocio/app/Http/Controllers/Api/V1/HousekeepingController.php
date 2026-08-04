@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\GuestNotification;
 use App\Models\HousekeepingNotification;
 use App\Models\HousekeepingRequest;
+use App\Models\LostFoundItem;
 use App\Models\RoomUnit;
 use App\Models\User;
+use App\Models\WorkOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -48,7 +50,7 @@ class HousekeepingController extends Controller
             })
             ->values();
 
-        $requests = HousekeepingRequest::with('roomUnit.room')
+        $requests = HousekeepingRequest::with(['roomUnit.room', 'booking'])
             ->where('status', HousekeepingRequest::PENDING)
             ->latest()
             ->limit(20)
@@ -132,19 +134,26 @@ class HousekeepingController extends Controller
 
     /**
      * GET /housekeeping/requests — guest requests, newest first so the desk
-     * sees a freshly submitted ask right away. Optional `?status=` narrows
-     * to pending or completed.
+     * sees a freshly submitted ask right away. Optional `?status=` narrows to
+     * pending or completed; `?type=` narrows to one request type — the
+     * Inspection screen uses this to pull just `checkout_inspection` rows
+     * without them competing with towels/amenities/etc for the 100-row cap.
      */
     public function requests(Request $request): JsonResponse
     {
         $this->housekeeper($request);
 
         $status = $request->query('status');
+        $type = $request->query('type');
 
-        $requests = HousekeepingRequest::with('roomUnit.room')
+        $requests = HousekeepingRequest::with(['roomUnit.room', 'booking'])
             ->when(
                 in_array($status, [HousekeepingRequest::PENDING, HousekeepingRequest::COMPLETED], true),
                 fn ($q) => $q->where('status', $status),
+            )
+            ->when(
+                in_array($type, HousekeepingRequest::activeTypeKeys(), true),
+                fn ($q) => $q->where('type', $type),
             )
             ->orderByRaw("CASE status WHEN 'pending' THEN 0 ELSE 1 END")
             ->latest()
@@ -164,7 +173,7 @@ class HousekeepingController extends Controller
 
         $data = $request->validate([
             'room_unit_id' => ['required', 'integer', 'exists:room_units,id'],
-            'type' => ['required', 'in:'.implode(',', HousekeepingRequest::TYPES)],
+            'type' => ['required', 'in:'.implode(',', HousekeepingRequest::activeTypeKeys())],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -220,6 +229,114 @@ class HousekeepingController extends Controller
             'Housekeeping Request Completed',
             'Your '.$housekeepingRequest->typeLabel().' request has been completed.',
         );
+    }
+
+    /* ---------------- Lost & Found ---------------- */
+
+    /**
+     * GET /housekeeping/lost-found — every logged item, newest first.
+     * Optional `?status=` narrows to unclaimed, returned, or disposed.
+     */
+    public function lostFoundItems(Request $request): JsonResponse
+    {
+        $this->housekeeper($request);
+
+        $status = $request->query('status');
+
+        $items = LostFoundItem::with(['roomUnit.room', 'foundBy'])
+            ->when(
+                in_array($status, LostFoundItem::STATUSES, true),
+                fn ($q) => $q->where('status', $status),
+            )
+            ->orderByRaw("CASE status WHEN 'unclaimed' THEN 0 ELSE 1 END")
+            ->latest('found_at')
+            ->limit(200)
+            ->get();
+
+        return response()->json(['data' => $items->map->toHousekeepingArray()->values()]);
+    }
+
+    /**
+     * POST /housekeeping/lost-found — log an item found while turning over a
+     * room (or a common area, when no room applies).
+     */
+    public function createLostFoundItem(Request $request): JsonResponse
+    {
+        $officer = $this->housekeeper($request);
+
+        $data = $request->validate([
+            'room_unit_id' => ['nullable', 'integer', 'exists:room_units,id'],
+            'item_description' => ['required', 'string', 'max:200'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $unit = ! empty($data['room_unit_id']) ? RoomUnit::find($data['room_unit_id']) : null;
+
+        $item = LostFoundItem::create([
+            'room_unit_id' => $unit?->id,
+            'booking_id' => $unit?->booking_id,
+            'item_description' => $data['item_description'],
+            'notes' => $data['notes'] ?? null,
+            'found_by' => $officer->id,
+            'found_at' => now(),
+        ]);
+
+        return response()->json(['data' => $item->fresh(['roomUnit', 'foundBy'])->toHousekeepingArray()], 201);
+    }
+
+    /**
+     * POST /housekeeping/lost-found/{item}/status — hand an item back to its
+     * owner, or record it as disposed of once policy allows.
+     */
+    public function updateLostFoundItemStatus(Request $request, LostFoundItem $lostFoundItem): JsonResponse
+    {
+        $officer = $this->housekeeper($request);
+
+        $data = $request->validate([
+            'action' => ['required', 'in:returned,disposed'],
+            'claimant_name' => ['nullable', 'string', 'max:120'],
+            'claimant_contact' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        if ($data['action'] === 'returned') {
+            $lostFoundItem->markReturned($officer, $data['claimant_name'] ?? null, $data['claimant_contact'] ?? null);
+        } else {
+            $lostFoundItem->markDisposed($officer);
+        }
+
+        return response()->json(['data' => $lostFoundItem->fresh(['roomUnit', 'foundBy'])->toHousekeepingArray()]);
+    }
+
+    /* ---------------- Maintenance faults ---------------- */
+
+    /**
+     * POST /housekeeping/work-orders — a housekeeper reports a fault noticed
+     * while turning over a room, routed straight to maintenance's own Work
+     * Orders board exactly like one reception or a guest raised. Marking a
+     * room `out_of_order` only tells the desk the room is blocked, not what's
+     * actually wrong with it — this is what gives maintenance something to
+     * act on.
+     */
+    public function reportFault(Request $request): JsonResponse
+    {
+        $officer = $this->housekeeper($request);
+
+        $data = $request->validate([
+            'room_unit_id' => ['required', 'integer', 'exists:room_units,id'],
+            'title' => ['required', 'string', 'max:120'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'priority' => ['nullable', 'in:'.implode(',', WorkOrder::PRIORITIES)],
+        ]);
+
+        $order = WorkOrder::create([
+            'room_unit_id' => $data['room_unit_id'],
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'priority' => $data['priority'] ?? 'medium',
+            'reported_by' => $officer->name,
+        ]);
+
+        return response()->json(['data' => $order->fresh(['roomUnit', 'assignedTo'])->toMaintenanceArray()], 201);
     }
 
     /* ---------------- Notifications ---------------- */

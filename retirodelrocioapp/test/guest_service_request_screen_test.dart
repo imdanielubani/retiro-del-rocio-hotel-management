@@ -26,8 +26,23 @@ class _FakeServiceRequestRepository implements ServiceRequestRepository {
   String? lastTitle;
   String? lastPriority;
 
+  static const _types = [
+    HousekeepingRequestTypeOption(key: 'towels', label: 'Towels', icon: Icons.dry_cleaning_rounded),
+    HousekeepingRequestTypeOption(key: 'amenities', label: 'Amenities', icon: Icons.soap_rounded),
+    HousekeepingRequestTypeOption(key: 'dnd', label: 'Do Not Disturb', icon: Icons.do_not_disturb_on_rounded),
+    HousekeepingRequestTypeOption(
+      key: 'make_up_room',
+      label: 'Make Up Room',
+      icon: Icons.cleaning_services_rounded,
+    ),
+    HousekeepingRequestTypeOption(key: 'other', label: 'Other', icon: Icons.more_horiz_rounded),
+  ];
+
   @override
   Future<List<GuestServiceRequest>> list(String deviceToken) async => history;
+
+  @override
+  Future<List<HousekeepingRequestTypeOption>> types(String deviceToken) async => _types;
 
   @override
   Future<GuestServiceRequest> createHousekeeping(

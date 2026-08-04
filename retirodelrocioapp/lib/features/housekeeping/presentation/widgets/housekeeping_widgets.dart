@@ -152,6 +152,7 @@ class HousekeepingRoomCard extends StatelessWidget {
     super.key,
     required this.room,
     required this.onMarkStatus,
+    this.onReportFault,
     this.busy = false,
   });
 
@@ -159,6 +160,11 @@ class HousekeepingRoomCard extends StatelessWidget {
 
   /// Called with the chosen status when the housekeeper taps an action.
   final ValueChanged<String> onMarkStatus;
+
+  /// Opens the Report Fault dialog for this room, reached from the overflow
+  /// menu. Left null on a screen that doesn't wire it up (e.g. a future
+  /// read-only room list), in which case the menu simply omits the option.
+  final VoidCallback? onReportFault;
 
   /// True while this room's status update is in flight.
   final bool busy;
@@ -304,21 +310,34 @@ class HousekeepingRoomCard extends StatelessWidget {
   }
 
   Widget _overflowMenu(BuildContext context) {
-    return PopupMenuButton<String>(
+    return PopupMenuButton<void>(
       color: const Color(0xFF141414),
       icon: Icon(Icons.more_vert_rounded, size: 16, color: Colors.white.withValues(alpha: 0.4)),
       padding: EdgeInsets.zero,
-      onSelected: onMarkStatus,
       itemBuilder: (context) => [
         for (final status in const ['clean', 'dirty', 'preparing', 'inspected', 'out_of_order'])
           if (status != room.housekeepingStatus)
-            PopupMenuItem<String>(
-              value: status,
+            PopupMenuItem<void>(
+              onTap: () => onMarkStatus(status),
               child: Text(
                 _statusMenuLabel(status),
                 style: AppTypography.style(color: Colors.white, fontSize: 13),
               ),
             ),
+        if (onReportFault != null) ...[
+          const PopupMenuDivider(height: 1),
+          PopupMenuItem<void>(
+            onTap: onReportFault,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.build_outlined, size: 15, color: Colors.white.withValues(alpha: 0.6)),
+                const SizedBox(width: 8),
+                Text('Report Fault', style: AppTypography.style(color: Colors.white, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -388,10 +407,13 @@ class HousekeepingRequestCard extends StatelessWidget {
               ],
             ],
           ),
-          if ((request.roomName ?? '').isNotEmpty) ...[
+          if ((request.roomName ?? '').isNotEmpty || (request.guestName ?? '').isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(
-              request.roomName!,
+              [
+                if ((request.guestName ?? '').isNotEmpty) request.guestName!,
+                if ((request.roomName ?? '').isNotEmpty) request.roomName!,
+              ].join('  ·  '),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.style(

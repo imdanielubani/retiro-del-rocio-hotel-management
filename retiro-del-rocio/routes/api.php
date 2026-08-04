@@ -166,6 +166,8 @@ $api->group(function () {
         // both landing straight on the relevant staff tablet's own board.
         Route::get('service-requests', [GuestServiceRequestController::class, 'index'])
             ->name('api.v1.service-requests.index');
+        Route::get('service-requests/types', [GuestServiceRequestController::class, 'types'])
+            ->name('api.v1.service-requests.types');
         Route::post('service-requests', [GuestServiceRequestController::class, 'store'])
             ->middleware('throttle:20,1')->name('api.v1.service-requests.store');
 
@@ -306,6 +308,19 @@ $api->group(function () {
             ->middleware('throttle:30,1')->name('api.v1.housekeeping.requests.create');
         Route::post('housekeeping/requests/{housekeepingRequest}/complete', [HousekeepingController::class, 'completeRequest'])
             ->middleware('throttle:60,1')->name('api.v1.housekeeping.requests.complete');
+
+        // Lost & Found — items a housekeeper finds while turning over a room.
+        Route::get('housekeeping/lost-found', [HousekeepingController::class, 'lostFoundItems'])
+            ->name('api.v1.housekeeping.lost-found');
+        Route::post('housekeeping/lost-found', [HousekeepingController::class, 'createLostFoundItem'])
+            ->middleware('throttle:30,1')->name('api.v1.housekeeping.lost-found.create');
+        Route::post('housekeeping/lost-found/{lostFoundItem}/status', [HousekeepingController::class, 'updateLostFoundItemStatus'])
+            ->middleware('throttle:60,1')->name('api.v1.housekeeping.lost-found.status');
+
+        // A housekeeper reporting a fault they noticed while turning over a
+        // room — lands on maintenance's own Work Orders board.
+        Route::post('housekeeping/work-orders', [HousekeepingController::class, 'reportFault'])
+            ->middleware('throttle:30,1')->name('api.v1.housekeeping.work-orders.create');
 
         // Housekeeping's notification feed — today, only "a guest raised a
         // housekeeping request".

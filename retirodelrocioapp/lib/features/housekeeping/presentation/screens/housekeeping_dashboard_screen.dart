@@ -14,6 +14,7 @@ import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_over
 import 'package:retirodelrocioapp/features/housekeeping/domain/housekeeping_room.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/application/housekeeping_notification_providers.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/presentation/screens/housekeeping_notification_screen.dart';
+import 'package:retirodelrocioapp/features/housekeeping/presentation/dialogs/report_fault_dialog.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/housekeeping_navigation.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_widgets.dart';
@@ -81,6 +82,10 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
       'notifications',
       HousekeepingNotificationScreen(session: widget.session, current: HousekeepingNavItem.dashboard),
     );
+  }
+
+  Future<void> _reportFault(HousekeepingRoom room) async {
+    await showHousekeepingReportFaultDialog(context, token: _token, room: room);
   }
 
   void _showFailure(String message) {
@@ -234,6 +239,7 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
                         room: room,
                         busy: _busyRoomId == room.id,
                         onMarkStatus: (status) => _markRoomStatus(room, status),
+                        onReportFault: () => _reportFault(room),
                       );
                     },
                   ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/widgets/staff_nav_rail.dart';
 
 /// The housekeeping tablet's navigable modules.
-enum HousekeepingNavItem { dashboard, rooms, requests, chat }
+enum HousekeepingNavItem { dashboard, rooms, requests, inspection, lostFound, chat }
 
 /// The housekeeping tablet's left navigation rail, built on the shared
 /// [StaffNavRail] shell so it stays visually identical to reception,
@@ -27,6 +27,8 @@ class HousekeepingNavRail extends StatelessWidget {
         _entry(HousekeepingNavItem.dashboard, Icons.grid_view_rounded, 'Dashboard'),
         _entry(HousekeepingNavItem.rooms, Icons.meeting_room_rounded, 'Rooms'),
         _entry(HousekeepingNavItem.requests, Icons.room_service_rounded, 'Requests'),
+        _entry(HousekeepingNavItem.inspection, Icons.fact_check_rounded, 'Inspection'),
+        _entry(HousekeepingNavItem.lostFound, Icons.search_rounded, 'Lost & Found'),
         _entry(HousekeepingNavItem.chat, Icons.chat_bubble_outline_rounded, 'Chat'),
       ],
     );

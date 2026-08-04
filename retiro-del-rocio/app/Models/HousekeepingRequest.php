@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Http\Controllers\Api\V1\GuestServiceRequestController;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * A guest-facing housekeeping ask — towels, amenities, Do Not Disturb, or a
@@ -26,6 +27,59 @@ class HousekeepingRequest extends Model
     public const CHECKOUT_INSPECTION = 'checkout_inspection';
 
     public const TYPES = ['towels', 'amenities', 'dnd', 'make_up_room', 'other', self::CHECKOUT_INSPECTION];
+
+    /** Cache keys {@see typeLabel()}, {@see activeTypeKeys()} and {@see guestVisibleTypeKeys()} share. */
+    public const TYPE_CATALOG_CACHE_KEY = 'housekeeping_request_types.catalog';
+
+    public const GUEST_VISIBLE_TYPE_CACHE_KEY = 'housekeeping_request_types.guest_visible';
+
+    /** Called by the admin catalog after any create/update/delete, so an edit is felt within the request. */
+    public static function flushTypeCatalogCache(): void
+    {
+        Cache::forget(self::TYPE_CATALOG_CACHE_KEY);
+        Cache::forget(self::GUEST_VISIBLE_TYPE_CACHE_KEY);
+    }
+
+    /**
+     * Every currently valid type key, backed by the admin-managed
+     * {@see HousekeepingRequestType} catalog so a new ask can be added
+     * without a deploy. Falls back to the original hardcoded {@see TYPES}
+     * set if the catalog is ever empty, so validation can never hard-fail
+     * because of it.
+     */
+    public static function activeTypeKeys(): array
+    {
+        $keys = array_keys(self::typeCatalog());
+
+        return $keys ?: self::TYPES;
+    }
+
+    /**
+     * Only the types the guest's own Service Request screen may offer — the
+     * reception-raised checkout inspection is deliberately excluded here (not
+     * just from the guest's history), so a guest can never POST that type
+     * themselves and short-circuit reception's own inspection gate.
+     */
+    public static function guestVisibleTypeKeys(): array
+    {
+        $keys = Cache::remember(
+            self::GUEST_VISIBLE_TYPE_CACHE_KEY,
+            60,
+            fn () => HousekeepingRequestType::guestVisible()->pluck('key')->all(),
+        );
+
+        return $keys ?: array_diff(self::TYPES, [self::CHECKOUT_INSPECTION]);
+    }
+
+    /** [key => label] for every active catalog entry, cached briefly — see {@see typeLabel()}. */
+    protected static function typeCatalog(): array
+    {
+        return Cache::remember(
+            self::TYPE_CATALOG_CACHE_KEY,
+            60,
+            fn () => HousekeepingRequestType::active()->pluck('label', 'key')->all(),
+        );
+    }
 
     // Matches the migration's column default. Without this, a freshly
     // `create()`d instance has a null `status` in memory until re-fetched —
@@ -78,7 +132,7 @@ class HousekeepingRequest extends Model
 
     public function typeLabel(): string
     {
-        return match ($this->type) {
+        return self::typeCatalog()[$this->type] ?? match ($this->type) {
             'towels' => 'Towels',
             'amenities' => 'Amenities',
             'dnd' => 'Do Not Disturb',
@@ -93,12 +147,14 @@ class HousekeepingRequest extends Model
     {
         $unit = $this->relationLoaded('roomUnit') ? $this->roomUnit : $this->roomUnit()->first();
         $room = $unit?->relationLoaded('room') ? $unit->room : $unit?->room()->first();
+        $booking = $this->relationLoaded('booking') ? $this->booking : $this->booking()->first();
 
         return [
             'id' => $this->id,
             'room_unit_id' => $this->room_unit_id,
             'room_number' => $unit?->number,
             'room_name' => $room?->name,
+            'guest_name' => $booking?->customer_name,
             'type' => $this->type,
             'type_label' => $this->typeLabel(),
             'notes' => $this->notes,
