@@ -6,6 +6,7 @@ import 'package:retirodelrocioapp/core/audio/notification_chime.dart';
 import 'package:retirodelrocioapp/core/config/app_config.dart';
 import 'package:retirodelrocioapp/core/realtime/room_channel.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
+import 'package:retirodelrocioapp/features/guest/chat/application/chat_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/widgets/guest_notification_toast.dart';
 import 'package:retirodelrocioapp/features/guest/service_requests/application/service_request_providers.dart';
@@ -27,8 +28,10 @@ import 'package:retirodelrocioapp/features/welcome/application/room_status_provi
 /// deliberately keep running: if Reverb is down, or the room's Wi-Fi drops and
 /// the tablet misses a broadcast, both still correct themselves within 20
 /// seconds. This is an accelerator, never a single point of failure.
-final roomRealtimeProvider =
-    FutureProvider.family<void, ProvisionedDevice>((ref, device) async {
+final roomRealtimeProvider = FutureProvider.family<void, ProvisionedDevice>((
+  ref,
+  device,
+) async {
   final roomUnitId = device.roomUnitId;
   if (roomUnitId == null) return; // staff tablet, or not bound to a room
 
@@ -44,9 +47,7 @@ final roomRealtimeProvider =
   final channel = RoomChannel(config: config, roomUnitId: roomUnitId);
   channel.connect(
     onChanged: () => ref.invalidate(roomStatusProvider(device.token)),
-    onNotification: () => unawaited(
-      _notifyGuest(ref, device.token, chime),
-    ),
+    onNotification: () => unawaited(_notifyGuest(ref, device.token, chime)),
   );
 
   ref.onDispose(channel.dispose);
@@ -61,7 +62,9 @@ Future<void> _notifyGuest(
   NotificationChime chime,
 ) async {
   final previousIds =
-      ref.read(guestNotificationsProvider(deviceToken)).value
+      ref
+          .read(guestNotificationsProvider(deviceToken))
+          .value
           ?.map((n) => n.id)
           .toSet() ??
       const {};
@@ -73,6 +76,9 @@ Future<void> _notifyGuest(
   // Request history reflects it within a couple of seconds instead of
   // waiting on its own 20s poll.
   ref.invalidate(guestServiceRequestsProvider(deviceToken));
+  // A staff reply in Concierge Chat lands on this same signal, so the thread
+  // updates within a couple of seconds instead of waiting on its own poll.
+  ref.invalidate(guestChatThreadProvider(deviceToken));
   unawaited(chime.play());
 
   try {

@@ -24,8 +24,9 @@ Color maintenancePriorityColor(String priority) => switch (priority) {
   _ => kMtBlue, // medium
 };
 
-/// A headline counter, matching the reception/security/housekeeping
-/// dashboards' stat card language.
+/// A headline counter (Figma 299:123), matching the reception dashboard's
+/// stat card exactly: a small tracked label and a large accent number, on a
+/// faint frosted card with a fading accent underline.
 class MaintenanceStatCard extends StatelessWidget {
   const MaintenanceStatCard({super.key, required this.label, required this.value, required this.accent});
 
@@ -36,29 +37,86 @@ class MaintenanceStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 121,
       padding: const EdgeInsets.all(20.8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Text(
-            label,
-            style: AppTypography.style(
-              color: Colors.white.withValues(alpha: 0.35),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.35),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '$value',
+                style: AppTypography.style(color: accent, fontSize: 36, fontWeight: FontWeight.w800, height: 1),
+              ),
+            ],
+          ),
+          Positioned(
+            left: -15,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [accent.withValues(alpha: 0.25), Colors.transparent]),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+/// A titled panel shell, matching the reception dashboard's section panels
+/// exactly: a gold uppercase heading over a faint frosted card.
+class MaintenanceSectionPanel extends StatelessWidget {
+  const MaintenanceSectionPanel({super.key, required this.title, required this.child, this.expand = true});
+
+  final String title;
+  final Widget child;
+
+  /// When false the panel hugs its content instead of filling the column.
+  final bool expand;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(19),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+        children: [
           Text(
-            '$value',
-            style: AppTypography.style(color: accent, fontSize: 28, fontWeight: FontWeight.w800, height: 1),
+            title,
+            style: AppTypography.style(
+              color: AppColors.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+            ),
           ),
+          const SizedBox(height: 15),
+          expand ? Expanded(child: child) : child,
         ],
       ),
     );

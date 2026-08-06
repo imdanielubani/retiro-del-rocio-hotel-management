@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/bills/presentation/screens/guest_bills_screen.dart';
+import 'package:retirodelrocioapp/features/guest/chat/presentation/screens/guest_chat_screen.dart';
 import 'package:retirodelrocioapp/features/guest/cinema/presentation/screens/guest_cinema_screen.dart';
 import 'package:retirodelrocioapp/features/guest/home/domain/guest_service.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/current_stay_card.dart';
@@ -190,6 +191,21 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => GuestServiceRequestScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
+    // Concierge Chat is built — take the guest there rather than "coming soon".
+    if (service.id == GuestServices.chat.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GuestChatScreen(
             device: widget.device,
             status: live ?? widget.status,
           ),

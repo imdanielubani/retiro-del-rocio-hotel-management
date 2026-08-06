@@ -33,7 +33,7 @@ class MaintenanceController extends Controller
     {
         $this->technician($request);
 
-        $open = WorkOrder::with(['roomUnit', 'assignedTo', 'asset'])
+        $open = WorkOrder::with(['roomUnit.room', 'assignedTo', 'asset'])
             ->where('status', '!=', WorkOrder::DONE)
             ->get();
 
@@ -64,7 +64,7 @@ class MaintenanceController extends Controller
         $status = $request->query('status');
         $priority = $request->query('priority');
 
-        $orders = WorkOrder::with(['roomUnit', 'assignedTo', 'asset'])
+        $orders = WorkOrder::with(['roomUnit.room', 'assignedTo', 'asset'])
             ->when(
                 in_array($status, [WorkOrder::NEW, WorkOrder::ACCEPTED, WorkOrder::IN_PROGRESS, WorkOrder::DONE], true),
                 fn ($q) => $q->where('status', $status),
@@ -108,7 +108,7 @@ class MaintenanceController extends Controller
             'reported_by' => $data['reported_by'] ?? null,
         ]);
 
-        return response()->json(['data' => $order->fresh(['roomUnit', 'assignedTo', 'asset'])->toMaintenanceArray()], 201);
+        return response()->json(['data' => $order->fresh(['roomUnit.room', 'assignedTo', 'asset'])->toMaintenanceArray()], 201);
     }
 
     /** GET /maintenance/work-orders/{order} — the detail screen: the order plus its attachments. */
@@ -116,7 +116,7 @@ class MaintenanceController extends Controller
     {
         $this->technician($request);
 
-        $workOrder->load(['roomUnit', 'assignedTo', 'asset', 'attachments']);
+        $workOrder->load(['roomUnit.room', 'assignedTo', 'asset', 'attachments']);
 
         return response()->json(['data' => $workOrder->toMaintenanceDetailArray()]);
     }
@@ -145,7 +145,7 @@ class MaintenanceController extends Controller
             'uploaded_by' => $technician->name,
         ]);
 
-        $workOrder->load(['roomUnit', 'assignedTo', 'asset', 'attachments']);
+        $workOrder->load(['roomUnit.room', 'assignedTo', 'asset', 'attachments']);
 
         return response()->json(['data' => $workOrder->toMaintenanceDetailArray()], 201);
     }
@@ -157,7 +157,7 @@ class MaintenanceController extends Controller
 
         $workOrder->accept($technician);
 
-        return response()->json(['data' => $workOrder->fresh(['roomUnit', 'assignedTo'])->toMaintenanceArray()]);
+        return response()->json(['data' => $workOrder->fresh(['roomUnit.room', 'assignedTo'])->toMaintenanceArray()]);
     }
 
     /** POST /maintenance/work-orders/{order}/start — begin work. */
@@ -167,7 +167,7 @@ class MaintenanceController extends Controller
 
         $workOrder->start();
 
-        return response()->json(['data' => $workOrder->fresh(['roomUnit', 'assignedTo'])->toMaintenanceArray()]);
+        return response()->json(['data' => $workOrder->fresh(['roomUnit.room', 'assignedTo'])->toMaintenanceArray()]);
     }
 
     /** POST /maintenance/work-orders/{order}/complete — close the order. */
@@ -179,7 +179,7 @@ class MaintenanceController extends Controller
             $this->notifyGuestFaultCompleted($workOrder);
         }
 
-        return response()->json(['data' => $workOrder->fresh(['roomUnit', 'assignedTo'])->toMaintenanceArray()]);
+        return response()->json(['data' => $workOrder->fresh(['roomUnit.room', 'assignedTo'])->toMaintenanceArray()]);
     }
 
     /** POST /maintenance/work-orders/{order}/escalate — bump it up one priority level. */
@@ -189,7 +189,7 @@ class MaintenanceController extends Controller
 
         $workOrder->escalate();
 
-        return response()->json(['data' => $workOrder->fresh(['roomUnit', 'assignedTo', 'asset'])->toMaintenanceArray()]);
+        return response()->json(['data' => $workOrder->fresh(['roomUnit.room', 'assignedTo', 'asset'])->toMaintenanceArray()]);
     }
 
     /** POST /maintenance/work-orders/{order}/status — the Status Update bottom sheet's manual override. */
@@ -208,7 +208,7 @@ class MaintenanceController extends Controller
             $this->notifyGuestFaultCompleted($workOrder);
         }
 
-        return response()->json(['data' => $workOrder->fresh(['roomUnit', 'assignedTo', 'asset'])->toMaintenanceArray()]);
+        return response()->json(['data' => $workOrder->fresh(['roomUnit.room', 'assignedTo', 'asset'])->toMaintenanceArray()]);
     }
 
     /** POST /maintenance/work-orders/{order}/assign — the Assign Technician bottom sheet. */
@@ -223,7 +223,7 @@ class MaintenanceController extends Controller
 
         $workOrder->update(['assigned_to' => $technician->id]);
 
-        return response()->json(['data' => $workOrder->fresh(['roomUnit', 'assignedTo', 'asset'])->toMaintenanceArray()]);
+        return response()->json(['data' => $workOrder->fresh(['roomUnit.room', 'assignedTo', 'asset'])->toMaintenanceArray()]);
     }
 
     /** GET /maintenance/technicians — the Assign Technician bottom sheet's picker. */
@@ -340,7 +340,7 @@ class MaintenanceController extends Controller
     {
         $this->technician($request);
 
-        $asset->load(['roomUnit', 'workOrders' => fn ($q) => $q->with(['roomUnit', 'assignedTo'])->latest('id')->limit(50)]);
+        $asset->load(['roomUnit', 'workOrders' => fn ($q) => $q->with(['roomUnit.room', 'assignedTo'])->latest('id')->limit(50)]);
 
         return response()->json(['data' => $asset->toMaintenanceDetailArray()]);
     }
@@ -369,7 +369,7 @@ class MaintenanceController extends Controller
 
         $status = $request->query('status');
 
-        $requests = PartsRequest::with('workOrder.roomUnit', 'workOrder.asset')
+        $requests = PartsRequest::with('workOrder.roomUnit.room', 'workOrder.asset')
             ->when(
                 in_array($status, [PartsRequest::PENDING, PartsRequest::FULFILLED, PartsRequest::DENIED], true),
                 fn ($q) => $q->where('status', $status),
@@ -431,7 +431,7 @@ class MaintenanceController extends Controller
     {
         $this->technician($request);
 
-        $notifications = MaintenanceNotification::with('workOrder.roomUnit', 'workOrder.asset')
+        $notifications = MaintenanceNotification::with('workOrder.roomUnit.room', 'workOrder.asset')
             ->latest()->limit(100)->get();
 
         return response()->json(['data' => $notifications->map->toMaintenanceArray()->values()]);

@@ -9,6 +9,14 @@ use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\Auth\ResetSuccess;
 use App\Livewire\Admin\Auth\SetNewPassword;
 use App\Livewire\Admin\Auth\VerifyCode;
+use App\Livewire\Admin\Bar\Adjustments as BarAdjustments;
+use App\Livewire\Admin\Bar\BottleTracking as BarBottleTracking;
+use App\Livewire\Admin\Bar\Consumption as BarConsumption;
+use App\Livewire\Admin\Bar\Dashboard as BarDashboard;
+use App\Livewire\Admin\Bar\Items as BarItems;
+use App\Livewire\Admin\Bar\ReorderAlerts as BarReorderAlerts;
+use App\Livewire\Admin\Bar\StockIn as BarStockIn;
+use App\Livewire\Admin\Bar\StockOut as BarStockOut;
 use App\Livewire\Admin\Bookings\Show;
 use App\Livewire\Admin\Cinema\Movies;
 use App\Livewire\Admin\Cinema\Snacks;
@@ -1172,6 +1180,18 @@ $adminRoutes->group(function () {
         Route::get('maintenance/work-orders', MaintenanceWorkOrders::class)->name('maintenance.work-orders');
         Route::get('maintenance/assets', MaintenanceAssets::class)->name('maintenance.assets');
         Route::get('maintenance/parts-requests', MaintenancePartsRequests::class)->name('maintenance.parts-requests');
+
+        // Bar Inventory — dashboard, product catalog, stock in/out, bottle
+        // tracking, consumption, adjustments and reorder alerts, all reading
+        // through the same BarStockMovement ledger so stock counts can never drift.
+        Route::get('bar-inventory/dashboard', BarDashboard::class)->name('bar-inventory.dashboard');
+        Route::get('bar-inventory/items', BarItems::class)->name('bar-inventory.items');
+        Route::get('bar-inventory/stock-in', BarStockIn::class)->name('bar-inventory.stock-in');
+        Route::get('bar-inventory/stock-out', BarStockOut::class)->name('bar-inventory.stock-out');
+        Route::get('bar-inventory/bottle-tracking', BarBottleTracking::class)->name('bar-inventory.bottle-tracking');
+        Route::get('bar-inventory/consumption', BarConsumption::class)->name('bar-inventory.consumption');
+        Route::get('bar-inventory/adjustments', BarAdjustments::class)->name('bar-inventory.adjustments');
+        Route::get('bar-inventory/reorder-alerts', BarReorderAlerts::class)->name('bar-inventory.reorder-alerts');
 
         // Gym & Fitness — plans + memberships
         Route::get('gym/plans', Plans::class)->name('gym.plans');

@@ -3,10 +3,12 @@
 use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\GuestChatController;
 use App\Http\Controllers\Api\V1\GuestServiceRequestController;
 use App\Http\Controllers\Api\V1\HousekeepingController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\ReceptionChatController;
 use App\Http\Controllers\Api\V1\ReceptionController;
 use App\Http\Controllers\Api\V1\SecurityController;
 use App\Http\Controllers\Api\V1\SosController;
@@ -171,6 +173,12 @@ $api->group(function () {
         Route::post('service-requests', [GuestServiceRequestController::class, 'store'])
             ->middleware('throttle:20,1')->name('api.v1.service-requests.store');
 
+        // Concierge Chat — a guest's in-room tablet messaging the front desk.
+        Route::get('chat/messages', [GuestChatController::class, 'index'])
+            ->name('api.v1.chat.messages.index');
+        Route::post('chat/messages', [GuestChatController::class, 'store'])
+            ->middleware('throttle:30,1')->name('api.v1.chat.messages.store');
+
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])
             ->middleware('throttle:10,1')->name('api.v1.tablets.staff-login');
@@ -291,6 +299,21 @@ $api->group(function () {
             ->name('api.v1.reception.notifications.read-all');
         Route::post('reception/notifications/{notification}/read', [ReceptionController::class, 'markNotificationRead'])
             ->whereNumber('notification')->name('api.v1.reception.notifications.read');
+
+        // Reception's Chat screen — Concierge Chat threads with every
+        // in-house guest, and internal channels with each staff department.
+        Route::get('reception/chat/guests', [ReceptionChatController::class, 'guestConversations'])
+            ->name('api.v1.reception.chat.guests');
+        Route::get('reception/chat/guests/{booking}/messages', [ReceptionChatController::class, 'guestMessages'])
+            ->name('api.v1.reception.chat.guests.messages');
+        Route::post('reception/chat/guests/{booking}/messages', [ReceptionChatController::class, 'sendGuestMessage'])
+            ->middleware('throttle:30,1')->name('api.v1.reception.chat.guests.send');
+        Route::get('reception/chat/staff', [ReceptionChatController::class, 'staffConversations'])
+            ->name('api.v1.reception.chat.staff');
+        Route::get('reception/chat/staff/{department}/messages', [ReceptionChatController::class, 'staffMessages'])
+            ->name('api.v1.reception.chat.staff.messages');
+        Route::post('reception/chat/staff/{department}/messages', [ReceptionChatController::class, 'sendStaffMessage'])
+            ->middleware('throttle:30,1')->name('api.v1.reception.chat.staff.send');
 
         // --- Housekeeping tablet (staff JWT, housekeeping role) ---
         // The housekeeper signs in on the housekeeping station; their JWT

@@ -56,7 +56,7 @@ class PartsRequests extends Component
     protected function baseQuery()
     {
         return PartsRequest::query()
-            ->with('workOrder.roomUnit', 'workOrder.asset')
+            ->with('workOrder.roomUnit.room', 'workOrder.asset')
             ->when($this->search, fn ($q) => $q->where('part_name', 'like', "%{$this->search}%"))
             ->when(
                 in_array($this->statusFilter, [PartsRequest::PENDING, PartsRequest::FULFILLED, PartsRequest::DENIED], true),

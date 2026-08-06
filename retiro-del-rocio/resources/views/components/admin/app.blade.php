@@ -89,7 +89,16 @@
         ]],
         ['label' => 'Inventory Management', 'items' => [
             ['label' => 'Kitchen Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Bar Inventory', 'icon' => 'box', 'href' => '#'],
+            ['key' => 'bar-inventory', 'label' => 'Bar Inventory', 'icon' => 'box', 'children' => [
+                ['label' => 'Dashboard', 'href' => route('admin.bar-inventory.dashboard'), 'active' => request()->routeIs('admin.bar-inventory.dashboard')],
+                ['label' => 'Inventory Items', 'href' => route('admin.bar-inventory.items'), 'active' => request()->routeIs('admin.bar-inventory.items')],
+                ['label' => 'Stock In', 'href' => route('admin.bar-inventory.stock-in'), 'active' => request()->routeIs('admin.bar-inventory.stock-in')],
+                ['label' => 'Stock Out', 'href' => route('admin.bar-inventory.stock-out'), 'active' => request()->routeIs('admin.bar-inventory.stock-out')],
+                ['label' => 'Bottle Tracking', 'href' => route('admin.bar-inventory.bottle-tracking'), 'active' => request()->routeIs('admin.bar-inventory.bottle-tracking')],
+                ['label' => 'Consumption Tracking', 'href' => route('admin.bar-inventory.consumption'), 'active' => request()->routeIs('admin.bar-inventory.consumption')],
+                ['label' => 'Stock Adjustments', 'href' => route('admin.bar-inventory.adjustments'), 'active' => request()->routeIs('admin.bar-inventory.adjustments')],
+                ['label' => 'Reorder Alerts', 'href' => route('admin.bar-inventory.reorder-alerts'), 'active' => request()->routeIs('admin.bar-inventory.reorder-alerts')],
+            ]],
         ]],
         ['label' => 'Facility Management', 'items' => [
             ['key' => 'spa', 'label' => 'Spa & Wellness', 'icon' => 'spa', 'children' => [

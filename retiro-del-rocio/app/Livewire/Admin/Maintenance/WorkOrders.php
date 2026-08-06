@@ -44,7 +44,7 @@ class WorkOrders extends Component
     protected function baseQuery()
     {
         return WorkOrder::query()
-            ->with(['roomUnit', 'asset', 'assignedTo'])
+            ->with(['roomUnit.room', 'asset', 'assignedTo'])
             ->when($this->search, fn ($q) => $q->where('title', 'like', "%{$this->search}%"))
             ->when(
                 in_array($this->statusFilter, [WorkOrder::NEW, WorkOrder::ACCEPTED, WorkOrder::IN_PROGRESS, WorkOrder::DONE], true),

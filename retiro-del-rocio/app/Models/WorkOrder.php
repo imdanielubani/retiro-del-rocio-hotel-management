@@ -213,12 +213,18 @@ class WorkOrder extends Model
         };
     }
 
-    /** Where this order points at — a room, a named asset, or hotel-wide. */
+    /**
+     * Where this order points at — a room (with its suite name, e.g.
+     * "Two Bedroom Suite · Room 204", matching {@see Booking::receptionRoomLabel()}),
+     * a named asset, or hotel-wide.
+     */
     public function locationLabel(): string
     {
         $unit = $this->relationLoaded('roomUnit') ? $this->roomUnit : $this->roomUnit()->first();
         if ($unit?->number) {
-            return 'Room '.$unit->number;
+            $room = $unit->relationLoaded('room') ? $unit->room : $unit->room()->first();
+
+            return implode(' · ', array_filter([$room?->name, 'Room '.$unit->number]));
         }
 
         $asset = $this->relationLoaded('asset') ? $this->asset : $this->asset()->first();

@@ -238,52 +238,38 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        _sectionLabel('OPEN WORK ORDERS'),
-        const SizedBox(height: 15),
+        const SizedBox(height: 20),
         Expanded(
-          child: data.workOrders.isEmpty
-              ? const SingleChildScrollView(
-                  child: MaintenanceSectionEmpty(
-                    icon: Icons.build_circle_outlined,
-                    message: 'No open work orders',
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  itemCount: data.workOrders.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) {
-                    final order = data.workOrders[i];
-                    final actions = ref.read(maintenanceActionsProvider(_token));
-                    return WorkOrderCard(
-                      order: order,
-                      busy: _busyOrderId == order.id,
-                      onAccept: () => _run(order, () => actions.accept(order.id)),
-                      onStart: () => _run(order, () => actions.start(order.id)),
-                      onComplete: () => _run(order, () => actions.complete(order.id)),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => WorkOrderDetailScreen(session: widget.session, orderId: order.id),
+          child: MaintenanceSectionPanel(
+            title: 'OPEN WORK ORDERS',
+            child: data.workOrders.isEmpty
+                ? const MaintenanceSectionEmpty(icon: Icons.build_circle_outlined, message: 'No open work orders')
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: data.workOrders.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final order = data.workOrders[i];
+                      final actions = ref.read(maintenanceActionsProvider(_token));
+                      return WorkOrderCard(
+                        order: order,
+                        busy: _busyOrderId == order.id,
+                        onAccept: () => _run(order, () => actions.accept(order.id)),
+                        onStart: () => _run(order, () => actions.start(order.id)),
+                        onComplete: () => _run(order, () => actions.complete(order.id)),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => WorkOrderDetailScreen(session: widget.session, orderId: order.id),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+          ),
         ),
       ],
     );
   }
-
-  Widget _sectionLabel(String text) => Text(
-    text,
-    style: AppTypography.style(
-      color: Colors.white.withValues(alpha: 0.35),
-      fontSize: 12,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 1.4,
-    ),
-  );
 
   Widget _errorState() {
     return Center(

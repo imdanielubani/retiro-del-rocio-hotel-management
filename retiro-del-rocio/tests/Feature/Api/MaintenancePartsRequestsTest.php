@@ -62,7 +62,7 @@ class MaintenancePartsRequestsTest extends TestCase
             ->assertJsonPath('data.quantity', 2)
             ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('data.requested_by', 'Alan Turing')
-            ->assertJsonPath('data.location_label', 'Room '.$unit->number);
+            ->assertJsonPath('data.location_label', 'Brisa Residence · Room '.$unit->number);
     }
 
     public function test_the_requests_tab_lists_every_request_newest_first_and_filters_by_status(): void

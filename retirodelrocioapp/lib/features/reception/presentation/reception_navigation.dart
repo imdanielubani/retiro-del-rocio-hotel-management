@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
+import 'package:retirodelrocioapp/features/reception/chat/presentation/screens/reception_chat_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bills_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bookings_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guests_screen.dart';
@@ -86,21 +87,24 @@ class ReceptionNavigation {
     );
   }
 
-  static Widget? _pageFor(ReceptionNavItem item, StaffSession session) =>
-      switch (item) {
-        ReceptionNavItem.guests => ReceptionGuestsScreen(session: session),
-        ReceptionNavItem.bookings => ReceptionBookingsScreen(session: session),
-        ReceptionNavItem.bills => ReceptionBillsScreen(session: session),
-        ReceptionNavItem.visitorPass => ReceptionVisitorsScreen(session: session),
-        ReceptionNavItem.roomStatus => ReceptionRoomStatusScreen(session: session),
-        ReceptionNavItem.vehiclePickup => ReceptionVehiclePickupScreen(
-          session: session,
-        ),
-        ReceptionNavItem.incidentResponse => ReceptionIncidentResponseScreen(
-          session: session,
-        ),
-        _ => null,
-      };
+  static Widget? _pageFor(
+    ReceptionNavItem item,
+    StaffSession session,
+  ) => switch (item) {
+    ReceptionNavItem.guests => ReceptionGuestsScreen(session: session),
+    ReceptionNavItem.bookings => ReceptionBookingsScreen(session: session),
+    ReceptionNavItem.bills => ReceptionBillsScreen(session: session),
+    ReceptionNavItem.visitorPass => ReceptionVisitorsScreen(session: session),
+    ReceptionNavItem.roomStatus => ReceptionRoomStatusScreen(session: session),
+    ReceptionNavItem.vehiclePickup => ReceptionVehiclePickupScreen(
+      session: session,
+    ),
+    ReceptionNavItem.incidentResponse => ReceptionIncidentResponseScreen(
+      session: session,
+    ),
+    ReceptionNavItem.chat => ReceptionChatScreen(session: session),
+    _ => null,
+  };
 
   static Route<void> _route(ReceptionNavItem item, Widget page) =>
       MaterialPageRoute<void>(
