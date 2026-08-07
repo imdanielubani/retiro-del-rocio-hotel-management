@@ -12,7 +12,12 @@ import 'package:flutter/services.dart';
 /// pulses the tablet with haptics alongside the sound. Every call is guarded —
 /// a device with no audio must never take the alert overlay down with it.
 class SosAlarm {
-  final AudioPlayer _player = AudioPlayer(playerId: 'sos-alarm');
+  /// No fixed `playerId` — see `NotificationChime`'s own doc for why: a
+  /// hardcoded id makes every instance share one native player, which
+  /// silently breaks playback the moment a second instance exists. Only one
+  /// `SosAlarm` is alive at a time today, but there's no reason to leave the
+  /// same trap in a second sound class.
+  final AudioPlayer _player = AudioPlayer();
   Timer? _haptics;
   bool _started = false;
 

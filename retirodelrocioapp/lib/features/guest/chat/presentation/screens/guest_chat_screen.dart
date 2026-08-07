@@ -10,7 +10,6 @@ import 'package:retirodelrocioapp/features/guest/chat/application/chat_providers
 import 'package:retirodelrocioapp/features/guest/chat/data/chat_repository.dart';
 import 'package:retirodelrocioapp/features/guest/chat/domain/chat_message.dart';
 import 'package:retirodelrocioapp/features/guest/chat/presentation/widgets/chat_widgets.dart';
-import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/glass_panel.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
@@ -274,23 +273,43 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
   // --- Left: conversation list -----------------------------------------
 
   Widget _conversationList(
-    ({List<ChatMessage> messages, int unreadCount, bool receptionOnline})?
+    ({
+      List<ChatMessage> messages,
+      int unreadCount,
+      bool receptionOnline,
+      String? lastMessageLabel,
+    })?
     thread,
   ) {
-    return GlassPanel(
-      borderRadius: 24,
-      opacity: 0.06,
-      borderOpacity: 0.2,
-      blur: 17,
-      padding: const EdgeInsets.all(12),
-      child: ChatConversationTile(
-        online: thread?.receptionOnline ?? false,
-        unreadCount: _threadOpen ? 0 : (thread?.unreadCount ?? 0),
-        preview: thread?.messages.isNotEmpty ?? false
-            ? thread!.messages.last.body
-            : null,
-        selected: _threadOpen,
-        onTap: _openThread,
+    // Aligned rather than filling the Expanded slot outright: with only one
+    // conversation to show, a panel stretched to match the thread's full
+    // height would paint its border the whole way down around a single tile
+    // and a lot of empty space. Align lets the bordered card hug just the
+    // tile's own height and sit at the top, the way it'll look once there's
+    // real content instead of one static row.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.06),
+            width: 0.8,
+          ),
+        ),
+        child: ChatConversationTile(
+          online: thread?.receptionOnline ?? false,
+          unreadCount: _threadOpen ? 0 : (thread?.unreadCount ?? 0),
+          preview: thread?.messages.isNotEmpty ?? false
+              ? thread!.messages.last.body
+              : null,
+          timeLabel: thread?.lastMessageLabel,
+          selected: _threadOpen,
+          onTap: _openThread,
+        ),
       ),
     );
   }
@@ -298,16 +317,24 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
   // --- Right: thread + composer -----------------------------------------
 
   Widget _thread(
-    ({List<ChatMessage> messages, int unreadCount, bool receptionOnline})?
+    ({
+      List<ChatMessage> messages,
+      int unreadCount,
+      bool receptionOnline,
+      String? lastMessageLabel,
+    })?
     thread,
     bool typing,
   ) {
-    return GlassPanel(
-      borderRadius: 24,
-      opacity: 0.06,
-      borderOpacity: 0.2,
-      blur: 17,
-      padding: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+          width: 0.8,
+        ),
+      ),
       child: !_threadOpen
           ? _noSelection()
           : Column(

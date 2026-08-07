@@ -35,7 +35,12 @@ class GuestChatController extends Controller
         $booking = $device->currentBooking();
 
         if (! $booking) {
-            return response()->json(['data' => [], 'unread_count' => 0, 'reception_online' => $this->receptionOnline()]);
+            return response()->json([
+                'data' => [],
+                'unread_count' => 0,
+                'reception_online' => $this->receptionOnline(),
+                'last_message_label' => null,
+            ]);
         }
 
         $messages = ChatMessage::where('booking_id', $booking->id)->oldest()->get();
@@ -53,6 +58,7 @@ class GuestChatController extends Controller
             'data' => $messages->map->toGuestArray()->values(),
             'unread_count' => $unreadCount,
             'reception_online' => $this->receptionOnline(),
+            'last_message_label' => optional($messages->last()?->created_at)->diffForHumans(['short' => true]),
         ]);
     }
 

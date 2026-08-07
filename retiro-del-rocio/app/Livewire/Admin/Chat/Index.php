@@ -2,11 +2,14 @@
 
 namespace App\Livewire\Admin\Chat;
 
+use App\Events\StaffChatMessageSent;
 use App\Http\Controllers\Api\V1\StaffChatController;
 use App\Models\StaffMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Component;
+use Throwable;
 
 /**
  * Admin → Chat — the admin/manager's own channel with each staff station
@@ -21,6 +24,19 @@ class Index extends Component
     public string $selectedRole = '';
 
     public string $body = '';
+
+    /**
+     * The last message's timestamp seen per role, so a poll can tell a truly
+     * new message apart from one already announced. Persists across
+     * `wire:poll` requests as ordinary Livewire component state.
+     */
+    public array $lastSeenAt = [];
+
+    /**
+     * False only until the component's first render, so page load never
+     * announces every station's existing history as if it just arrived.
+     */
+    public bool $seeded = false;
 
     public function selectRole(string $role): void
     {
@@ -48,6 +64,12 @@ class Index extends Component
             'body' => $data['body'],
         ]);
 
+        try {
+            broadcast(new StaffChatMessageSent($this->selectedRole, 'admin'));
+        } catch (Throwable $e) {
+            report($e);
+        }
+
         $this->body = '';
     }
 
@@ -60,6 +82,36 @@ class Index extends Component
         return User::whereHas('roles', fn ($q) => $q->where('name', $role))
             ->get()
             ->contains(fn (User $u) => $u->isRecentlyActive());
+    }
+
+    /**
+     * Toasts and chimes any station whose last message is new since the
+     * previous poll and wasn't the admin's own send — so posting a reply, or
+     * simply opening a thread (which doesn't touch `last_message_at`), never
+     * self-notifies. Skipped until [$seeded] so page load doesn't announce
+     * every station's existing history at once.
+     */
+    private function announceNewMessages($channels): void
+    {
+        foreach ($channels as $channel) {
+            $at = optional($channel['last_message_at'])->toIso8601String();
+            $previous = $this->lastSeenAt[$channel['role']] ?? null;
+
+            if ($this->seeded && $at && $at !== $previous && $channel['last_sender_role'] !== 'admin') {
+                $this->dispatch('chat-message-received');
+                $this->dispatch(
+                    'toast',
+                    type: 'info',
+                    message: "New message from {$channel['label']} — ".Str::limit((string) $channel['last_message'], 60),
+                );
+            }
+
+            if ($at) {
+                $this->lastSeenAt[$channel['role']] = $at;
+            }
+        }
+
+        $this->seeded = true;
     }
 
     public function render()
@@ -76,12 +128,15 @@ class Index extends Component
                     'online' => $this->roleOnline($role),
                     'last_message' => $last?->body,
                     'last_message_at' => $last?->created_at,
+                    'last_sender_role' => $last?->sender_role,
                     'last_message_label' => optional($last?->created_at)->diffForHumans(),
                     'unread_count' => $messages->where('sender_role', $role)->whereNull('read_at')->count(),
                 ];
             })
             ->sortByDesc('last_message_at')
             ->values();
+
+        $this->announceNewMessages($channels);
 
         $messages = collect();
         if (in_array($this->selectedRole, self::ROLES, true)) {

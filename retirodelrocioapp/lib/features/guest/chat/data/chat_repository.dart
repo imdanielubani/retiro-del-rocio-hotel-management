@@ -37,10 +37,19 @@ class ChatRepository {
 
   /// This stay's conversation with the front desk, oldest first, plus how
   /// many staff messages were unread before this call (opening the thread
-  /// marks them read server-side) and whether reception is currently online.
-  /// Failures fall back to an empty, unread-free, offline thread — the
-  /// screen still renders, just without history.
-  Future<({List<ChatMessage> messages, int unreadCount, bool receptionOnline})>
+  /// marks them read server-side), whether reception is currently online,
+  /// and a relative "5m ago" label for the last message — the same
+  /// `diffForHumans` label reception's own guest list shows. Failures fall
+  /// back to an empty, unread-free, offline thread — the screen still
+  /// renders, just without history.
+  Future<
+    ({
+      List<ChatMessage> messages,
+      int unreadCount,
+      bool receptionOnline,
+      String? lastMessageLabel,
+    })
+  >
   list(String deviceToken) async {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
@@ -58,10 +67,12 @@ class ChatRepository {
           (response.data?['unread_count'] as num?)?.toInt() ?? 0;
       final receptionOnline =
           response.data?['reception_online'] as bool? ?? false;
+      final lastMessageLabel = response.data?['last_message_label'] as String?;
       return (
         messages: messages,
         unreadCount: unreadCount,
         receptionOnline: receptionOnline,
+        lastMessageLabel: lastMessageLabel,
       );
     } catch (error) {
       debugPrint('ChatRepository: list failed — $error');
@@ -69,6 +80,7 @@ class ChatRepository {
         messages: const <ChatMessage>[],
         unreadCount: 0,
         receptionOnline: false,
+        lastMessageLabel: null,
       );
     }
   }

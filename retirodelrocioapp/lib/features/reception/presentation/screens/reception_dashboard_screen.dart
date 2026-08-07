@@ -19,6 +19,7 @@ import 'package:retirodelrocioapp/features/reception/presentation/widgets/recept
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/presentation/dialogs/sos_alert_overlay.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The receptionist's home dashboard (Figma 299:322 / 345:14699).
@@ -209,6 +210,8 @@ class _ReceptionDashboardScreenState
     // Rings the chime and toasts a new front-desk notification, from either
     // the socket above or the plain poll if it's down.
     ref.watch(receptionNotificationChimeProvider(_token));
+    ref.watch(staffChatChimeProvider(_token));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
     watchReceptionIntercomCall(context, ref, widget.session);
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on

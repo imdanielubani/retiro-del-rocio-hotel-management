@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
+import 'package:retirodelrocioapp/features/guest/chat/application/chat_providers.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/intercom/application/guest_intercom_call_providers.dart';
 import 'package:retirodelrocioapp/features/guest/intercom/domain/intercom_department.dart';
@@ -213,6 +214,16 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
   }
 
   Widget _grid() {
+    // Reception is the only department with a real staff tablet behind it,
+    // so it's the only pill backed by real presence — the same
+    // `reception_online` check the Chat screen already polls for
+    // (`guestChatThreadProvider`), reused here rather than duplicated.
+    // Restaurant/Security/Bar & Lounge have no receiving tablet yet (see the
+    // class doc), so there's no real presence signal to show for them.
+    final receptionOnline =
+        ref.watch(guestChatThreadProvider(_token)).value?.receptionOnline ??
+        false;
+
     return GridView.builder(
       padding: EdgeInsets.zero,
       itemCount: IntercomDepartments.all.length,
@@ -222,11 +233,17 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
         crossAxisSpacing: 17,
         childAspectRatio: 393 / 228,
       ),
-      itemBuilder: (_, i) => _departmentCard(IntercomDepartments.all[i]),
+      itemBuilder: (_, i) {
+        final department = IntercomDepartments.all[i];
+        final online = department.id == IntercomDepartments.reception.id
+            ? receptionOnline
+            : true;
+        return _departmentCard(department, online);
+      },
     );
   }
 
-  Widget _departmentCard(IntercomDepartment department) {
+  Widget _departmentCard(IntercomDepartment department, bool online) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -253,7 +270,7 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
                 ),
                 child: Icon(department.icon, size: 20, color: AppColors.gold),
               ),
-              _availablePill(),
+              _availablePill(online),
             ],
           ),
           const SizedBox(height: 19),
@@ -282,11 +299,15 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
     );
   }
 
-  Widget _availablePill() {
+  Widget _availablePill(bool online) {
+    final color = online
+        ? _availableColor
+        : Colors.white.withValues(alpha: 0.35);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _availableColor.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -295,15 +316,12 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
           Container(
             width: 6,
             height: 6,
-            decoration: const BoxDecoration(
-              color: _availableColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(
-            'available',
-            style: AppTypography.style(color: _availableColor, fontSize: 10),
+            online ? 'available' : 'offline',
+            style: AppTypography.style(color: color, fontSize: 10),
           ),
         ],
       ),

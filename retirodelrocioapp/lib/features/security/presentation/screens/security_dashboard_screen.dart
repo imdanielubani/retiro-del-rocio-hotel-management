@@ -23,6 +23,7 @@ import 'package:retirodelrocioapp/features/security/presentation/widgets/securit
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_stat_card.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_widgets.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
 import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
@@ -230,6 +231,8 @@ class _SecurityDashboardScreenState
     // owned here (the root security screen, always mounted) same as the SOS
     // announcer below.
     ref.watch(securityNotificationChimeProvider(_token));
+    ref.watch(staffChatChimeProvider(_token));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
     watchStaffIntercomCall(context, ref, widget.session);
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on

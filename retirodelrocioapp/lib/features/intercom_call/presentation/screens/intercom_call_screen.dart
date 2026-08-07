@@ -94,12 +94,25 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
     _syncRingtone(call);
 
     // The call cleared (ended long enough ago to drop out of "current") —
-    // this screen has nothing left to show, so it dismisses itself.
-    if (_previous != null && call == null) {
+    // this screen has nothing left to show, so it dismisses itself. Uses a
+    // real `pop()`, not `maybePop()`: `maybePop` respects this same route's
+    // `PopScope(canPop: false)` below (that guard exists to stop the user
+    // swiping/back-button-ing out of a live call, not to block this
+    // intentional auto-close), so calling it here left the screen stuck
+    // forever once the call cleared — showing nothing but the loading
+    // spinner below with no way off the screen.
+    final ending = _previous != null && call == null;
+    if (ending) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).maybePop();
+        if (mounted) Navigator.of(context).pop();
       });
     }
+
+    // While that pop goes through, keep rendering the last known call
+    // (frozen on its "Call Ended"/"Declined"/"Cancelled" state) instead of
+    // the loading spinner — the spinner is only for the genuine first-load
+    // case, before any call data has ever arrived.
+    final display = call ?? (ending ? _previous : null);
     _previous = call;
 
     return PopScope(
@@ -112,9 +125,9 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
             Image.asset('assets/images/3365.jpg', fit: BoxFit.cover),
             const ColoredBox(color: Color.fromARGB(230, 0, 0, 0)),
             Center(
-              child: call == null
+              child: display == null
                   ? const CircularProgressIndicator(color: AppColors.gold)
-                  : _body(call),
+                  : _body(display),
             ),
           ],
         ),

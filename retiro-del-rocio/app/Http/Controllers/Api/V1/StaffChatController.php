@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\StaffChatMessageSent;
 use App\Events\StaffChatTypingSent;
 use App\Http\Controllers\Controller;
 use App\Models\StaffMessage;
@@ -91,6 +92,12 @@ class StaffChatController extends Controller
             'body' => $data['body'],
         ]);
 
+        try {
+            broadcast(new StaffChatMessageSent($other, $me));
+        } catch (Throwable $e) {
+            report($e);
+        }
+
         return response()->json(['data' => $message->toChatArray($me)], 201);
     }
 
@@ -111,13 +118,22 @@ class StaffChatController extends Controller
 
     private function labelFor(string $role): string
     {
-        return $role === 'admin' ? 'Admin' : ucfirst($role);
+        return $role === 'admin' ? 'Manager' : ucfirst($role);
     }
 
-    /** Whether anyone with [$role] has hit an endpoint within the presence window. */
+    /**
+     * Whether anyone with [$role] has hit an endpoint within the presence
+     * window. "admin" here means the Manager channel, which any of the
+     * admin-portal roles can staff — the same set {@see User::isAdmin()}
+     * grants dashboard access to — not just a role literally named "admin".
+     */
     private function roleOnline(string $role): bool
     {
-        return User::whereHas('roles', fn ($q) => $q->where('name', $role))
+        $roleNames = $role === 'admin'
+            ? ['super-admin', 'admin', 'manager', 'it-administrator']
+            : [$role];
+
+        return User::whereHas('roles', fn ($q) => $q->whereIn('name', $roleNames))
             ->get()
             ->contains(fn (User $u) => $u->isRecentlyActive());
     }

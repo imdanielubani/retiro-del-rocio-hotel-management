@@ -1,4 +1,28 @@
-<div wire:poll.5s class="flex items-start gap-4">
+<div
+    wire:poll.5s
+    x-data="{}"
+    x-on:chat-message-received.window="
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const now = ctx.currentTime;
+            const tone = (freq, start, dur) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, now + start);
+                gain.gain.linearRampToValueAtTime(0.2, now + start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(now + start);
+                osc.stop(now + start + dur);
+            };
+            tone(880, 0, 0.18);
+            tone(1318.5, 0.15, 0.22);
+        } catch (e) {}
+    "
+    class="flex items-start gap-4"
+>
     {{-- ===== Channel list ===== --}}
     <div class="flex h-[500px] w-[300px] shrink-0 flex-col gap-2 overflow-y-auto rounded-2xl border border-[#e5e7eb] bg-white p-3">
         @foreach ($channels as $channel)

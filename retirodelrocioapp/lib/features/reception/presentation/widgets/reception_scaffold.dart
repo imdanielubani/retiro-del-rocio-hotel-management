@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/reception/intercom/presentation/widge
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_top_bar.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The frosted reception shell shared by the sub-screens (Guests, Bookings,
@@ -59,6 +60,8 @@ class ReceptionScaffold extends ConsumerWidget {
     // Keeps the notification chime alive on every reception screen that uses
     // this shell — not just the dashboard.
     ref.watch(receptionNotificationChimeProvider(session.token));
+    ref.watch(staffChatChimeProvider(session.token));
+    ref.watch(staffChatRealtimeProvider((session.token, session.role)));
     watchReceptionIntercomCall(context, ref, session);
 
     return SessionGuard(

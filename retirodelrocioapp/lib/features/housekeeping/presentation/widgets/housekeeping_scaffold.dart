@@ -7,6 +7,7 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/application/housekeeping_notification_providers.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
 import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
@@ -59,6 +60,8 @@ class HousekeepingScaffold extends ConsumerWidget {
     // Keeps the notification chime alive on every housekeeping screen that
     // uses this shell — not just the dashboard.
     ref.watch(housekeepingNotificationChimeProvider(session.token));
+    ref.watch(staffChatChimeProvider(session.token));
+    ref.watch(staffChatRealtimeProvider((session.token, session.role)));
     watchStaffIntercomCall(context, ref, session);
 
     return SessionGuard(

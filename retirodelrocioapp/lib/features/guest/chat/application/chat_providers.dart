@@ -13,7 +13,12 @@ final chatRepositoryProvider = Provider<ChatRepository>(
 /// live conversation without needing its own socket channel.
 final guestChatThreadProvider =
     FutureProvider.family<
-      ({List<ChatMessage> messages, int unreadCount, bool receptionOnline}),
+      ({
+        List<ChatMessage> messages,
+        int unreadCount,
+        bool receptionOnline,
+        String? lastMessageLabel,
+      }),
       String
     >((ref, deviceToken) async {
       final repo = ref.watch(chatRepositoryProvider);

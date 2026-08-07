@@ -11,7 +11,17 @@ import 'package:flutter/foundation.dart';
 /// mid-flight dispose) must never crash the realtime signal handler that
 /// triggers it.
 class NotificationChime {
-  final AudioPlayer _player = AudioPlayer(playerId: 'notification-chime');
+  /// No fixed `playerId` — this app now creates several `NotificationChime`s
+  /// at once (a station's own department chime, its SLA-breach chime, and
+  /// its Staff Chat chime can all be alive simultaneously). `audioplayers`
+  /// keys its native player by `playerId`; giving every instance the same
+  /// hardcoded id made them silently share one native player, so whichever
+  /// instance's `play()` ran second would tear down and reinitialise the
+  /// player mid-playback for every *other* chime already using it — the
+  /// exact "toast shows, no sound" symptom. Leaving `playerId` unset lets
+  /// `AudioPlayer` assign its own unique id per instance (its documented
+  /// default), giving each chime its own isolated native player.
+  final AudioPlayer _player = AudioPlayer();
 
   /// A short UI sound needs none of Android's exclusive-playback machinery —
   /// the default [AudioContextAndroid] requests [AndroidAudioFocus.gain],

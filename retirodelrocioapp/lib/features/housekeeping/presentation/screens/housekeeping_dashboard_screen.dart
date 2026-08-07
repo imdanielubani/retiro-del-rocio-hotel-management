@@ -17,6 +17,7 @@ import 'package:retirodelrocioapp/features/housekeeping/presentation/dialogs/rep
 import 'package:retirodelrocioapp/features/housekeeping/presentation/housekeeping_navigation.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_widgets.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
 import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
@@ -111,6 +112,8 @@ class _HousekeepingDashboardScreenState
   Widget build(BuildContext context) {
     ref.watch(housekeepingNotificationsRealtimeProvider(_token));
     ref.watch(housekeepingNotificationChimeProvider(_token));
+    ref.watch(staffChatChimeProvider(_token));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
     watchStaffIntercomCall(context, ref, widget.session);
 
     final overviewAsync = ref.watch(housekeepingOverviewProvider(_token));

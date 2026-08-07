@@ -6,6 +6,7 @@ import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_nav_rail.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
 import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
@@ -55,6 +56,8 @@ class MaintenanceScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weather = ref.watch(weatherProvider).value;
+    ref.watch(staffChatChimeProvider(session.token));
+    ref.watch(staffChatRealtimeProvider((session.token, session.role)));
     watchStaffIntercomCall(context, ref, session);
 
     return SessionGuard(

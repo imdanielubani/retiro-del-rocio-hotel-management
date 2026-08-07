@@ -14,7 +14,10 @@ import 'package:flutter/services.dart';
 /// for free. A gentler haptic pulse than the SOS siren's, since a call is
 /// routine, not an emergency.
 class IncomingCallRingtone {
-  final AudioPlayer _player = AudioPlayer(playerId: 'incoming-call-ringtone');
+  /// No fixed `playerId` — see `NotificationChime`'s own doc for why: a
+  /// hardcoded id makes every instance share one native player, which
+  /// silently breaks playback the moment a second instance exists.
+  final AudioPlayer _player = AudioPlayer();
   Timer? _haptics;
   bool _started = false;
 

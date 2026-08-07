@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Events\StaffChatMessageSent;
 use App\Events\StaffChatTypingSent;
 use App\Models\StaffMessage;
 use App\Models\User;
@@ -135,6 +136,28 @@ class StaffChatTest extends TestCase
             ->assertJsonPath('data.0.online', true);
     }
 
+    public function test_the_manager_channel_is_labelled_and_reports_online_for_any_admin_portal_role(): void
+    {
+        // The admin dashboard's "Manager" seat can be staffed by any of the
+        // admin-portal roles (see User::isAdmin()), not just one literally
+        // named "admin" — a user signed in as plain "manager" should still
+        // show the Manager channel as online.
+        Role::findOrCreate('manager');
+        $manager = User::factory()->create(['status' => 'active']);
+        $manager->assignRole('manager');
+        $manager->forceFill(['last_seen_at' => now()])->saveQuietly();
+
+        $data = $this->withToken($this->tokenFor('reception'))
+            ->getJson('/api/v1/staff/chat/channels')
+            ->assertOk()
+            ->json('data');
+
+        $admin = collect($data)->firstWhere('role', 'admin');
+        $this->assertNotNull($admin);
+        $this->assertSame('Manager', $admin['label']);
+        $this->assertTrue($admin['online']);
+    }
+
     public function test_an_unknown_role_is_rejected(): void
     {
         $this->withToken($this->tokenFor('reception'))
@@ -179,6 +202,22 @@ class StaffChatTest extends TestCase
         Event::assertDispatched(
             StaffChatTypingSent::class,
             fn (StaffChatTypingSent $e) => $e->channelKey === 'maintenance_security' && $e->from === 'security',
+        );
+    }
+
+    public function test_sending_a_message_broadcasts_to_the_recipients_own_inbox(): void
+    {
+        Event::fake([StaffChatMessageSent::class]);
+
+        $this->withToken($this->tokenFor('security'))
+            ->postJson('/api/v1/staff/chat/channels/maintenance/messages', [
+                'body' => 'Camera 4 in the east wing is down.',
+            ])
+            ->assertCreated();
+
+        Event::assertDispatched(
+            StaffChatMessageSent::class,
+            fn (StaffChatMessageSent $e) => $e->toRole === 'maintenance' && $e->fromRole === 'security',
         );
     }
 }

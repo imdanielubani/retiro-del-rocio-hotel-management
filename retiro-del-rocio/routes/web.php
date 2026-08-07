@@ -2,6 +2,7 @@
 
 use App\Events\BookingConfirmed;
 use App\Http\Controllers\Admin\Auth\LogoutController;
+use App\Http\Middleware\TouchLastSeen;
 use App\Livewire\Admin\Access\Roles;
 use App\Livewire\Admin\Access\Users;
 use App\Livewire\Admin\Auth\ForgotPassword;
@@ -1133,8 +1134,12 @@ $adminRoutes->group(function () {
         Route::get('password-reset-success', ResetSuccess::class)->name('password.success');
     });
 
-    // Authenticated admin portal.
-    Route::middleware(['auth', 'admin'])->group(function () {
+    // Authenticated admin portal. TouchLastSeen here is what lets a tablet's
+    // Staff Chat show the Manager channel as online while someone's actually
+    // signed in to the dashboard — every staff tablet endpoint already gets
+    // this via its own middleware group, but the admin panel is session
+    // auth, not sanctum/jwt, so it needs its own copy.
+    Route::middleware(['auth', 'admin', TouchLastSeen::class])->group(function () {
         Route::view('/', 'admin.dashboard')->name('dashboard');
         Route::post('logout', LogoutController::class)->name('logout');
 

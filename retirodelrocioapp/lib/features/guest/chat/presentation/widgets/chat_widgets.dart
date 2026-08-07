@@ -13,7 +13,7 @@ const Color chatOnlineGreen = Color(0xFF34D399);
 /// used everywhere else in the guest app, e.g. the Service Request category
 /// cards, rather than an emoji glyph), with a presence dot at the corner.
 class ChatAvatar extends StatelessWidget {
-  const ChatAvatar({super.key, this.size = 52, this.online = false});
+  const ChatAvatar({super.key, this.size = 46, this.online = false});
 
   final double size;
   final bool online;
@@ -99,15 +99,17 @@ class ChatOnlineStatus extends StatelessWidget {
 }
 
 /// The single conversation in the left-hand list — Reception, tapped to open
-/// the thread on the right. Same bordered-tile language reception's own
-/// Chat screen uses for its conversation list, so a guest and a receptionist
-/// look at the same design.
+/// the thread on the right. Same bordered-tile shape (title + time row,
+/// subtitle row, preview + unread row) as `ReceptionChatConversationTile`
+/// uses for a guest's row on reception's own Chat screen, so a guest and a
+/// receptionist look at the same design either side of the conversation.
 class ChatConversationTile extends StatelessWidget {
   const ChatConversationTile({
     super.key,
     required this.online,
     required this.unreadCount,
     required this.preview,
+    required this.timeLabel,
     required this.selected,
     required this.onTap,
   });
@@ -115,6 +117,7 @@ class ChatConversationTile extends StatelessWidget {
   final bool online;
   final int unreadCount;
   final String? preview;
+  final String? timeLabel;
   final bool selected;
   final VoidCallback onTap;
 
@@ -129,7 +132,7 @@ class ChatConversationTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
@@ -143,23 +146,49 @@ class ChatConversationTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ChatAvatar(online: online),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Reception',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.style(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if ((timeLabel ?? '').isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            timeLabel!,
+                            style: AppTypography.style(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
                     Text(
-                      'Reception',
+                      'Front Desk',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTypography.style(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.gold.withValues(alpha: 0.7),
+                        fontSize: 11,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    ChatOnlineStatus(online: online),
-                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
