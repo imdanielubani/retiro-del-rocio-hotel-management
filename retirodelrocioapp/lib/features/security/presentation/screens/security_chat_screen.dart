@@ -9,6 +9,7 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/s
 import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
 import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/incident_response_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
@@ -53,6 +54,12 @@ class _SecurityChatScreenState extends ConsumerState<SecurityChatScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => VisitorVerificationScreen(session: widget.session),
+          ),
+        );
+      case SecurityNavItem.intercom:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityIntercomScreen(session: widget.session),
           ),
         );
     }

@@ -18,6 +18,7 @@ import 'package:retirodelrocioapp/features/maintenance/presentation/maintenance_
 import 'package:retirodelrocioapp/features/maintenance/presentation/screens/work_order_detail_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_nav_rail.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_widgets.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The technician's home dashboard — the open orders needing attention next,
@@ -101,6 +102,7 @@ class _MaintenanceDashboardScreenState
     ref.watch(maintenanceNotificationsRealtimeProvider(_token));
     ref.watch(maintenanceNotificationChimeProvider(_token));
     ref.watch(maintenanceSlaBreachChimeProvider(_token));
+    watchStaffIntercomCall(context, ref, widget.session);
 
     final overviewAsync = ref.watch(maintenanceOverviewProvider(_token));
     final overview = overviewAsync.value ?? MaintenanceOverview.empty;

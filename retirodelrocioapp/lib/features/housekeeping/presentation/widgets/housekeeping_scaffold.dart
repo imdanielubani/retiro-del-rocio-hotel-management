@@ -7,6 +7,7 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/housekeeping/notifications/application/housekeeping_notification_providers.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The frosted housekeeping shell shared by the sub-screens (Rooms, Requests,
@@ -58,6 +59,7 @@ class HousekeepingScaffold extends ConsumerWidget {
     // Keeps the notification chime alive on every housekeeping screen that
     // uses this shell — not just the dashboard.
     ref.watch(housekeepingNotificationChimeProvider(session.token));
+    watchStaffIntercomCall(context, ref, session);
 
     return SessionGuard(
       child: Scaffold(
@@ -73,7 +75,11 @@ class HousekeepingScaffold extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    HousekeepingNavRail(active: active, onSelect: onNav, onLogout: onLogout),
+                    HousekeepingNavRail(
+                      active: active,
+                      onSelect: onNav,
+                      onLogout: onLogout,
+                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -115,7 +121,10 @@ class HousekeepingScaffold extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(subtitle, style: AppTypography.style(color: AppColors.gold, fontSize: 12)),
+              Text(
+                subtitle,
+                style: AppTypography.style(color: AppColors.gold, fontSize: 12),
+              ),
               const SizedBox(height: 3),
               Text(
                 title,
@@ -141,7 +150,10 @@ class HousekeepingScaffold extends ConsumerWidget {
     return Material(
       color: Colors.white.withValues(alpha: 0.06),
       shape: CircleBorder(
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: InkWell(
         onTap: onBack,
@@ -149,7 +161,11 @@ class HousekeepingScaffold extends ConsumerWidget {
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Icon(Icons.arrow_back_rounded, size: 18, color: Colors.white.withValues(alpha: 0.8)),
+          child: Icon(
+            Icons.arrow_back_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
         ),
       ),
     );
@@ -184,20 +200,36 @@ class HousekeepingSearchField extends StatelessWidget {
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
           hintText: hint,
-          hintStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 14),
-          prefixIcon: Icon(Icons.search_rounded, size: 18, color: Colors.white.withValues(alpha: 0.4)),
+          hintStyle: AppTypography.style(
+            color: Colors.white.withValues(alpha: 0.35),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.5), width: 1),
+            borderSide: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.5),
+              width: 1,
+            ),
           ),
         ),
       ),

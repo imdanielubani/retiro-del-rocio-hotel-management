@@ -13,6 +13,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/screens/s
 import 'package:retirodelrocioapp/features/authentication/presentation/screens/staff_login_screen.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/device_setup/presentation/widgets/allocation_chip.dart';
+import 'package:retirodelrocioapp/features/guest/intercom/application/guest_intercom_call_providers.dart';
+import 'package:retirodelrocioapp/features/intercom_call/presentation/screens/intercom_call_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_realtime_provider.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
@@ -39,6 +41,38 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   /// True once the checked-in guest has tapped Explore. Reset automatically the
   /// moment the room stops being occupied (i.e. reception checks them out).
   bool _explored = false;
+
+  /// Pushes the shared Intercom call overlay the moment this room transitions
+  /// from no call to having one (placed by the guest, or an incoming one
+  /// from Reception) — `ref.listen` only fires on a genuine change, so this
+  /// never double-pushes across rebuilds or repeated polls of the same call.
+  /// The screen itself watches the same provider and pops when the call
+  /// clears. Lives here — this screen stays mounted beneath every guest
+  /// sub-screen — so a call rings or connects no matter what's open.
+  void _watchIntercomCall(ProvisionedDevice device) {
+    ref.listen(guestIntercomCallProvider(device.token), (previous, next) {
+      if (previous == null && next != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => IntercomCallScreen(
+              watchCall: (ref) =>
+                  ref.watch(guestIntercomCallProvider(device.token)),
+              myRoomUnitId: device.roomUnitId,
+              onAnswer: (id) => ref
+                  .read(guestIntercomCallProvider(device.token).notifier)
+                  .answer(id),
+              onDecline: (id) => ref
+                  .read(guestIntercomCallProvider(device.token).notifier)
+                  .decline(id),
+              onEnd: (id) => ref
+                  .read(guestIntercomCallProvider(device.token).notifier)
+                  .end(id),
+            ),
+          ),
+        );
+      }
+    });
+  }
 
   void _toggleMute(VideoPlayerController video) {
     video.setVolume(video.value.volume == 0 ? 1 : 0);
@@ -80,6 +114,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     // moment reception clicks. Held here — this screen stays mounted beneath the
     // guest's own screens — and it merely accelerates the poll below.
     ref.watch(roomRealtimeProvider(device));
+    if (device.isGuest) _watchIntercomCall(device);
 
     // A tablet deleted from the admin dashboard loses its token: forget the
     // pairing and go back to device setup rather than sit on a dead session.
@@ -217,7 +252,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     return Material(
       color: Colors.white.withValues(alpha: 0.12),
       shape: CircleBorder(
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 0.8,
+        ),
       ),
       child: InkWell(
         onTap: onTap,

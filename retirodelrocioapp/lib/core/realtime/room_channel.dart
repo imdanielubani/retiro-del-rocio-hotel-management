@@ -43,21 +43,38 @@ class RoomChannel {
   /// Calls [onChanged] whenever this room's occupancy changes,
   /// [onNotification] whenever a new guest notification lands for this room
   /// (defaults to a no-op for callers that don't care, e.g. staff tablets),
-  /// and [onTyping] whenever a `typing` signal arrives, carrying who sent it
-  /// (`'guest'` or `'staff'`) — a chat screen ignores its own role's echo.
+  /// [onTyping] whenever a `typing` signal arrives, carrying who sent it
+  /// (`'guest'` or `'staff'`) — a chat screen ignores its own role's echo —
+  /// and [onIncomingCall]/[onCallUpdate] whenever an Intercom call starts
+  /// ringing for this room, or an existing one changes status (answered,
+  /// declined, hung up). Both call signals are just that — a signal — the
+  /// caller re-fetches the call's details with its own token, same reasoning
+  /// as [onNotification].
   void connect({
     required VoidCallback onChanged,
     VoidCallback? onNotification,
     ValueChanged<String>? onTyping,
+    VoidCallback? onIncomingCall,
+    VoidCallback? onCallUpdate,
   }) {
     _closed = false;
-    unawaited(_open(onChanged, onNotification ?? () {}, onTyping ?? (_) {}));
+    unawaited(
+      _open(
+        onChanged,
+        onNotification ?? () {},
+        onTyping ?? (_) {},
+        onIncomingCall ?? () {},
+        onCallUpdate ?? () {},
+      ),
+    );
   }
 
   Future<void> _open(
     VoidCallback onChanged,
     VoidCallback onNotification,
     ValueChanged<String> onTyping,
+    VoidCallback onIncomingCall,
+    VoidCallback onCallUpdate,
   ) async {
     if (_closed) return;
 
@@ -66,14 +83,33 @@ class RoomChannel {
       _socket = socket;
 
       _subscription = socket.stream.listen(
-        (message) => _onMessage(message, onChanged, onNotification, onTyping),
+        (message) => _onMessage(
+          message,
+          onChanged,
+          onNotification,
+          onTyping,
+          onIncomingCall,
+          onCallUpdate,
+        ),
         onError: (Object error) {
           debugPrint('RoomChannel: socket error — $error');
-          _scheduleReconnect(onChanged, onNotification, onTyping);
+          _scheduleReconnect(
+            onChanged,
+            onNotification,
+            onTyping,
+            onIncomingCall,
+            onCallUpdate,
+          );
         },
         onDone: () {
           debugPrint('RoomChannel: socket closed — will retry.');
-          _scheduleReconnect(onChanged, onNotification, onTyping);
+          _scheduleReconnect(
+            onChanged,
+            onNotification,
+            onTyping,
+            onIncomingCall,
+            onCallUpdate,
+          );
         },
         cancelOnError: true,
       );
@@ -85,7 +121,13 @@ class RoomChannel {
       );
     } catch (error) {
       debugPrint('RoomChannel: connect failed — $error');
-      _scheduleReconnect(onChanged, onNotification, onTyping);
+      _scheduleReconnect(
+        onChanged,
+        onNotification,
+        onTyping,
+        onIncomingCall,
+        onCallUpdate,
+      );
     }
   }
 
@@ -94,6 +136,8 @@ class RoomChannel {
     VoidCallback onChanged,
     VoidCallback onNotification,
     ValueChanged<String> onTyping,
+    VoidCallback onIncomingCall,
+    VoidCallback onCallUpdate,
   ) {
     if (message is! String) return;
 
@@ -133,6 +177,14 @@ class RoomChannel {
               : const {};
           final from = data['from'] as String?;
           if (from != null) onTyping(from);
+
+        case 'intercom.ringing':
+          debugPrint('RoomChannel: $_channel has an incoming call.');
+          onIncomingCall();
+
+        case 'intercom.updated':
+          debugPrint('RoomChannel: $_channel call status changed.');
+          onCallUpdate();
       }
     } catch (error) {
       debugPrint('RoomChannel: bad frame — $error');
@@ -147,13 +199,23 @@ class RoomChannel {
     VoidCallback onChanged,
     VoidCallback onNotification,
     ValueChanged<String> onTyping,
+    VoidCallback onIncomingCall,
+    VoidCallback onCallUpdate,
   ) {
     if (_closed || _reconnect != null) return;
 
     _teardownSocket();
     _reconnect = Timer(const Duration(seconds: 10), () {
       _reconnect = null;
-      unawaited(_open(onChanged, onNotification, onTyping));
+      unawaited(
+        _open(
+          onChanged,
+          onNotification,
+          onTyping,
+          onIncomingCall,
+          onCallUpdate,
+        ),
+      );
     });
   }
 

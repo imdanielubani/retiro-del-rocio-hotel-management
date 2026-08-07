@@ -4,7 +4,13 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/glass_panel.dart';
 
 /// The security tablet's navigable modules.
-enum SecurityNavItem { dashboard, verifiedPass, chat, incidentResponse }
+enum SecurityNavItem {
+  dashboard,
+  verifiedPass,
+  chat,
+  incidentResponse,
+  intercom,
+}
 
 /// The security tablet's left navigation rail (Figma 205:5285) — a 74px frosted
 /// column with the brand mark, the module icons and Logout pinned to the bottom.
@@ -60,6 +66,13 @@ class SecurityNavRail extends StatelessWidget {
             active: active == SecurityNavItem.incidentResponse,
             onTap: () => onSelect(SecurityNavItem.incidentResponse),
           ),
+          const SizedBox(height: 4),
+          _NavItem(
+            icon: Icons.call_rounded,
+            label: 'Intercom',
+            active: active == SecurityNavItem.intercom,
+            onTap: () => onSelect(SecurityNavItem.intercom),
+          ),
           const Spacer(),
           _NavItem(
             icon: Icons.logout_rounded,
@@ -79,9 +92,15 @@ class SecurityNavRail extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.gold.withValues(alpha: 0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.28), width: 0.8),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.28),
+          width: 0.8,
+        ),
       ),
-      child: Image.asset('assets/icons/Rociologosetup.png', fit: BoxFit.contain),
+      child: Image.asset(
+        'assets/icons/Rociologosetup.png',
+        fit: BoxFit.contain,
+      ),
     );
   }
 }

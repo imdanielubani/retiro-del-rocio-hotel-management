@@ -16,12 +16,14 @@ import 'package:retirodelrocioapp/features/security/notifications/presentation/s
 import 'package:retirodelrocioapp/features/security/presentation/dialogs/sos_alert_overlay.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/incident_response_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_card.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_stat_card.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_widgets.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The security officer's home dashboard (Figma 204:3089 / 257:1133).
@@ -90,6 +92,12 @@ class _SecurityDashboardScreenState
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
+        );
+      case SecurityNavItem.intercom:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityIntercomScreen(session: widget.session),
           ),
         );
     }
@@ -222,6 +230,7 @@ class _SecurityDashboardScreenState
     // owned here (the root security screen, always mounted) same as the SOS
     // announcer below.
     ref.watch(securityNotificationChimeProvider(_token));
+    watchStaffIntercomCall(context, ref, widget.session);
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on
     // first load and on every refresh (socket or poll); the guards inside make it

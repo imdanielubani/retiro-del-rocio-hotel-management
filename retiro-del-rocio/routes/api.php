@@ -4,15 +4,18 @@ use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\GuestChatController;
+use App\Http\Controllers\Api\V1\GuestIntercomCallController;
 use App\Http\Controllers\Api\V1\GuestServiceRequestController;
 use App\Http\Controllers\Api\V1\HousekeepingController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ReceptionChatController;
 use App\Http\Controllers\Api\V1\ReceptionController;
+use App\Http\Controllers\Api\V1\ReceptionIntercomCallController;
 use App\Http\Controllers\Api\V1\SecurityController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\StaffChatController;
+use App\Http\Controllers\Api\V1\StaffIntercomCallController;
 use App\Http\Controllers\Api\V1\TabletController;
 use App\Http\Controllers\Api\V1\VisitorPassController;
 use App\Http\Middleware\TouchLastSeen;
@@ -183,6 +186,19 @@ $api->group(function () {
         Route::post('chat/typing', [GuestChatController::class, 'typing'])
             ->middleware('throttle:60,1')->name('api.v1.chat.typing');
 
+        // Intercom — voice-call signalling with Reception from a guest's
+        // in-room tablet. No real audio: ringing/answer/decline/hang-up only.
+        Route::post('intercom/calls', [GuestIntercomCallController::class, 'store'])
+            ->middleware('throttle:20,1')->name('api.v1.intercom.calls.store');
+        Route::get('intercom/calls/current', [GuestIntercomCallController::class, 'current'])
+            ->name('api.v1.intercom.calls.current');
+        Route::post('intercom/calls/{call}/answer', [GuestIntercomCallController::class, 'answer'])
+            ->middleware('throttle:20,1')->name('api.v1.intercom.calls.answer');
+        Route::post('intercom/calls/{call}/decline', [GuestIntercomCallController::class, 'decline'])
+            ->middleware('throttle:20,1')->name('api.v1.intercom.calls.decline');
+        Route::post('intercom/calls/{call}/end', [GuestIntercomCallController::class, 'end'])
+            ->middleware('throttle:20,1')->name('api.v1.intercom.calls.end');
+
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])
             ->middleware('throttle:10,1')->name('api.v1.tablets.staff-login');
@@ -317,6 +333,19 @@ $api->group(function () {
         Route::post('reception/chat/guests/{booking}/typing', [ReceptionChatController::class, 'typingToGuest'])
             ->middleware('throttle:60,1')->name('api.v1.reception.chat.guests.typing');
 
+        // Reception's Intercom — voice-call signalling with a checked-in
+        // guest's room. No real audio: ringing/answer/decline/hang-up only.
+        Route::post('reception/intercom/calls', [ReceptionIntercomCallController::class, 'store'])
+            ->middleware('throttle:20,1')->name('api.v1.reception.intercom.calls.store');
+        Route::get('reception/intercom/calls/current', [ReceptionIntercomCallController::class, 'current'])
+            ->name('api.v1.reception.intercom.calls.current');
+        Route::post('reception/intercom/calls/{call}/answer', [ReceptionIntercomCallController::class, 'answer'])
+            ->middleware('throttle:20,1')->name('api.v1.reception.intercom.calls.answer');
+        Route::post('reception/intercom/calls/{call}/decline', [ReceptionIntercomCallController::class, 'decline'])
+            ->middleware('throttle:20,1')->name('api.v1.reception.intercom.calls.decline');
+        Route::post('reception/intercom/calls/{call}/end', [ReceptionIntercomCallController::class, 'end'])
+            ->middleware('throttle:20,1')->name('api.v1.reception.intercom.calls.end');
+
         // --- Housekeeping tablet (staff JWT, housekeeping role) ---
         // The housekeeper signs in on the housekeeping station; their JWT
         // authorises the room-status board and guest-request queue. The role
@@ -430,5 +459,21 @@ $api->group(function () {
             ->middleware('throttle:30,1')->name('api.v1.staff.chat.channels.send');
         Route::post('staff/chat/channels/{role}/typing', [StaffChatController::class, 'typing'])
             ->middleware('throttle:60,1')->name('api.v1.staff.chat.channels.typing');
+
+        // --- Staff Intercom (shared by every staff tablet's Intercom screen) ---
+        // Voice-call signalling between any two stations. No real audio:
+        // ringing/answer/decline/hang-up only, same as the guest ↔ Reception
+        // calls in GuestIntercomCallController/ReceptionIntercomCallController —
+        // all three write to the same intercom_calls table.
+        Route::post('staff/intercom/calls', [StaffIntercomCallController::class, 'store'])
+            ->middleware('throttle:20,1')->name('api.v1.staff.intercom.calls.store');
+        Route::get('staff/intercom/calls/current', [StaffIntercomCallController::class, 'current'])
+            ->name('api.v1.staff.intercom.calls.current');
+        Route::post('staff/intercom/calls/{call}/answer', [StaffIntercomCallController::class, 'answer'])
+            ->middleware('throttle:20,1')->name('api.v1.staff.intercom.calls.answer');
+        Route::post('staff/intercom/calls/{call}/decline', [StaffIntercomCallController::class, 'decline'])
+            ->middleware('throttle:20,1')->name('api.v1.staff.intercom.calls.decline');
+        Route::post('staff/intercom/calls/{call}/end', [StaffIntercomCallController::class, 'end'])
+            ->middleware('throttle:20,1')->name('api.v1.staff.intercom.calls.end');
     });
 });

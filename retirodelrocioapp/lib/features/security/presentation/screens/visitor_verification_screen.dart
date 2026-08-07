@@ -12,6 +12,7 @@ import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.d
 import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
 import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_code_keypad.dart';
@@ -105,6 +106,12 @@ class _VisitorVerificationScreenState
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
+        );
+      case SecurityNavItem.intercom:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityIntercomScreen(session: widget.session),
           ),
         );
     }

@@ -7,6 +7,7 @@ import 'package:retirodelrocioapp/core/config/app_config.dart';
 import 'package:retirodelrocioapp/core/realtime/room_channel.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/chat/application/chat_providers.dart';
+import 'package:retirodelrocioapp/features/guest/intercom/application/guest_intercom_call_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/widgets/guest_notification_toast.dart';
 import 'package:retirodelrocioapp/features/guest/service_requests/application/service_request_providers.dart';
@@ -54,6 +55,12 @@ final roomRealtimeProvider = FutureProvider.family<void, ProvisionedDevice>((
       if (from != 'staff') return;
       ref.read(guestReceptionTypingProvider.notifier).staffIsTyping();
     },
+    onIncomingCall: () => unawaited(
+      ref.read(guestIntercomCallProvider(device.token).notifier).refresh(),
+    ),
+    onCallUpdate: () => unawaited(
+      ref.read(guestIntercomCallProvider(device.token).notifier).refresh(),
+    ),
   );
 
   ref.onDispose(channel.dispose);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/reception/chat/presentation/screens/reception_chat_screen.dart';
+import 'package:retirodelrocioapp/features/reception/intercom/presentation/screens/reception_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bills_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_bookings_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_guests_screen.dart';
@@ -103,6 +104,7 @@ class ReceptionNavigation {
       session: session,
     ),
     ReceptionNavItem.chat => ReceptionChatScreen(session: session),
+    ReceptionNavItem.intercom => ReceptionIntercomScreen(session: session),
     _ => null,
   };
 
@@ -125,6 +127,7 @@ class ReceptionNavigation {
     ReceptionNavItem.vehiclePickup => 'Vehicle Pickup',
     ReceptionNavItem.incidentResponse => 'Incident Response',
     ReceptionNavItem.chat => 'Chat',
+    ReceptionNavItem.intercom => 'Intercom',
     _ => 'Coming soon',
   };
 }

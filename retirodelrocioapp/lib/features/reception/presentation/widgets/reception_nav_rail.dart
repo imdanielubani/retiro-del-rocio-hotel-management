@@ -14,6 +14,7 @@ enum ReceptionNavItem {
   vehiclePickup,
   incidentResponse,
   chat,
+  intercom,
 }
 
 /// The reception tablet's left navigation rail — a 74px frosted column with the
@@ -104,6 +105,12 @@ class ReceptionNavRail extends StatelessWidget {
                     ReceptionNavItem.chat,
                     Icons.chat_bubble_outline_rounded,
                     'Chat',
+                  ),
+                  const SizedBox(height: 4),
+                  _item(
+                    ReceptionNavItem.intercom,
+                    Icons.call_rounded,
+                    'Intercom',
                   ),
                   const Spacer(),
                   _NavItem(

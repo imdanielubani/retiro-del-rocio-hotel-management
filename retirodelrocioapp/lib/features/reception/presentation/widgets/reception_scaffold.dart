@@ -4,6 +4,7 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
+import 'package:retirodelrocioapp/features/reception/intercom/presentation/widgets/reception_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_top_bar.dart';
@@ -58,6 +59,7 @@ class ReceptionScaffold extends ConsumerWidget {
     // Keeps the notification chime alive on every reception screen that uses
     // this shell — not just the dashboard.
     ref.watch(receptionNotificationChimeProvider(session.token));
+    watchReceptionIntercomCall(context, ref, session);
 
     return SessionGuard(
       child: Scaffold(
@@ -111,10 +113,7 @@ class ReceptionScaffold extends ConsumerWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (onBack != null) ...[
-          _backButton(),
-          const SizedBox(width: 15),
-        ],
+        if (onBack != null) ...[_backButton(), const SizedBox(width: 15)],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +145,10 @@ class ReceptionScaffold extends ConsumerWidget {
     return Material(
       color: Colors.white.withValues(alpha: 0.06),
       shape: CircleBorder(
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: InkWell(
         onTap: onBack,
@@ -204,15 +206,24 @@ class ReceptionSearchField extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.5), width: 1),
+            borderSide: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.5),
+              width: 1,
+            ),
           ),
         ),
       ),

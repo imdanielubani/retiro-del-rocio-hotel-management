@@ -14,6 +14,7 @@ import 'package:retirodelrocioapp/features/guest/home/domain/guest_service.dart'
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/current_stay_card.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/quick_service_card.dart';
+import 'package:retirodelrocioapp/features/guest/intercom/presentation/screens/guest_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/my_stay_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
@@ -206,6 +207,21 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => GuestChatScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
+    // Intercom is built — take the guest there rather than "coming soon".
+    if (service.id == GuestServices.intercom.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GuestIntercomScreen(
             device: widget.device,
             status: live ?? widget.status,
           ),

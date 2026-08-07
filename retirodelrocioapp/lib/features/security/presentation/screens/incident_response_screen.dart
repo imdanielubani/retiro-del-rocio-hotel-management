@@ -13,6 +13,7 @@ import 'package:retirodelrocioapp/features/security/notifications/application/se
 import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_detail_panel.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_log_row.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
@@ -66,6 +67,12 @@ class _IncidentResponseScreenState
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
+        );
+      case SecurityNavItem.intercom:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityIntercomScreen(session: widget.session),
           ),
         );
     }

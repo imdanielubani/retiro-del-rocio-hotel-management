@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/l
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_overview.dart';
+import 'package:retirodelrocioapp/features/reception/intercom/presentation/widgets/reception_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
 import 'package:retirodelrocioapp/features/reception/notifications/presentation/screens/reception_notification_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
@@ -208,6 +209,7 @@ class _ReceptionDashboardScreenState
     // Rings the chime and toasts a new front-desk notification, from either
     // the socket above or the plain poll if it's down.
     ref.watch(receptionNotificationChimeProvider(_token));
+    watchReceptionIntercomCall(context, ref, widget.session);
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on
     // first load and on every refresh (socket or poll); the guards inside make it

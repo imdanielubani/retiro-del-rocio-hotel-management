@@ -4,6 +4,7 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/housekeeping/lost_found/presentation/screens/housekeeping_lost_found_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_chat_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_inspection_screen.dart';
+import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_requests_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_rooms_screen.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/widgets/housekeeping_nav_rail.dart';
@@ -84,6 +85,9 @@ class HousekeepingNavigation {
           session: session,
         ),
         HousekeepingNavItem.chat => HousekeepingChatScreen(session: session),
+        HousekeepingNavItem.intercom => HousekeepingIntercomScreen(
+          session: session,
+        ),
         _ => null,
       };
 
@@ -106,5 +110,6 @@ class HousekeepingNavigation {
     HousekeepingNavItem.inspection => 'Inspection',
     HousekeepingNavItem.lostFound => 'Lost & Found',
     HousekeepingNavItem.chat => 'Chat',
+    HousekeepingNavItem.intercom => 'Intercom',
   };
 }

@@ -3,6 +3,7 @@ import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/screens/assets_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/screens/maintenance_chat_screen.dart';
+import 'package:retirodelrocioapp/features/maintenance/presentation/screens/maintenance_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/screens/requests_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/screens/work_orders_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_nav_rail.dart';
@@ -65,6 +66,9 @@ class MaintenanceNavigation {
         MaintenanceNavItem.assets => AssetsScreen(session: session),
         MaintenanceNavItem.requests => RequestsScreen(session: session),
         MaintenanceNavItem.chat => MaintenanceChatScreen(session: session),
+        MaintenanceNavItem.intercom => MaintenanceIntercomScreen(
+          session: session,
+        ),
         _ => null,
       };
 
@@ -86,5 +90,6 @@ class MaintenanceNavigation {
     MaintenanceNavItem.assets => 'Assets',
     MaintenanceNavItem.requests => 'Requests',
     MaintenanceNavItem.chat => 'Chat',
+    MaintenanceNavItem.intercom => 'Intercom',
   };
 }

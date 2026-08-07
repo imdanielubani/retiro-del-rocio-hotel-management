@@ -6,6 +6,7 @@ import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/maintenance_nav_rail.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The frosted maintenance shell shared by the sub-screens (Work Orders):
@@ -54,6 +55,7 @@ class MaintenanceScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weather = ref.watch(weatherProvider).value;
+    watchStaffIntercomCall(context, ref, session);
 
     return SessionGuard(
       child: Scaffold(
@@ -69,7 +71,11 @@ class MaintenanceScaffold extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    MaintenanceNavRail(active: active, onSelect: onNav, onLogout: onLogout),
+                    MaintenanceNavRail(
+                      active: active,
+                      onSelect: onNav,
+                      onLogout: onLogout,
+                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -111,7 +117,10 @@ class MaintenanceScaffold extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(subtitle, style: AppTypography.style(color: AppColors.gold, fontSize: 12)),
+              Text(
+                subtitle,
+                style: AppTypography.style(color: AppColors.gold, fontSize: 12),
+              ),
               const SizedBox(height: 3),
               Text(
                 title,
@@ -134,7 +143,10 @@ class MaintenanceScaffold extends ConsumerWidget {
     return Material(
       color: Colors.white.withValues(alpha: 0.06),
       shape: CircleBorder(
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: InkWell(
         onTap: onBack,
@@ -142,7 +154,11 @@ class MaintenanceScaffold extends ConsumerWidget {
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Icon(Icons.arrow_back_rounded, size: 18, color: Colors.white.withValues(alpha: 0.8)),
+          child: Icon(
+            Icons.arrow_back_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
         ),
       ),
     );
