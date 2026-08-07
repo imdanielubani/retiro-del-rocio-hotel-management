@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -27,10 +26,12 @@ class HousekeepingInspectionScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<HousekeepingInspectionScreen> createState() => _HousekeepingInspectionScreenState();
+  ConsumerState<HousekeepingInspectionScreen> createState() =>
+      _HousekeepingInspectionScreenState();
 }
 
-class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspectionScreen> {
+class _HousekeepingInspectionScreenState
+    extends ConsumerState<HousekeepingInspectionScreen> {
   _Filter _filter = _Filter.all;
   int? _busyId;
 
@@ -44,18 +45,22 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
   }
 
   void _onNav(HousekeepingNavItem item) {
-    if (item == HousekeepingNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
-    HousekeepingNavigation.select(context, widget.session, item, current: HousekeepingNavItem.inspection);
+    HousekeepingNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: HousekeepingNavItem.inspection,
+    );
   }
 
   void _openNotifications() {
     HousekeepingNavigation.push(
       context,
       'notifications',
-      HousekeepingNotificationScreen(session: widget.session, current: HousekeepingNavItem.inspection),
+      HousekeepingNotificationScreen(
+        session: widget.session,
+        current: HousekeepingNavItem.inspection,
+      ),
     );
   }
 
@@ -70,7 +75,9 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
   Future<void> _complete(HousekeepingGuestRequest request) async {
     setState(() => _busyId = request.id);
     try {
-      await ref.read(housekeepingActionsProvider(_token)).completeRequest(request.id);
+      await ref
+          .read(housekeepingActionsProvider(_token))
+          .completeRequest(request.id);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,10 +100,14 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
   Widget build(BuildContext context) {
     ref.watch(housekeepingNotificationsRealtimeProvider(_token));
 
-    final requestsAsync = ref.watch(housekeepingInspectionRequestsProvider(_token));
+    final requestsAsync = ref.watch(
+      housekeepingInspectionRequestsProvider(_token),
+    );
     final requests = requestsAsync.value ?? const <HousekeepingGuestRequest>[];
     final pendingCount = requests.where((r) => r.isPending).length;
-    final unreadNotifications = ref.watch(housekeepingUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      housekeepingUnreadNotificationsProvider(_token),
+    );
 
     return HousekeepingScaffold(
       session: widget.session,
@@ -116,12 +127,16 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
               data: (data) => _list(data),
               loading: () => requests.isNotEmpty
                   ? _list(requests)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => requests.isNotEmpty
                   ? _list(requests)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(housekeepingInspectionRequestsProvider(_token)),
+                        onPressed: () => ref.invalidate(
+                          housekeepingInspectionRequestsProvider(_token),
+                        ),
                         child: const Text(
                           'Could not load inspections. Retry',
                           style: TextStyle(color: AppColors.gold),
@@ -150,7 +165,9 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
   Widget _chip(String label, _Filter value, {int? badge}) {
     final selected = _filter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _filter = value),
@@ -160,7 +177,9 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
@@ -170,7 +189,9 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
               Text(
                 label,
                 style: AppTypography.style(
-                  color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+                  color: selected
+                      ? AppColors.gold
+                      : Colors.white.withValues(alpha: 0.6),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -178,14 +199,21 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
               if (badge != null && badge > 0) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gold.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '$badge',
-                    style: AppTypography.style(color: AppColors.gold, fontSize: 11, fontWeight: FontWeight.w700),
+                    style: AppTypography.style(
+                      color: AppColors.gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -208,7 +236,8 @@ class _HousekeepingInspectionScreenState extends ConsumerState<HousekeepingInspe
 
     return RefreshIndicator(
       color: AppColors.gold,
-      onRefresh: () async => ref.invalidate(housekeepingInspectionRequestsProvider(_token)),
+      onRefresh: () async =>
+          ref.invalidate(housekeepingInspectionRequestsProvider(_token)),
       child: ListView.separated(
         padding: const EdgeInsets.only(bottom: 24),
         itemCount: visible.length,

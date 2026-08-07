@@ -2,14 +2,19 @@
 
 namespace Tests\Feature\Api;
 
+use App\Events\ChatTypingSent;
 use App\Models\Booking;
 use App\Models\ChatMessage;
 use App\Models\Device;
 use App\Models\DeviceType;
 use App\Models\Room;
 use App\Models\RoomUnit;
+use App\Models\User;
+use App\Services\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -195,5 +200,43 @@ class GuestChatTest extends TestCase
             ->getJson('/api/v1/chat/messages')
             ->assertOk()
             ->assertJsonCount(0, 'data');
+    }
+
+    public function test_reception_online_is_false_until_a_receptionist_has_been_recently_active(): void
+    {
+        $this->withToken($this->token)
+            ->getJson('/api/v1/chat/messages')
+            ->assertOk()
+            ->assertJsonPath('reception_online', false);
+
+        // Assigned via the raw pivot relationship rather than assignRole():
+        // Spatie's role cache can already hold an empty snapshot from the
+        // chat call above, and assignRole() trusts that cache to resolve the
+        // role it just created.
+        $role = Role::create(['name' => 'reception', 'guard_name' => 'web']);
+        $receptionist = User::factory()->create(['status' => 'active']);
+        $receptionist->roles()->attach($role->id);
+        $staffToken = app(JwtService::class)->issue(['sub' => $receptionist->id])['token'];
+
+        // Any authenticated reception call stamps presence — a plain guest
+        // list is enough, the guest side never sees which endpoint it was.
+        $this->withToken($staffToken)->getJson('/api/v1/reception/chat/guests')->assertOk();
+
+        $this->withToken($this->token)
+            ->getJson('/api/v1/chat/messages')
+            ->assertOk()
+            ->assertJsonPath('reception_online', true);
+    }
+
+    public function test_typing_broadcasts_on_the_rooms_channel(): void
+    {
+        Event::fake([ChatTypingSent::class]);
+
+        $this->withToken($this->token)->postJson('/api/v1/chat/typing')->assertOk();
+
+        Event::assertDispatched(
+            ChatTypingSent::class,
+            fn (ChatTypingSent $e) => $e->roomUnitId === $this->unit->id && $e->from === ChatMessage::GUEST,
+        );
     }
 }

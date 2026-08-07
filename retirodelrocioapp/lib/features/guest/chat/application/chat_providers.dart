@@ -13,7 +13,7 @@ final chatRepositoryProvider = Provider<ChatRepository>(
 /// live conversation without needing its own socket channel.
 final guestChatThreadProvider =
     FutureProvider.family<
-      ({List<ChatMessage> messages, int unreadCount}),
+      ({List<ChatMessage> messages, int unreadCount, bool receptionOnline}),
       String
     >((ref, deviceToken) async {
       final repo = ref.watch(chatRepositoryProvider);
@@ -23,6 +23,34 @@ final guestChatThreadProvider =
 
       return repo.list(deviceToken);
     });
+
+/// True while reception is (recently) typing a reply — flipped on by the
+/// realtime `typing` signal on the room's channel (see
+/// `roomRealtimeProvider`) and auto-cleared a few seconds after the last
+/// one, in case the "stopped typing" edge is ever missed. Not keyed by
+/// device token: a guest tablet only ever has the one device for its whole
+/// session, so a single (non-family) notifier is enough — same shape as
+/// `AuthController`.
+class GuestReceptionTypingNotifier extends Notifier<bool> {
+  Timer? _timeout;
+
+  @override
+  bool build() {
+    ref.onDispose(() => _timeout?.cancel());
+    return false;
+  }
+
+  void staffIsTyping() {
+    state = true;
+    _timeout?.cancel();
+    _timeout = Timer(const Duration(seconds: 5), () => state = false);
+  }
+}
+
+final guestReceptionTypingProvider =
+    NotifierProvider<GuestReceptionTypingNotifier, bool>(
+      GuestReceptionTypingNotifier.new,
+    );
 
 class ChatActions {
   const ChatActions(this._ref, this._deviceToken);
@@ -37,6 +65,9 @@ class ChatActions {
     _ref.invalidate(guestChatThreadProvider(_deviceToken));
     return message;
   }
+
+  Future<void> sendTyping() =>
+      _ref.read(chatRepositoryProvider).sendTyping(_deviceToken);
 }
 
 final chatActionsProvider = Provider.family<ChatActions, String>(

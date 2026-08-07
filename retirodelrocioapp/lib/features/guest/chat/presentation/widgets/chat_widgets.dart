@@ -3,48 +3,20 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/guest/chat/domain/chat_message.dart';
 
-/// Front desk's presence green (Figma 394:859) — distinct from
-/// [AppColors.success], which is used for confirmation states elsewhere.
+/// Front desk's presence green — the same colour reception's own chat screen
+/// uses for its online dots, so a guest and a receptionist read the same
+/// "someone is here" signal.
 const Color chatOnlineGreen = Color(0xFF34D399);
 
 /// The Reception avatar every surface in this screen shares — a gold-tinted
-/// circle around a concierge-bell icon, matching the plain [IconData] badges
-/// used everywhere else in the guest app (e.g. the Service Request category
-/// cards) rather than an emoji glyph.
+/// circle around a concierge-bell icon (matching the plain [IconData] badges
+/// used everywhere else in the guest app, e.g. the Service Request category
+/// cards, rather than an emoji glyph), with a presence dot at the corner.
 class ChatAvatar extends StatelessWidget {
-  const ChatAvatar({super.key, this.size = 56});
+  const ChatAvatar({super.key, this.size = 52, this.online = false});
 
   final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.45),
-          width: 0.8,
-        ),
-      ),
-      child: Icon(
-        Icons.room_service_rounded,
-        size: size * 0.42,
-        color: AppColors.gold,
-      ),
-    );
-  }
-}
-
-/// The single conversation in the left-hand list (Figma 394:866) — Reception,
-/// with a live online dot and an unread badge when there's something new.
-class ChatConversationCard extends StatelessWidget {
-  const ChatConversationCard({super.key, required this.unreadCount});
-
-  final int unreadCount;
+  final bool online;
 
   @override
   Widget build(BuildContext context) {
@@ -52,14 +24,125 @@ class ChatConversationCard extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          width: size,
+          height: size,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(100),
+            color: AppColors.gold.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.gold.withValues(alpha: 0.45),
+              width: 0.8,
+            ),
+          ),
+          child: Icon(
+            Icons.room_service_rounded,
+            size: size * 0.42,
+            color: AppColors.gold,
+          ),
+        ),
+        Positioned(
+          right: -1,
+          bottom: -1,
+          child: Container(
+            width: size * 0.28,
+            height: size * 0.28,
+            decoration: BoxDecoration(
+              color: online
+                  ? chatOnlineGreen
+                  : Colors.white.withValues(alpha: 0.25),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.background, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A dot + "Online"/"Offline" label — the same status row reception's chat
+/// screen shows for a guest or a department.
+class ChatOnlineStatus extends StatelessWidget {
+  const ChatOnlineStatus({super.key, required this.online});
+
+  final bool online;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: online
+                ? chatOnlineGreen
+                : Colors.white.withValues(alpha: 0.3),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          online ? 'Online' : 'Offline',
+          style: AppTypography.style(
+            color: online
+                ? chatOnlineGreen
+                : Colors.white.withValues(alpha: 0.4),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The single conversation in the left-hand list — Reception, tapped to open
+/// the thread on the right. Same bordered-tile language reception's own
+/// Chat screen uses for its conversation list, so a guest and a receptionist
+/// look at the same design.
+class ChatConversationTile extends StatelessWidget {
+  const ChatConversationTile({
+    super.key,
+    required this.online,
+    required this.unreadCount,
+    required this.preview,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final bool online;
+  final int unreadCount;
+  final String? preview;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.1)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.35)
+                  : Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ChatAvatar(),
+              ChatAvatar(online: online),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -70,30 +153,34 @@ class ChatConversationCard extends StatelessWidget {
                       'Reception',
                       style: AppTypography.style(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
+                    ChatOnlineStatus(online: online),
+                    const SizedBox(height: 6),
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: chatOnlineGreen,
-                            shape: BoxShape.circle,
+                        Expanded(
+                          child: Text(
+                            (preview ?? '').isNotEmpty
+                                ? preview!
+                                : 'Say hello to the front desk',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.style(
+                              color: Colors.white.withValues(
+                                alpha: (preview ?? '').isNotEmpty ? 0.5 : 0.3,
+                              ),
+                              fontSize: 12,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 7),
-                        Text(
-                          'Online',
-                          style: AppTypography.style(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 12,
-                          ),
-                        ),
+                        if (unreadCount > 0) ...[
+                          const SizedBox(width: 8),
+                          _unreadBadge(),
+                        ],
                       ],
                     ),
                   ],
@@ -102,31 +189,60 @@ class ChatConversationCard extends StatelessWidget {
             ],
           ),
         ),
-        // Floats over the card's top-right corner, the same overlapping
-        // treatment as an unread badge on a chat-app avatar (Figma 394:871).
-        if (unreadCount > 0)
-          Positioned(top: -4, right: -4, child: _unreadBadge()),
-      ],
+      ),
     );
   }
 
   Widget _unreadBadge() {
     return Container(
-      width: 18,
+      constraints: const BoxConstraints(minWidth: 18),
       height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
       alignment: Alignment.center,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.gold,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.background, width: 2),
       ),
       child: Text(
         unreadCount > 9 ? '9+' : '$unreadCount',
         style: AppTypography.style(
           color: Colors.black,
-          fontSize: 8,
+          fontSize: 10,
           fontWeight: FontWeight.w800,
         ),
+      ),
+    );
+  }
+}
+
+/// "Reception is typing…", shown just above the composer while true.
+class ChatTypingIndicator extends StatelessWidget {
+  const ChatTypingIndicator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
+              color: AppColors.gold.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Reception is typing…',
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }

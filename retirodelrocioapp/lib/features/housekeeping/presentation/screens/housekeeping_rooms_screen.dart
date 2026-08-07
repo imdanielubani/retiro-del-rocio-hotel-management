@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -27,10 +26,12 @@ class HousekeepingRoomsScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<HousekeepingRoomsScreen> createState() => _HousekeepingRoomsScreenState();
+  ConsumerState<HousekeepingRoomsScreen> createState() =>
+      _HousekeepingRoomsScreenState();
 }
 
-class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScreen> {
+class _HousekeepingRoomsScreenState
+    extends ConsumerState<HousekeepingRoomsScreen> {
   String _search = '';
   _StatusFilter _filter = _StatusFilter.all;
   int? _busyRoomId;
@@ -45,18 +46,22 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
   }
 
   void _onNav(HousekeepingNavItem item) {
-    if (item == HousekeepingNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
-    HousekeepingNavigation.select(context, widget.session, item, current: HousekeepingNavItem.rooms);
+    HousekeepingNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: HousekeepingNavItem.rooms,
+    );
   }
 
   void _openNotifications() {
     HousekeepingNavigation.push(
       context,
       'notifications',
-      HousekeepingNotificationScreen(session: widget.session, current: HousekeepingNavItem.rooms),
+      HousekeepingNotificationScreen(
+        session: widget.session,
+        current: HousekeepingNavItem.rooms,
+      ),
     );
   }
 
@@ -83,7 +88,9 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
   Future<void> _markRoomStatus(HousekeepingRoom room, String status) async {
     setState(() => _busyRoomId = room.id);
     try {
-      await ref.read(housekeepingActionsProvider(_token)).updateRoomStatus(room.id, status);
+      await ref
+          .read(housekeepingActionsProvider(_token))
+          .updateRoomStatus(room.id, status);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,7 +119,9 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
 
     final roomsAsync = ref.watch(housekeepingRoomsProvider(_token));
     final rooms = roomsAsync.value ?? const <HousekeepingRoom>[];
-    final unreadNotifications = ref.watch(housekeepingUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      housekeepingUnreadNotificationsProvider(_token),
+    );
 
     return HousekeepingScaffold(
       session: widget.session,
@@ -136,12 +145,15 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
               data: (data) => _grid(data),
               loading: () => rooms.isNotEmpty
                   ? _grid(rooms)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => rooms.isNotEmpty
                   ? _grid(rooms)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(housekeepingRoomsProvider(_token)),
+                        onPressed: () =>
+                            ref.invalidate(housekeepingRoomsProvider(_token)),
                         child: const Text(
                           'Could not load rooms. Retry',
                           style: TextStyle(color: AppColors.gold),
@@ -180,7 +192,9 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
   Widget _chip(String label, _StatusFilter value) {
     final selected = _filter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _filter = value),
@@ -190,14 +204,18 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
           child: Text(
             label,
             style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.6),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -210,7 +228,10 @@ class _HousekeepingRoomsScreenState extends ConsumerState<HousekeepingRoomsScree
   Widget _grid(List<HousekeepingRoom> all) {
     final rows = _visible(all);
     if (rows.isEmpty) {
-      return const HousekeepingSectionEmpty(icon: Icons.meeting_room_outlined, message: 'No rooms match this filter');
+      return const HousekeepingSectionEmpty(
+        icon: Icons.meeting_room_outlined,
+        message: 'No rooms match this filter',
+      );
     }
     return RefreshIndicator(
       color: AppColors.gold,

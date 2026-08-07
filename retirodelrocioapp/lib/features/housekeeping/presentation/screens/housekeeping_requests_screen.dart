@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -25,10 +24,12 @@ class HousekeepingRequestsScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<HousekeepingRequestsScreen> createState() => _HousekeepingRequestsScreenState();
+  ConsumerState<HousekeepingRequestsScreen> createState() =>
+      _HousekeepingRequestsScreenState();
 }
 
-class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequestsScreen> {
+class _HousekeepingRequestsScreenState
+    extends ConsumerState<HousekeepingRequestsScreen> {
   _Filter _filter = _Filter.all;
   int? _busyId;
 
@@ -42,18 +43,22 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
   }
 
   void _onNav(HousekeepingNavItem item) {
-    if (item == HousekeepingNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
-    HousekeepingNavigation.select(context, widget.session, item, current: HousekeepingNavItem.requests);
+    HousekeepingNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: HousekeepingNavItem.requests,
+    );
   }
 
   void _openNotifications() {
     HousekeepingNavigation.push(
       context,
       'notifications',
-      HousekeepingNotificationScreen(session: widget.session, current: HousekeepingNavItem.requests),
+      HousekeepingNotificationScreen(
+        session: widget.session,
+        current: HousekeepingNavItem.requests,
+      ),
     );
   }
 
@@ -68,7 +73,9 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
   Future<void> _complete(HousekeepingGuestRequest request) async {
     setState(() => _busyId = request.id);
     try {
-      await ref.read(housekeepingActionsProvider(_token)).completeRequest(request.id);
+      await ref
+          .read(housekeepingActionsProvider(_token))
+          .completeRequest(request.id);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -94,7 +101,9 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
     final requestsAsync = ref.watch(housekeepingRequestsProvider(_token));
     final requests = requestsAsync.value ?? const <HousekeepingGuestRequest>[];
     final pendingCount = requests.where((r) => r.isPending).length;
-    final unreadNotifications = ref.watch(housekeepingUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      housekeepingUnreadNotificationsProvider(_token),
+    );
 
     return HousekeepingScaffold(
       session: widget.session,
@@ -114,12 +123,16 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
               data: (data) => _list(data),
               loading: () => requests.isNotEmpty
                   ? _list(requests)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => requests.isNotEmpty
                   ? _list(requests)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(housekeepingRequestsProvider(_token)),
+                        onPressed: () => ref.invalidate(
+                          housekeepingRequestsProvider(_token),
+                        ),
                         child: const Text(
                           'Could not load requests. Retry',
                           style: TextStyle(color: AppColors.gold),
@@ -148,7 +161,9 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
   Widget _chip(String label, _Filter value, {int? badge}) {
     final selected = _filter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _filter = value),
@@ -158,7 +173,9 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
@@ -168,7 +185,9 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
               Text(
                 label,
                 style: AppTypography.style(
-                  color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+                  color: selected
+                      ? AppColors.gold
+                      : Colors.white.withValues(alpha: 0.6),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -176,9 +195,21 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
               if (badge != null && badge > 0) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
-                  child: Text('$badge', style: AppTypography.style(color: Colors.white, fontSize: 11)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$badge',
+                    style: AppTypography.style(
+                      color: Colors.white,
+                      fontSize: 11,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -191,11 +222,15 @@ class _HousekeepingRequestsScreenState extends ConsumerState<HousekeepingRequest
   Widget _list(List<HousekeepingGuestRequest> all) {
     final rows = _visible(all);
     if (rows.isEmpty) {
-      return const HousekeepingSectionEmpty(icon: Icons.room_service_outlined, message: 'No requests here');
+      return const HousekeepingSectionEmpty(
+        icon: Icons.room_service_outlined,
+        message: 'No requests here',
+      );
     }
     return RefreshIndicator(
       color: AppColors.gold,
-      onRefresh: () async => ref.invalidate(housekeepingRequestsProvider(_token)),
+      onRefresh: () async =>
+          ref.invalidate(housekeepingRequestsProvider(_token)),
       child: ListView.separated(
         padding: const EdgeInsets.only(bottom: 24),
         itemCount: rows.length,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -10,6 +9,7 @@ import 'package:retirodelrocioapp/features/security/notifications/application/se
 import 'package:retirodelrocioapp/features/security/notifications/data/security_notification_repository.dart';
 import 'package:retirodelrocioapp/features/security/notifications/domain/security_notification.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/incident_response_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
@@ -71,9 +71,7 @@ class _SecurityNotificationScreenState
   Future<void> _markAllRead() async {
     setState(() => _markingAll = true);
     try {
-      await ref
-          .read(securityNotificationActionsProvider(_token))
-          .markAllRead();
+      await ref.read(securityNotificationActionsProvider(_token)).markAllRead();
     } on SecurityNotificationException catch (e) {
       if (mounted) _toast(e.message, error: true);
     } catch (_) {
@@ -143,7 +141,9 @@ class _SecurityNotificationScreenState
         );
       case SecurityNavItem.chat:
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')),
+          MaterialPageRoute(
+            builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
         );
     }
   }
@@ -255,7 +255,10 @@ class _SecurityNotificationScreenState
     return Material(
       color: Colors.white.withValues(alpha: 0.06),
       shape: CircleBorder(
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: InkWell(
         onTap: () => Navigator.of(context).maybePop(),

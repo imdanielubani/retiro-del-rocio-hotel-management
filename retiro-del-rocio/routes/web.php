@@ -18,6 +18,7 @@ use App\Livewire\Admin\Bar\ReorderAlerts as BarReorderAlerts;
 use App\Livewire\Admin\Bar\StockIn as BarStockIn;
 use App\Livewire\Admin\Bar\StockOut as BarStockOut;
 use App\Livewire\Admin\Bookings\Show;
+use App\Livewire\Admin\Chat\Index as AdminChat;
 use App\Livewire\Admin\Cinema\Movies;
 use App\Livewire\Admin\Cinema\Snacks;
 use App\Livewire\Admin\Devices\Dashboard;
@@ -1192,6 +1193,11 @@ $adminRoutes->group(function () {
         Route::get('bar-inventory/consumption', BarConsumption::class)->name('bar-inventory.consumption');
         Route::get('bar-inventory/adjustments', BarAdjustments::class)->name('bar-inventory.adjustments');
         Route::get('bar-inventory/reorder-alerts', BarReorderAlerts::class)->name('bar-inventory.reorder-alerts');
+
+        // Chat — the admin/manager's own channel with each staff station
+        // (Reception, Housekeeping, Maintenance, Security), sharing the same
+        // internal Staff Chat every tablet's Chat screen uses.
+        Route::get('chat', AdminChat::class)->name('chat.index');
 
         // Gym & Fitness — plans + memberships
         Route::get('gym/plans', Plans::class)->name('gym.plans');

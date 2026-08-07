@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -12,6 +11,7 @@ import 'package:retirodelrocioapp/features/security/data/security_repository.dar
 import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
 import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
 import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_code_keypad.dart';
@@ -104,7 +104,7 @@ class _VisitorVerificationScreenState
       case SecurityNavItem.chat:
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const ComingSoonScreen(title: 'Chat'),
+            builder: (_) => SecurityChatScreen(session: widget.session),
           ),
         );
     }
@@ -258,8 +258,9 @@ class _VisitorVerificationScreenState
         ref.watch(securityVisitorsProvider(_token)).value ?? const [];
     final overview = ref.watch(securityOverviewProvider(_token)).value;
     final weather = ref.watch(weatherProvider).value;
-    final unreadNotifications =
-        ref.watch(securityUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      securityUnreadNotificationsProvider(_token),
+    );
 
     return SessionGuard(
       child: Scaffold(

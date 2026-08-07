@@ -40,15 +40,25 @@ class RoomChannel {
 
   String get _channel => 'rooms.$roomUnitId';
 
-  /// Calls [onChanged] whenever this room's occupancy changes, and
+  /// Calls [onChanged] whenever this room's occupancy changes,
   /// [onNotification] whenever a new guest notification lands for this room
-  /// (defaults to a no-op for callers that don't care, e.g. staff tablets).
-  void connect({required VoidCallback onChanged, VoidCallback? onNotification}) {
+  /// (defaults to a no-op for callers that don't care, e.g. staff tablets),
+  /// and [onTyping] whenever a `typing` signal arrives, carrying who sent it
+  /// (`'guest'` or `'staff'`) — a chat screen ignores its own role's echo.
+  void connect({
+    required VoidCallback onChanged,
+    VoidCallback? onNotification,
+    ValueChanged<String>? onTyping,
+  }) {
     _closed = false;
-    unawaited(_open(onChanged, onNotification ?? () {}));
+    unawaited(_open(onChanged, onNotification ?? () {}, onTyping ?? (_) {}));
   }
 
-  Future<void> _open(VoidCallback onChanged, VoidCallback onNotification) async {
+  Future<void> _open(
+    VoidCallback onChanged,
+    VoidCallback onNotification,
+    ValueChanged<String> onTyping,
+  ) async {
     if (_closed) return;
 
     try {
@@ -56,24 +66,26 @@ class RoomChannel {
       _socket = socket;
 
       _subscription = socket.stream.listen(
-        (message) => _onMessage(message, onChanged, onNotification),
+        (message) => _onMessage(message, onChanged, onNotification, onTyping),
         onError: (Object error) {
           debugPrint('RoomChannel: socket error — $error');
-          _scheduleReconnect(onChanged, onNotification);
+          _scheduleReconnect(onChanged, onNotification, onTyping);
         },
         onDone: () {
           debugPrint('RoomChannel: socket closed — will retry.');
-          _scheduleReconnect(onChanged, onNotification);
+          _scheduleReconnect(onChanged, onNotification, onTyping);
         },
         cancelOnError: true,
       );
 
       // Frames written before the handshake completes are lost.
       await socket.ready;
-      debugPrint('RoomChannel: connected to ${config.socketUri.host} — awaiting handshake.');
+      debugPrint(
+        'RoomChannel: connected to ${config.socketUri.host} — awaiting handshake.',
+      );
     } catch (error) {
       debugPrint('RoomChannel: connect failed — $error');
-      _scheduleReconnect(onChanged, onNotification);
+      _scheduleReconnect(onChanged, onNotification, onTyping);
     }
   }
 
@@ -81,6 +93,7 @@ class RoomChannel {
     dynamic message,
     VoidCallback onChanged,
     VoidCallback onNotification,
+    ValueChanged<String> onTyping,
   ) {
     if (message is! String) return;
 
@@ -97,7 +110,9 @@ class RoomChannel {
           });
 
         case 'pusher_internal:subscription_succeeded':
-          debugPrint('RoomChannel: subscribed to $_channel — updates are live.');
+          debugPrint(
+            'RoomChannel: subscribed to $_channel — updates are live.',
+          );
 
         // Reverb hangs up on a client that never answers.
         case 'pusher:ping':
@@ -110,6 +125,14 @@ class RoomChannel {
         case 'notification.created':
           debugPrint('RoomChannel: $_channel got a new notification.');
           onNotification();
+
+        case 'typing':
+          final payload = frame['data'];
+          final data = payload is String
+              ? jsonDecode(payload) as Map<String, dynamic>
+              : const {};
+          final from = data['from'] as String?;
+          if (from != null) onTyping(from);
       }
     } catch (error) {
       debugPrint('RoomChannel: bad frame — $error');
@@ -120,13 +143,17 @@ class RoomChannel {
     _socket?.sink.add(jsonEncode(frame));
   }
 
-  void _scheduleReconnect(VoidCallback onChanged, VoidCallback onNotification) {
+  void _scheduleReconnect(
+    VoidCallback onChanged,
+    VoidCallback onNotification,
+    ValueChanged<String> onTyping,
+  ) {
     if (_closed || _reconnect != null) return;
 
     _teardownSocket();
     _reconnect = Timer(const Duration(seconds: 10), () {
       _reconnect = null;
-      unawaited(_open(onChanged, onNotification));
+      unawaited(_open(onChanged, onNotification, onTyping));
     });
   }
 

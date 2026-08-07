@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
@@ -15,34 +18,33 @@ import 'package:retirodelrocioapp/features/reception/notifications/presentation/
 import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_scaffold.dart';
+import 'package:retirodelrocioapp/features/staff_chat/presentation/widgets/staff_chat_body.dart';
 
-/// Which of the two conversation lists the left panel is showing.
+/// Which conversation set the screen is showing — Concierge Chat with guests
+/// (Reception's own thing), or the shared internal Staff Chat with every
+/// other station.
 enum _ChatTab { guests, staff }
 
-/// A single selected conversation — either a guest's booking or a staff
-/// department — so the thread panel always knows what it's rendering and
-/// which endpoint to poll/send against.
-sealed class _Selection {
-  const _Selection();
-}
-
-class _GuestSelection extends _Selection {
-  const _GuestSelection(this.bookingId, this.guestName, this.roomLabel);
+/// The guest conversation currently open in the thread panel.
+class _GuestSelection {
+  const _GuestSelection(
+    this.bookingId,
+    this.roomUnitId,
+    this.guestName,
+    this.roomLabel,
+    this.online,
+  );
   final int bookingId;
+  final int? roomUnitId;
   final String guestName;
   final String roomLabel;
-}
-
-class _StaffSelection extends _Selection {
-  const _StaffSelection(this.department, this.label);
-  final String department;
-  final String label;
+  final bool online;
 }
 
 /// Reception's Chat screen — Concierge Chat threads with every in-house
-/// guest, and internal channels with each staff department, side by side in
-/// the same list → thread → composer shape the guest tablet's own Chat
-/// screen uses.
+/// guest (this screen's own bespoke UI), and the shared Staff Chat with
+/// every other station (Housekeeping, Maintenance, Security, Admin), the
+/// exact same widget every other tablet's Chat screen embeds.
 class ReceptionChatScreen extends ConsumerStatefulWidget {
   const ReceptionChatScreen({super.key, required this.session});
 
@@ -54,13 +56,18 @@ class ReceptionChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
+  /// The height the two-pane body stops shrinking at and starts scrolling
+  /// instead — same rule the guest tablet's Service Request screen uses.
+  static const double _minBodyHeight = 440;
+
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
 
   _ChatTab _tab = _ChatTab.guests;
-  _Selection? _selection;
+  _GuestSelection? _selection;
   bool _sending = false;
   int _lastMessageCount = 0;
+  DateTime? _lastTypingSentAt;
 
   String get _token => widget.session.token;
 
@@ -91,25 +98,40 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
 
   void _selectTab(_ChatTab tab) {
     if (_tab == tab) return;
-    setState(() {
-      _tab = tab;
-      _selection = null;
-      _lastMessageCount = 0;
-    });
+    setState(() => _tab = tab);
   }
 
   void _selectGuest(ReceptionGuestConversation c) {
     setState(() {
-      _selection = _GuestSelection(c.bookingId, c.guestName, c.roomLabel);
+      _selection = _GuestSelection(
+        c.bookingId,
+        c.roomUnitId,
+        c.guestName,
+        c.roomLabel,
+        c.guestOnline,
+      );
       _lastMessageCount = 0;
     });
   }
 
-  void _selectDepartment(ReceptionStaffConversation c) {
-    setState(() {
-      _selection = _StaffSelection(c.department, c.label);
-      _lastMessageCount = 0;
-    });
+  /// Debounced "I'm typing" signal — fires at most once every 2.5 seconds
+  /// while the desk is actively typing to a guest.
+  void _onComposerChanged(String text) {
+    final selection = _selection;
+    if (text.trim().isEmpty || selection == null) return;
+
+    final now = DateTime.now();
+    if (_lastTypingSentAt != null &&
+        now.difference(_lastTypingSentAt!) <
+            const Duration(milliseconds: 2500)) {
+      return;
+    }
+    _lastTypingSentAt = now;
+    unawaited(
+      ref
+          .read(receptionChatActionsProvider(_token))
+          .sendTypingToGuest(selection.bookingId),
+    );
   }
 
   Future<void> _send() async {
@@ -119,13 +141,9 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
 
     setState(() => _sending = true);
     try {
-      final actions = ref.read(receptionChatActionsProvider(_token));
-      switch (selection) {
-        case _GuestSelection(:final bookingId):
-          await actions.sendToGuest(bookingId, body);
-        case _StaffSelection(:final department):
-          await actions.sendToDepartment(department, body);
-      }
+      await ref
+          .read(receptionChatActionsProvider(_token))
+          .sendToGuest(selection.bookingId, body);
       _controller.clear();
     } on ReceptionChatException catch (error) {
       _toast(error.message, error: true);
@@ -177,37 +195,15 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
       hasUnreadNotifications: unreadNotifications > 0,
       onNotifications: _openNotifications,
       title: 'Chat',
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(width: 340, child: _conversationPanel()),
-          const SizedBox(width: 20),
-          Expanded(child: _threadPanel()),
-        ],
-      ),
-    );
-  }
-
-  // --- Left: conversation lists -----------------------------------------
-
-  Widget _conversationPanel() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-          width: 0.8,
-        ),
-      ),
-      child: Column(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _tabToggle(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Expanded(
-            child: _tab == _ChatTab.guests ? _guestList() : _staffList(),
+            child: _tab == _ChatTab.guests
+                ? _guestTab()
+                : StaffChatBody(session: widget.session),
           ),
         ],
       ),
@@ -216,6 +212,7 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
 
   Widget _tabToggle() {
     return Container(
+      width: 220,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
@@ -258,6 +255,48 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
     );
   }
 
+  // --- Guests tab: Concierge Chat -----------------------------------------
+
+  Widget _guestTab() {
+    // A messaging screen's own body has to stay usable even when the
+    // available height is squeezed tighter than its content wants (the
+    // on-screen keyboard opening for the composer is the common case) —
+    // same guard `GuestServiceRequestScreen` uses, rather than letting a
+    // fixed-height Row overflow.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: SizedBox(
+            height: math.max(constraints.maxHeight, _minBodyHeight),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: 320, child: _conversationPanel()),
+                const SizedBox(width: 20),
+                Expanded(child: _threadPanel()),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _conversationPanel() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+          width: 0.8,
+        ),
+      ),
+      child: _guestList(),
+    );
+  }
+
   Widget _guestList() {
     final conversationsAsync = ref.watch(
       receptionGuestConversationsProvider(_token),
@@ -283,11 +322,12 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final c = conversations[i];
-        final selection = _selection;
-        final selected =
-            selection is _GuestSelection && selection.bookingId == c.bookingId;
+        final selected = _selection?.bookingId == c.bookingId;
         return ReceptionChatConversationTile(
-          avatar: ReceptionChatAvatar(initials: c.initials),
+          avatar: ReceptionChatAvatar(
+            initials: c.initials,
+            online: c.guestOnline,
+          ),
           title: c.guestName,
           subtitle: c.roomLabel,
           preview: c.lastMessage,
@@ -295,45 +335,6 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
           unreadCount: c.unreadCount,
           selected: selected,
           onTap: () => _selectGuest(c),
-        );
-      },
-    );
-  }
-
-  Widget _staffList() {
-    final conversationsAsync = ref.watch(
-      receptionStaffConversationsProvider(_token),
-    );
-    final conversations =
-        conversationsAsync.value ?? const <ReceptionStaffConversation>[];
-
-    if (conversationsAsync.isLoading && conversations.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.gold),
-      );
-    }
-
-    return ListView.separated(
-      padding: EdgeInsets.zero,
-      itemCount: conversations.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) {
-        final c = conversations[i];
-        final selection = _selection;
-        final selected =
-            selection is _StaffSelection &&
-            selection.department == c.department;
-        return ReceptionChatConversationTile(
-          avatar: ReceptionChatAvatar(
-            icon: receptionChatDepartmentIcon(c.department),
-          ),
-          title: c.label,
-          subtitle: 'Internal Channel',
-          preview: c.lastMessage,
-          timeLabel: c.lastMessageLabel,
-          unreadCount: c.unreadCount,
-          selected: selected,
-          onTap: () => _selectDepartment(c),
         );
       },
     );
@@ -358,8 +359,6 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
       ),
     );
   }
-
-  // --- Right: thread + composer -----------------------------------------
 
   Widget _threadPanel() {
     final selection = _selection;
@@ -389,7 +388,7 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Select a guest or a department to start messaging.',
+            'Select a guest to start messaging.',
             style: AppTypography.style(
               color: Colors.white.withValues(alpha: 0.4),
               fontSize: 13,
@@ -400,17 +399,16 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
     );
   }
 
-  Widget _thread(_Selection selection) {
-    final messagesAsync = switch (selection) {
-      _GuestSelection(:final bookingId) => ref.watch(
-        receptionGuestThreadProvider((_token, bookingId)),
-      ),
-      _StaffSelection(:final department) => ref.watch(
-        receptionStaffThreadProvider((_token, department)),
-      ),
-    };
+  Widget _thread(_GuestSelection selection) {
+    final messagesAsync = ref.watch(
+      receptionGuestThreadProvider((_token, selection.bookingId)),
+    );
     final messages = messagesAsync.value ?? const <ReceptionChatMessage>[];
     _maybeScrollToBottom(messages.length);
+
+    final typing =
+        selection.roomUnitId != null &&
+        ref.watch(receptionGuestTypingProvider(selection.roomUnitId!));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -421,12 +419,9 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
           thickness: 0.8,
           color: Colors.white.withValues(alpha: 0.08),
         ),
-        Expanded(
-          child: _messages(
-            messages,
-            isStaffChannel: selection is _StaffSelection,
-          ),
-        ),
+        Expanded(child: _messages(messages)),
+        if (typing)
+          ReceptionTypingIndicator(label: '${selection.guestName} is typing…'),
         Divider(
           height: 1,
           thickness: 0.8,
@@ -437,25 +432,15 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
     );
   }
 
-  Widget _threadHeader(_Selection selection) {
-    final (avatar, title, subtitle) = switch (selection) {
-      _GuestSelection(:final guestName, :final roomLabel) => (
-        ReceptionChatAvatar(initials: _initialsOf(guestName)),
-        guestName,
-        roomLabel,
-      ),
-      _StaffSelection(:final department, :final label) => (
-        ReceptionChatAvatar(icon: receptionChatDepartmentIcon(department)),
-        label,
-        'Internal Channel',
-      ),
-    };
-
+  Widget _threadHeader(_GuestSelection selection) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       child: Row(
         children: [
-          avatar,
+          ReceptionChatAvatar(
+            initials: _initialsOf(selection.guestName),
+            online: selection.online,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -463,7 +448,9 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  title,
+                  selection.guestName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTypography.style(
                     color: Colors.white,
                     fontSize: 17,
@@ -471,12 +458,23 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: AppTypography.style(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 12,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        selection.roomLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.style(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ReceptionOnlineStatus(online: selection.online),
+                  ],
                 ),
               ],
             ),
@@ -498,10 +496,7 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
         .toUpperCase();
   }
 
-  Widget _messages(
-    List<ReceptionChatMessage> messages, {
-    required bool isStaffChannel,
-  }) {
+  Widget _messages(List<ReceptionChatMessage> messages) {
     if (messages.isEmpty) {
       return Center(
         child: Text(
@@ -519,19 +514,11 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
       padding: const EdgeInsets.all(20),
       itemCount: messages.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (_, i) => ReceptionChatBubble(
-        message: messages[i],
-        showSenderName: isStaffChannel,
-      ),
+      itemBuilder: (_, i) => ReceptionChatBubble(message: messages[i]),
     );
   }
 
-  Widget _composer(_Selection selection) {
-    final hint = switch (selection) {
-      _GuestSelection(:final guestName) => 'Message $guestName...',
-      _StaffSelection(:final label) => 'Message $label...',
-    };
-
+  Widget _composer(_GuestSelection selection) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
       child: Row(
@@ -553,13 +540,14 @@ class _ReceptionChatScreenState extends ConsumerState<ReceptionChatScreen> {
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _send(),
+                onChanged: _onComposerChanged,
                 cursorColor: AppColors.gold,
                 style: AppTypography.style(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 13),
-                  hintText: hint,
+                  hintText: 'Message ${selection.guestName}...',
                   hintStyle: AppTypography.style(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 14,

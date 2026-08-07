@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
@@ -15,9 +18,9 @@ import 'package:retirodelrocioapp/features/welcome/application/weather_providers
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
 /// Concierge Chat (Figma 394:19) — the guest's messaging thread with the
-/// front desk: a single "Reception" conversation on the left, the thread and
-/// composer on the right, inside the same frosted shell every guest screen
-/// shares.
+/// front desk. A single "Reception" conversation on the left, in the same
+/// list → thread shape reception's own Chat screen uses: the thread only
+/// opens once the guest taps into it, rather than always sitting open.
 class GuestChatScreen extends ConsumerStatefulWidget {
   const GuestChatScreen({
     super.key,
@@ -33,10 +36,18 @@ class GuestChatScreen extends ConsumerStatefulWidget {
 }
 
 class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
+  /// The height the two-pane body stops shrinking at and starts scrolling
+  /// instead — same rule the guest tablet's Service Request screen uses, so
+  /// the composer never overflows when the keyboard eats into the available
+  /// height.
+  static const double _minBodyHeight = 440;
+
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _sending = false;
+  bool _threadOpen = false;
   int _lastMessageCount = 0;
+  DateTime? _lastTypingSentAt;
 
   String get _token => widget.device.token;
 
@@ -58,6 +69,8 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
     );
   }
 
+  void _openThread() => setState(() => _threadOpen = true);
+
   Future<void> _send() async {
     final body = _controller.text.trim();
     if (body.isEmpty || _sending) return;
@@ -71,6 +84,21 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  /// Debounced "I'm typing" signal — fires at most once every 2.5 seconds
+  /// while the guest is actively typing.
+  void _onComposerChanged(String text) {
+    if (text.trim().isEmpty) return;
+
+    final now = DateTime.now();
+    if (_lastTypingSentAt != null &&
+        now.difference(_lastTypingSentAt!) <
+            const Duration(milliseconds: 2500)) {
+      return;
+    }
+    _lastTypingSentAt = now;
+    unawaited(ref.read(chatActionsProvider(_token)).sendTyping());
   }
 
   void _toast(String message, {bool error = false}) {
@@ -107,13 +135,16 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
   @override
   Widget build(BuildContext context) {
     final threadAsync = ref.watch(guestChatThreadProvider(_token));
+    final typing = ref.watch(guestReceptionTypingProvider);
     final weather = ref.watch(weatherProvider).value;
     final unreadNotifications = ref.watch(
       guestUnreadNotificationsProvider(_token),
     );
 
     final thread = threadAsync.value;
-    if (thread != null) _maybeScrollToBottom(thread.messages.length);
+    if (thread != null && _threadOpen) {
+      _maybeScrollToBottom(thread.messages.length);
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -144,16 +175,31 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
                   _headerRow(),
                   const SizedBox(height: 20),
                   Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 34,
-                          child: _conversationList(thread?.unreadCount ?? 0),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(flex: 66, child: _thread(thread)),
-                      ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          child: SizedBox(
+                            height: math.max(
+                              constraints.maxHeight,
+                              _minBodyHeight,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  flex: 34,
+                                  child: _conversationList(thread),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  flex: 66,
+                                  child: _thread(thread, typing),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -227,44 +273,104 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
 
   // --- Left: conversation list -----------------------------------------
 
-  Widget _conversationList(int unreadCount) {
+  Widget _conversationList(
+    ({List<ChatMessage> messages, int unreadCount, bool receptionOnline})?
+    thread,
+  ) {
     return GlassPanel(
       borderRadius: 24,
       opacity: 0.06,
       borderOpacity: 0.2,
       blur: 17,
       padding: const EdgeInsets.all(12),
-      child: ChatConversationCard(unreadCount: unreadCount),
+      child: ChatConversationTile(
+        online: thread?.receptionOnline ?? false,
+        unreadCount: _threadOpen ? 0 : (thread?.unreadCount ?? 0),
+        preview: thread?.messages.isNotEmpty ?? false
+            ? thread!.messages.last.body
+            : null,
+        selected: _threadOpen,
+        onTap: _openThread,
+      ),
     );
   }
 
   // --- Right: thread + composer -----------------------------------------
 
-  Widget _thread(({List<ChatMessage> messages, int unreadCount})? thread) {
+  Widget _thread(
+    ({List<ChatMessage> messages, int unreadCount, bool receptionOnline})?
+    thread,
+    bool typing,
+  ) {
     return GlassPanel(
       borderRadius: 24,
       opacity: 0.06,
       borderOpacity: 0.2,
       blur: 17,
       padding: EdgeInsets.zero,
+      child: !_threadOpen
+          ? _noSelection()
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _threadHeader(thread?.receptionOnline ?? false),
+                _divider(),
+                Expanded(child: _messages(thread?.messages ?? const [])),
+                if (typing) const ChatTypingIndicator(),
+                _divider(),
+                _composer(),
+              ],
+            ),
+    );
+  }
+
+  Widget _noSelection() {
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _threadHeader(),
-          _divider(),
-          Expanded(child: _messages(thread?.messages ?? const [])),
-          _divider(),
-          _composer(),
+          Icon(
+            Icons.forum_outlined,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.25),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tap Reception to start messaging.',
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _threadHeader() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(24, 20, 24, 20),
+  Widget _threadHeader(bool online) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       child: Row(
-        children: [ChatAvatar(), SizedBox(width: 14), _ThreadHeaderText()],
+        children: [
+          ChatAvatar(online: online),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Reception',
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 5),
+              ChatOnlineStatus(online: online),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -330,6 +436,7 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _send(),
+                onChanged: _onComposerChanged,
                 cursorColor: AppColors.gold,
                 style: AppTypography.style(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
@@ -346,96 +453,36 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          _roundButton(
-            icon: Icons.send_rounded,
-            background: AppColors.gold,
-            iconColor: Colors.black,
-            onTap: _send,
-            busy: _sending,
+          Material(
+            color: AppColors.gold,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: _sending ? null : _send,
+              customBorder: const CircleBorder(),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(
+                  child: _sending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.send_rounded,
+                          size: 18,
+                          color: Colors.black,
+                        ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _roundButton({
-    required IconData icon,
-    required Color background,
-    required Color iconColor,
-    required VoidCallback onTap,
-    Color? borderColor,
-    bool busy = false,
-  }) {
-    return Material(
-      color: background,
-      shape: CircleBorder(
-        side: borderColor != null
-            ? BorderSide(color: borderColor, width: 0.8)
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: busy ? null : onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Center(
-            child: busy
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: iconColor,
-                    ),
-                  )
-                : Icon(icon, size: 18, color: iconColor),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "Reception" + the live online dot, split out so the thread header stays
-/// `const`-constructible above.
-class _ThreadHeaderText extends StatelessWidget {
-  const _ThreadHeaderText();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Reception',
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: chatOnlineGreen,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              'Online',
-              style: AppTypography.style(color: chatOnlineGreen, fontSize: 12),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

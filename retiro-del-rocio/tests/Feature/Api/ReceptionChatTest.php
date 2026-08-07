@@ -2,21 +2,25 @@
 
 namespace Tests\Feature\Api;
 
+use App\Events\ChatTypingSent;
 use App\Models\Booking;
 use App\Models\ChatMessage;
+use App\Models\Device;
+use App\Models\DeviceType;
 use App\Models\Room;
 use App\Models\RoomUnit;
-use App\Models\StaffMessage;
 use App\Models\User;
 use App\Services\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
  * Reception's Chat screen — Concierge Chat threads with every in-house
- * guest, and internal channels with each staff department.
+ * guest. Reception's own staff-to-staff channels are covered by
+ * {@see StaffChatTest}, the same shared endpoints every station's tablet uses.
  */
 class ReceptionChatTest extends TestCase
 {
@@ -80,10 +84,6 @@ class ReceptionChatTest extends TestCase
 
         return app(JwtService::class)->issue(['sub' => $user->id])['token'];
     }
-
-    /* ---------------------------------------------------------------
-     | Guest conversations
-     |------------------------------------------------------------- */
 
     public function test_guest_conversations_lists_every_checked_in_booking(): void
     {
@@ -167,72 +167,49 @@ class ReceptionChatTest extends TestCase
             ->assertStatus(409);
     }
 
-    /* ---------------------------------------------------------------
-     | Staff department channels
-     |------------------------------------------------------------- */
-
-    public function test_staff_conversations_lists_every_department(): void
+    public function test_guest_online_reflects_the_room_tablets_own_activity(): void
     {
-        $this->withToken($this->receptionToken())
-            ->getJson('/api/v1/reception/chat/staff')
-            ->assertOk()
-            ->assertJsonCount(3, 'data')
-            ->assertJsonPath('data.0.department', 'housekeeping')
-            ->assertJsonPath('data.1.department', 'maintenance')
-            ->assertJsonPath('data.2.department', 'security');
-    }
-
-    public function test_reception_sends_a_message_to_a_department(): void
-    {
-        $data = $this->withToken($this->receptionToken())
-            ->postJson('/api/v1/reception/chat/staff/maintenance/messages', [
-                'body' => 'Room 204 AC still not fixed?',
-            ])
-            ->assertCreated()
-            ->assertJsonPath('data.sender_role', 'reception')
-            ->assertJsonPath('data.is_mine', true)
-            ->json('data');
-
-        $this->assertDatabaseHas('staff_messages', [
-            'id' => $data['id'],
-            'department' => 'maintenance',
-            'sender_role' => 'reception',
-        ]);
-    }
-
-    public function test_an_unknown_department_is_rejected(): void
-    {
-        $this->withToken($this->receptionToken())
-            ->postJson('/api/v1/reception/chat/staff/kitchen/messages', ['body' => 'Hello?'])
-            ->assertStatus(404);
-    }
-
-    public function test_a_department_reply_shows_as_unread_until_reception_opens_the_channel(): void
-    {
-        StaffMessage::create([
-            'department' => 'security',
-            'sender_role' => 'security',
-            'sender_name' => 'Officer Musa',
-            'body' => 'Visitor pass for Room 305 has arrived.',
-        ]);
-
         $token = $this->receptionToken();
 
         $this->withToken($token)
-            ->getJson('/api/v1/reception/chat/staff')
+            ->getJson('/api/v1/reception/chat/guests')
             ->assertOk()
-            ->assertJsonPath('data.2.department', 'security')
-            ->assertJsonPath('data.2.unread_count', 1);
+            ->assertJsonPath('data.0.room_unit_id', $this->unit->id)
+            ->assertJsonPath('data.0.guest_online', false);
+
+        $type = DeviceType::create(['name' => 'Tablet', 'slug' => 'tablet-rc-chat']);
+        $guestDevice = Device::create([
+            'device_uuid' => (string) Str::uuid(),
+            'device_code' => 'TAB-RC-101',
+            'device_name' => 'Room 101 Tablet',
+            'device_type_id' => $type->id,
+            'mode' => 'guest',
+            'room_id' => $this->room->id,
+            'room_unit_id' => $this->unit->id,
+            'status' => 'online',
+            'is_provisioned' => true,
+        ]);
+        $guestToken = $guestDevice->createToken('tablet')->plainTextToken;
+
+        $this->withToken($guestToken)->getJson('/api/v1/chat/messages')->assertOk();
 
         $this->withToken($token)
-            ->getJson('/api/v1/reception/chat/staff/security/messages')
+            ->getJson('/api/v1/reception/chat/guests')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.is_mine', false);
+            ->assertJsonPath('data.0.guest_online', true);
+    }
 
-        $this->withToken($token)
-            ->getJson('/api/v1/reception/chat/staff')
-            ->assertOk()
-            ->assertJsonPath('data.2.unread_count', 0);
+    public function test_reception_typing_broadcasts_on_the_guests_room_channel(): void
+    {
+        Event::fake([ChatTypingSent::class]);
+
+        $this->withToken($this->receptionToken())
+            ->postJson("/api/v1/reception/chat/guests/{$this->booking->id}/typing")
+            ->assertOk();
+
+        Event::assertDispatched(
+            ChatTypingSent::class,
+            fn (ChatTypingSent $e) => $e->roomUnitId === $this->unit->id && $e->from === ChatMessage::STAFF,
+        );
     }
 }

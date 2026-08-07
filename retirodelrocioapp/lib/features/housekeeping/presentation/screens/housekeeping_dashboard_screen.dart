@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
@@ -29,10 +28,12 @@ class HousekeepingDashboardScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<HousekeepingDashboardScreen> createState() => _HousekeepingDashboardScreenState();
+  ConsumerState<HousekeepingDashboardScreen> createState() =>
+      _HousekeepingDashboardScreenState();
 }
 
-class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashboardScreen> {
+class _HousekeepingDashboardScreenState
+    extends ConsumerState<HousekeepingDashboardScreen> {
   int? _busyRoomId;
   int? _busyRequestId;
 
@@ -47,17 +48,15 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
 
   void _onNav(HousekeepingNavItem item) {
     if (item == HousekeepingNavItem.dashboard) return; // already here
-    if (item == HousekeepingNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
     HousekeepingNavigation.open(context, widget.session, item);
   }
 
   Future<void> _markRoomStatus(HousekeepingRoom room, String status) async {
     setState(() => _busyRoomId = room.id);
     try {
-      await ref.read(housekeepingActionsProvider(_token)).updateRoomStatus(room.id, status);
+      await ref
+          .read(housekeepingActionsProvider(_token))
+          .updateRoomStatus(room.id, status);
     } catch (_) {
       _showFailure('Could not update this room.');
     } finally {
@@ -68,7 +67,9 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
   Future<void> _completeRequest(HousekeepingGuestRequest request) async {
     setState(() => _busyRequestId = request.id);
     try {
-      await ref.read(housekeepingActionsProvider(_token)).completeRequest(request.id);
+      await ref
+          .read(housekeepingActionsProvider(_token))
+          .completeRequest(request.id);
     } catch (_) {
       _showFailure('Could not update this request.');
     } finally {
@@ -80,7 +81,10 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
     HousekeepingNavigation.push(
       context,
       'notifications',
-      HousekeepingNotificationScreen(session: widget.session, current: HousekeepingNavItem.dashboard),
+      HousekeepingNotificationScreen(
+        session: widget.session,
+        current: HousekeepingNavItem.dashboard,
+      ),
     );
   }
 
@@ -94,7 +98,10 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -107,7 +114,9 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
     final overviewAsync = ref.watch(housekeepingOverviewProvider(_token));
     final overview = overviewAsync.value ?? HousekeepingOverview.empty;
     final weather = ref.watch(weatherProvider).value;
-    final unreadNotifications = ref.watch(housekeepingUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      housekeepingUnreadNotificationsProvider(_token),
+    );
 
     return SessionGuard(
       child: Scaffold(
@@ -149,10 +158,18 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
                           Expanded(
                             child: overviewAsync.when(
                               data: (data) => _content(data),
-                              loading: () => overview.rooms.isNotEmpty || overview.requests.isNotEmpty
+                              loading: () =>
+                                  overview.rooms.isNotEmpty ||
+                                      overview.requests.isNotEmpty
                                   ? _content(overview)
-                                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-                              error: (_, _) => overview.rooms.isNotEmpty || overview.requests.isNotEmpty
+                                  : const Center(
+                                      child: CircularProgressIndicator(
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
+                              error: (_, _) =>
+                                  overview.rooms.isNotEmpty ||
+                                      overview.requests.isNotEmpty
                                   ? _content(overview)
                                   : _errorState(),
                             ),
@@ -175,11 +192,19 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Housekeeping', style: AppTypography.style(color: AppColors.gold, fontSize: 12)),
+        Text(
+          'Housekeeping',
+          style: AppTypography.style(color: AppColors.gold, fontSize: 12),
+        ),
         const SizedBox(height: 3),
         Text(
           'Dashboard',
-          style: AppTypography.style(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w700, height: 1.1),
+          style: AppTypography.style(
+            color: Colors.white,
+            fontSize: 36,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
         ),
       ],
     );
@@ -211,11 +236,19 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: HousekeepingStatCard(label: 'OUT OF ORDER', value: data.outOfOrder, accent: kHkRed),
+              child: HousekeepingStatCard(
+                label: 'OUT OF ORDER',
+                value: data.outOfOrder,
+                accent: kHkRed,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: HousekeepingStatCard(label: 'PENDING REQUESTS', value: data.pendingRequests, accent: kHkBlue),
+              child: HousekeepingStatCard(
+                label: 'PENDING REQUESTS',
+                value: data.pendingRequests,
+                accent: kHkBlue,
+              ),
             ),
           ],
         ),
@@ -284,7 +317,11 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
       ),
       child: Text(
         '$count',
-        style: AppTypography.style(color: AppColors.gold, fontSize: 11, fontWeight: FontWeight.w700),
+        style: AppTypography.style(
+          color: AppColors.gold,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -294,11 +331,18 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off_rounded, size: 30, color: Colors.white.withValues(alpha: 0.4)),
+          Icon(
+            Icons.wifi_off_rounded,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
           Text(
             'Could not load the dashboard.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 16),
           Material(
@@ -308,10 +352,17 @@ class _HousekeepingDashboardScreenState extends ConsumerState<HousekeepingDashbo
               onTap: () => ref.invalidate(housekeepingOverviewProvider(_token)),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Text(
                   'Retry',
-                  style: AppTypography.style(color: AppColors.onGold, fontSize: 14, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: AppColors.onGold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -16,6 +15,7 @@ import 'package:retirodelrocioapp/features/security/notifications/application/se
 import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/dialogs/sos_alert_overlay.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/incident_response_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_card.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
@@ -62,12 +62,6 @@ class _SecurityDashboardScreenState
     if (mounted) Navigator.of(context).pop();
   }
 
-  void _comingSoon(String title) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)));
-  }
-
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -93,7 +87,11 @@ class _SecurityDashboardScreenState
           ),
         );
       case SecurityNavItem.chat:
-        _comingSoon('Chat');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
+        );
     }
   }
 
@@ -191,8 +189,9 @@ class _SecurityDashboardScreenState
         context,
         incident: incident,
         officerName: officerName,
-        activeIncidents: securityOverviewProvider(_token)
-            .select((async) => async.whenData((o) => o.incidents)),
+        activeIncidents: securityOverviewProvider(
+          _token,
+        ).select((async) => async.whenData((o) => o.incidents)),
         onAcknowledge: () =>
             ref.read(securityActionsProvider(_token)).respond(incident.id),
         onCallRoom: () => ScaffoldMessenger.of(context).showSnackBar(
@@ -233,7 +232,9 @@ class _SecurityDashboardScreenState
 
     final overviewAsync = ref.watch(securityOverviewProvider(_token));
     final weather = ref.watch(weatherProvider).value;
-    final unreadNotifications = ref.watch(securityUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      securityUnreadNotificationsProvider(_token),
+    );
 
     // Prefer the session's name until the first fetch resolves the officer.
     final overview = overviewAsync.value;
@@ -276,7 +277,9 @@ class _SecurityDashboardScreenState
                             onNotifications: _openNotifications,
                           ),
                           const SizedBox(height: 20),
-                          _header(stale: overviewAsync.hasError && overview != null),
+                          _header(
+                            stale: overviewAsync.hasError && overview != null,
+                          ),
                           const SizedBox(height: 20),
                           Expanded(
                             child: overviewAsync.when(
@@ -349,7 +352,9 @@ class _SecurityDashboardScreenState
       decoration: BoxDecoration(
         color: const Color(0xFFFF0000).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFFF0000).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFFFF0000).withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

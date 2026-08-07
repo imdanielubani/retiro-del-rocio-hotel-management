@@ -37,11 +37,11 @@ class ChatRepository {
 
   /// This stay's conversation with the front desk, oldest first, plus how
   /// many staff messages were unread before this call (opening the thread
-  /// marks them read server-side). Failures fall back to an empty, unread-free
-  /// thread — the screen still renders, just without history.
-  Future<({List<ChatMessage> messages, int unreadCount})> list(
-    String deviceToken,
-  ) async {
+  /// marks them read server-side) and whether reception is currently online.
+  /// Failures fall back to an empty, unread-free, offline thread — the
+  /// screen still renders, just without history.
+  Future<({List<ChatMessage> messages, int unreadCount, bool receptionOnline})>
+  list(String deviceToken) async {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('chat/messages')),
@@ -56,10 +56,20 @@ class ChatRepository {
           : <ChatMessage>[];
       final unreadCount =
           (response.data?['unread_count'] as num?)?.toInt() ?? 0;
-      return (messages: messages, unreadCount: unreadCount);
+      final receptionOnline =
+          response.data?['reception_online'] as bool? ?? false;
+      return (
+        messages: messages,
+        unreadCount: unreadCount,
+        receptionOnline: receptionOnline,
+      );
     } catch (error) {
       debugPrint('ChatRepository: list failed — $error');
-      return (messages: const <ChatMessage>[], unreadCount: 0);
+      return (
+        messages: const <ChatMessage>[],
+        unreadCount: 0,
+        receptionOnline: false,
+      );
     }
   }
 
@@ -79,6 +89,19 @@ class ChatRepository {
     } catch (error) {
       debugPrint('ChatRepository: send failed — $error');
       throw ChatException('Could not send this message. Please try again.');
+    }
+  }
+
+  /// Fire-and-forget "I'm typing" signal. Failures are swallowed — a missed
+  /// typing indicator is never worth surfacing to the guest.
+  Future<void> sendTyping(String deviceToken) async {
+    try {
+      await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('chat/typing')),
+        options: _auth(deviceToken),
+      );
+    } catch (error) {
+      debugPrint('ChatRepository: sendTyping failed — $error');
     }
   }
 

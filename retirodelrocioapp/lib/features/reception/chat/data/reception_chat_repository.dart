@@ -110,6 +110,21 @@ class ReceptionChatRepository {
     String body,
   ) => _send(token, 'reception/chat/staff/$department/messages', body);
 
+  /// Fire-and-forget "I'm typing" signal to a guest. Failures are swallowed
+  /// — a missed typing indicator is never worth surfacing to reception.
+  Future<void> sendTypingToGuest(String token, int bookingId) async {
+    try {
+      await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(
+          ApiConfig.endpoint('reception/chat/guests/$bookingId/typing'),
+        ),
+        options: _auth(token),
+      );
+    } catch (error) {
+      debugPrint('ReceptionChatRepository: sendTypingToGuest failed — $error');
+    }
+  }
+
   Future<ReceptionChatMessage> _send(
     String token,
     String path,

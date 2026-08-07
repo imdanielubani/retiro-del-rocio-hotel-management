@@ -158,7 +158,7 @@
             ['label' => 'Activity Logs', 'icon' => 'activity', 'href' => '#'],
         ]],
         ['label' => 'Communication', 'items' => [
-            ['label' => 'Chat', 'icon' => 'chat', 'href' => '#'],
+            ['label' => 'Chat', 'icon' => 'chat', 'href' => route('admin.chat.index'), 'active' => request()->routeIs('admin.chat.index')],
             ['label' => 'Messages', 'icon' => 'mail', 'href' => route('admin.messages.index'), 'active' => request()->routeIs('admin.messages.*')],
             ['label' => 'Intercom', 'icon' => 'phone', 'href' => '#'],
             ['label' => 'Notifications', 'icon' => 'requests', 'href' => '#'],

@@ -3,53 +3,147 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/reception/chat/domain/reception_chat_message.dart';
 
-/// Per-department icon + accent for the internal channels list — the same
-/// three departments reception's own alerts already colour-code.
-IconData receptionChatDepartmentIcon(String department) => switch (department) {
-  'housekeeping' => Icons.cleaning_services_rounded,
-  'maintenance' => Icons.build_rounded,
-  'security' => Icons.shield_rounded,
-  _ => Icons.groups_rounded,
-};
+/// Presence green, shared by every online dot/label in this screen.
+const Color receptionChatOnlineGreen = Color(0xFF34D399);
 
 /// A round icon badge, shared by every avatar in this screen — a guest's
-/// initials, or a department's icon, on a gold-tinted circle.
+/// initials, or a department's icon, on a gold-tinted circle, with an
+/// optional presence dot at the bottom-right corner.
 class ReceptionChatAvatar extends StatelessWidget {
   const ReceptionChatAvatar({
     super.key,
     this.initials,
     this.icon,
     this.size = 46,
+    this.online = false,
+    this.showPresence = true,
   });
 
   final String? initials;
   final IconData? icon;
   final double size;
+  final bool online;
+
+  /// False for a channel with no presence signal to show at all (kept off
+  /// the avatar rather than always drawing a dishonest "offline" dot).
+  final bool showPresence;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.45),
-          width: 0.8,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.gold.withValues(alpha: 0.45),
+              width: 0.8,
+            ),
+          ),
+          child: initials != null
+              ? Text(
+                  initials!,
+                  style: AppTypography.style(
+                    color: AppColors.gold,
+                    fontSize: size * 0.34,
+                    fontWeight: FontWeight.w700,
+                  ),
+                )
+              : Icon(icon, size: size * 0.42, color: AppColors.gold),
         ),
-      ),
-      child: initials != null
-          ? Text(
-              initials!,
-              style: AppTypography.style(
-                color: AppColors.gold,
-                fontSize: size * 0.34,
-                fontWeight: FontWeight.w700,
+        if (showPresence)
+          Positioned(
+            right: -1,
+            bottom: -1,
+            child: Container(
+              width: size * 0.28,
+              height: size * 0.28,
+              decoration: BoxDecoration(
+                color: online
+                    ? receptionChatOnlineGreen
+                    : Colors.white.withValues(alpha: 0.25),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.background, width: 2),
               ),
-            )
-          : Icon(icon, size: size * 0.42, color: AppColors.gold),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// A dot + "Online"/"Offline" label, used in the thread header.
+class ReceptionOnlineStatus extends StatelessWidget {
+  const ReceptionOnlineStatus({super.key, required this.online});
+
+  final bool online;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: online
+                ? receptionChatOnlineGreen
+                : Colors.white.withValues(alpha: 0.3),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          online ? 'Online' : 'Offline',
+          style: AppTypography.style(
+            color: online
+                ? receptionChatOnlineGreen
+                : Colors.white.withValues(alpha: 0.4),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "X is typing…", shown just above the composer while true.
+class ReceptionTypingIndicator extends StatelessWidget {
+  const ReceptionTypingIndicator({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
+              color: AppColors.gold.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

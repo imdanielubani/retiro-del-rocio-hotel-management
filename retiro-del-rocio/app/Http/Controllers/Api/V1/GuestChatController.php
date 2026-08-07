@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\ChatTypingSent;
 use App\Http\Controllers\Controller;
 use App\Models\ChatMessage;
 use App\Models\Device;
 use App\Models\ReceptionNotification;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Concierge Chat — a guest's in-room tablet messaging the front desk. One
@@ -32,7 +35,7 @@ class GuestChatController extends Controller
         $booking = $device->currentBooking();
 
         if (! $booking) {
-            return response()->json(['data' => [], 'unread_count' => 0]);
+            return response()->json(['data' => [], 'unread_count' => 0, 'reception_online' => $this->receptionOnline()]);
         }
 
         $messages = ChatMessage::where('booking_id', $booking->id)->oldest()->get();
@@ -49,7 +52,40 @@ class GuestChatController extends Controller
         return response()->json([
             'data' => $messages->map->toGuestArray()->values(),
             'unread_count' => $unreadCount,
+            'reception_online' => $this->receptionOnline(),
         ]);
+    }
+
+    /**
+     * POST /chat/typing — a fire-and-forget "I'm typing" signal, never
+     * persisted. Reception's chat screen picks it up only while that guest's
+     * thread happens to be open, over the room's existing realtime channel.
+     */
+    public function typing(Request $request): JsonResponse
+    {
+        $device = $this->guestDevice($request);
+
+        try {
+            broadcast(new ChatTypingSent($device->room_unit_id, ChatMessage::GUEST));
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        return response()->json(['data' => true]);
+    }
+
+    /**
+     * Whether anyone signed in with the reception role has hit a reception
+     * endpoint within the presence window. Reception's own screens run on a
+     * staff JWT ({@see User}), not the tablet's device token, so this checks
+     * the user, not the device — the device token is only ever used for the
+     * initial staff login and would otherwise look permanently idle.
+     */
+    private function receptionOnline(): bool
+    {
+        return User::whereHas('roles', fn ($q) => $q->where('name', 'reception'))
+            ->get()
+            ->contains(fn (User $u) => $u->isRecentlyActive());
     }
 
     /** POST /chat/messages — send a message to the front desk. */
@@ -79,7 +115,7 @@ class GuestChatController extends Controller
                 Str::limit($data['body'], 120),
                 $booking,
             );
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             report($e);
         }
 

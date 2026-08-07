@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/core/widgets/staff_top_bar.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
@@ -30,10 +29,12 @@ class MaintenanceDashboardScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<MaintenanceDashboardScreen> createState() => _MaintenanceDashboardScreenState();
+  ConsumerState<MaintenanceDashboardScreen> createState() =>
+      _MaintenanceDashboardScreenState();
 }
 
-class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboardScreen> {
+class _MaintenanceDashboardScreenState
+    extends ConsumerState<MaintenanceDashboardScreen> {
   int? _busyOrderId;
 
   String get _token => widget.session.token;
@@ -47,10 +48,6 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
 
   void _onNav(MaintenanceNavItem item) {
     if (item == MaintenanceNavItem.dashboard) return; // already here
-    if (item == MaintenanceNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
     MaintenanceNavigation.open(context, widget.session, item);
   }
 
@@ -61,12 +58,18 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MaintenanceNotificationScreen(session: widget.session, current: MaintenanceNavItem.dashboard),
+        builder: (_) => MaintenanceNotificationScreen(
+          session: widget.session,
+          current: MaintenanceNavItem.dashboard,
+        ),
       ),
     );
   }
 
-  Future<void> _run(WorkOrder order, Future<WorkOrder> Function() action) async {
+  Future<void> _run(
+    WorkOrder order,
+    Future<WorkOrder> Function() action,
+  ) async {
     setState(() => _busyOrderId = order.id);
     try {
       await action();
@@ -85,7 +88,10 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -99,7 +105,9 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
     final overviewAsync = ref.watch(maintenanceOverviewProvider(_token));
     final overview = overviewAsync.value ?? MaintenanceOverview.empty;
     final weather = ref.watch(weatherProvider).value;
-    final unreadNotifications = ref.watch(maintenanceUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      maintenanceUnreadNotificationsProvider(_token),
+    );
 
     return SessionGuard(
       child: Scaffold(
@@ -143,7 +151,11 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
                               data: (data) => _content(data),
                               loading: () => overview.workOrders.isNotEmpty
                                   ? _content(overview)
-                                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                                  : const Center(
+                                      child: CircularProgressIndicator(
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
                               error: (_, _) => overview.workOrders.isNotEmpty
                                   ? _content(overview)
                                   : _errorState(),
@@ -171,7 +183,10 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Maintenance', style: AppTypography.style(color: AppColors.gold, fontSize: 12)),
+              Text(
+                'Maintenance',
+                style: AppTypography.style(color: AppColors.gold, fontSize: 12),
+              ),
               const SizedBox(height: 3),
               Text(
                 'Dashboard',
@@ -206,7 +221,11 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
               const SizedBox(width: 6),
               Text(
                 'Report Fault',
-                style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.black,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -221,20 +240,44 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
       children: [
         Row(
           children: [
-            Expanded(child: MaintenanceStatCard(label: 'NEW', value: data.newCount, accent: kMtSlate)),
-            const SizedBox(width: 16),
             Expanded(
-              child: MaintenanceStatCard(label: 'IN PROGRESS', value: data.inProgress, accent: AppColors.gold),
-            ),
-            const SizedBox(width: 16),
-            Expanded(child: MaintenanceStatCard(label: 'URGENT', value: data.urgent, accent: kMtRed)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: MaintenanceStatCard(label: 'COMPLETED TODAY', value: data.completedToday, accent: kMtGreen),
+              child: MaintenanceStatCard(
+                label: 'NEW',
+                value: data.newCount,
+                accent: kMtSlate,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: MaintenanceStatCard(label: 'SLA BREACHES', value: data.slaBreaches, accent: kMtRed),
+              child: MaintenanceStatCard(
+                label: 'IN PROGRESS',
+                value: data.inProgress,
+                accent: AppColors.gold,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: MaintenanceStatCard(
+                label: 'URGENT',
+                value: data.urgent,
+                accent: kMtRed,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: MaintenanceStatCard(
+                label: 'COMPLETED TODAY',
+                value: data.completedToday,
+                accent: kMtGreen,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: MaintenanceStatCard(
+                label: 'SLA BREACHES',
+                value: data.slaBreaches,
+                accent: kMtRed,
+              ),
             ),
           ],
         ),
@@ -243,23 +286,34 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
           child: MaintenanceSectionPanel(
             title: 'OPEN WORK ORDERS',
             child: data.workOrders.isEmpty
-                ? const MaintenanceSectionEmpty(icon: Icons.build_circle_outlined, message: 'No open work orders')
+                ? const MaintenanceSectionEmpty(
+                    icon: Icons.build_circle_outlined,
+                    message: 'No open work orders',
+                  )
                 : ListView.separated(
                     padding: EdgeInsets.zero,
                     itemCount: data.workOrders.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       final order = data.workOrders[i];
-                      final actions = ref.read(maintenanceActionsProvider(_token));
+                      final actions = ref.read(
+                        maintenanceActionsProvider(_token),
+                      );
                       return WorkOrderCard(
                         order: order,
                         busy: _busyOrderId == order.id,
-                        onAccept: () => _run(order, () => actions.accept(order.id)),
-                        onStart: () => _run(order, () => actions.start(order.id)),
-                        onComplete: () => _run(order, () => actions.complete(order.id)),
+                        onAccept: () =>
+                            _run(order, () => actions.accept(order.id)),
+                        onStart: () =>
+                            _run(order, () => actions.start(order.id)),
+                        onComplete: () =>
+                            _run(order, () => actions.complete(order.id)),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => WorkOrderDetailScreen(session: widget.session, orderId: order.id),
+                            builder: (_) => WorkOrderDetailScreen(
+                              session: widget.session,
+                              orderId: order.id,
+                            ),
                           ),
                         ),
                       );
@@ -276,11 +330,18 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off_rounded, size: 30, color: Colors.white.withValues(alpha: 0.4)),
+          Icon(
+            Icons.wifi_off_rounded,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
           Text(
             'Could not load the dashboard.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 16),
           Material(
@@ -290,10 +351,17 @@ class _MaintenanceDashboardScreenState extends ConsumerState<MaintenanceDashboar
               onTap: () => ref.invalidate(maintenanceOverviewProvider(_token)),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Text(
                   'Retry',
-                  style: AppTypography.style(color: AppColors.onGold, fontSize: 14, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: AppColors.onGold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),

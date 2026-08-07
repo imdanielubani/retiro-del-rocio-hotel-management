@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeviceMode;
 use App\Enums\DeviceStatus;
+use App\Http\Middleware\TouchLastSeen;
 use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
@@ -55,7 +56,7 @@ class Device extends Model implements Authenticatable
     }
 
     /* --------------------------------------------------------------------- */
-    /* Relationships                                                          */
+    /* Relationships */
     /* --------------------------------------------------------------------- */
 
     public function type()
@@ -118,7 +119,7 @@ class Device extends Model implements Authenticatable
     }
 
     /* --------------------------------------------------------------------- */
-    /* Scopes                                                                 */
+    /* Scopes */
     /* --------------------------------------------------------------------- */
 
     public function scopeOfType(Builder $query, string $slug): Builder
@@ -172,7 +173,7 @@ class Device extends Model implements Authenticatable
     }
 
     /* --------------------------------------------------------------------- */
-    /* Helpers                                                                */
+    /* Helpers */
     /* --------------------------------------------------------------------- */
 
     public function isOnline(): bool
@@ -208,6 +209,18 @@ class Device extends Model implements Authenticatable
         }
 
         return $this->last_seen_at->lt(now()->subSeconds(config('devices.heartbeat_timeout')));
+    }
+
+    /**
+     * True when this device has hit an authenticated API endpoint within the
+     * heartbeat window — the "online" dot on a chat conversation. Touched on
+     * every authenticated request by {@see TouchLastSeen},
+     * not just an explicit `/tablets/heartbeat` call, so a tablet that's simply
+     * being used (polling its own screens) already counts as present.
+     */
+    public function isRecentlyActive(): bool
+    {
+        return ! $this->isStale();
     }
 
     public function batteryIsLow(): bool

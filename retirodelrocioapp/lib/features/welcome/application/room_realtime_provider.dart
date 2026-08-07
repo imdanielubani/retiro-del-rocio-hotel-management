@@ -48,6 +48,12 @@ final roomRealtimeProvider = FutureProvider.family<void, ProvisionedDevice>((
   channel.connect(
     onChanged: () => ref.invalidate(roomStatusProvider(device.token)),
     onNotification: () => unawaited(_notifyGuest(ref, device.token, chime)),
+    onTyping: (from) {
+      // The guest's own typing echoes back on this same channel; only a
+      // staff reply is worth showing here.
+      if (from != 'staff') return;
+      ref.read(guestReceptionTypingProvider.notifier).staffIsTyping();
+    },
   );
 
   ref.onDispose(channel.dispose);

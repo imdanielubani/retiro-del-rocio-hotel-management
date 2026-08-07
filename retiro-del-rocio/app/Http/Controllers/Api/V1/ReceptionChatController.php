@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\ChatTypingSent;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\ChatMessage;
+use App\Models\Device;
 use App\Models\GuestNotification;
-use App\Models\StaffMessage;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,10 +15,10 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Reception's Chat screen — two kinds of conversation from the one station:
- * Concierge Chat threads with every in-house guest ({@see ChatMessage}), and
- * internal channels with each staff department ({@see StaffMessage}). Both
- * share the same list → thread → composer shape, just scoped differently.
+ * Reception's Chat screen — Concierge Chat threads with every in-house guest
+ * ({@see ChatMessage}). Reception's own internal staff-to-staff channels
+ * (Housekeeping, Maintenance, Security, Admin) are served by the shared
+ * {@see StaffChatController}, the same one every other station's tablet uses.
  */
 class ReceptionChatController extends Controller
 {
@@ -37,15 +38,23 @@ class ReceptionChatController extends Controller
             ->get()
             ->groupBy('booking_id');
 
+        $devicesByRoomUnit = Device::mode('guest')
+            ->whereIn('room_unit_id', $bookings->pluck('room_unit_id')->filter())
+            ->get()
+            ->keyBy('room_unit_id');
+
         $conversations = $bookings
-            ->map(function (Booking $booking) use ($lastByBooking) {
+            ->map(function (Booking $booking) use ($lastByBooking, $devicesByRoomUnit) {
                 $messages = $lastByBooking->get($booking->id, collect());
                 $last = $messages->first();
+                $device = $devicesByRoomUnit->get($booking->room_unit_id);
 
                 return [
                     'booking_id' => $booking->id,
+                    'room_unit_id' => $booking->room_unit_id,
                     'guest_name' => $booking->customer_name,
                     'room_label' => $this->roomLabel($booking),
+                    'guest_online' => $device?->isRecentlyActive() ?? false,
                     'last_message' => $last?->body,
                     'last_message_at' => $last?->created_at?->toIso8601String(),
                     'last_message_label' => optional($last?->created_at)->diffForHumans(['short' => true]),
@@ -108,70 +117,24 @@ class ReceptionChatController extends Controller
     }
 
     /**
-     * GET /reception/chat/staff — one row per department channel
-     * (Housekeeping, Maintenance, Security), same preview/unread shape as
-     * the guest list.
+     * POST /reception/chat/guests/{booking}/typing — a fire-and-forget "I'm
+     * typing" signal, never persisted. Picked up by the guest tablet's
+     * already-open realtime connection to its own room.
      */
-    public function staffConversations(Request $request): JsonResponse
+    public function typingToGuest(Request $request, Booking $booking): JsonResponse
     {
         $this->receptionist($request);
 
-        $lastByDepartment = StaffMessage::whereIn('department', StaffMessage::DEPARTMENTS)
-            ->latest('created_at')
-            ->get()
-            ->groupBy('department');
+        try {
+            $unit = $booking->roomUnit()->first();
+            if ($unit) {
+                broadcast(new ChatTypingSent($unit->id, ChatMessage::STAFF));
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
 
-        $conversations = collect(StaffMessage::DEPARTMENTS)
-            ->map(function (string $department) use ($lastByDepartment) {
-                $messages = $lastByDepartment->get($department, collect());
-                $last = $messages->first();
-
-                return [
-                    'department' => $department,
-                    'label' => ucfirst($department),
-                    'last_message' => $last?->body,
-                    'last_message_at' => $last?->created_at?->toIso8601String(),
-                    'last_message_label' => optional($last?->created_at)->diffForHumans(['short' => true]),
-                    'unread_count' => $messages->where('sender_role', $department)->whereNull('read_at')->count(),
-                ];
-            })
-            ->values();
-
-        return response()->json(['data' => $conversations]);
-    }
-
-    /** GET /reception/chat/staff/{department}/messages — one department's channel. */
-    public function staffMessages(Request $request, string $department): JsonResponse
-    {
-        $this->receptionist($request);
-        abort_unless(in_array($department, StaffMessage::DEPARTMENTS, true), 404, 'Unknown department.');
-
-        $messages = StaffMessage::where('department', $department)->oldest()->get();
-
-        StaffMessage::where('department', $department)
-            ->where('sender_role', $department)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
-
-        return response()->json(['data' => $messages->map(fn (StaffMessage $m) => $m->toChatArray(StaffMessage::RECEPTION))->values()]);
-    }
-
-    /** POST /reception/chat/staff/{department}/messages — message a department. */
-    public function sendStaffMessage(Request $request, string $department): JsonResponse
-    {
-        $receptionist = $this->receptionist($request);
-        abort_unless(in_array($department, StaffMessage::DEPARTMENTS, true), 404, 'Unknown department.');
-
-        $data = $request->validate(['body' => ['required', 'string', 'max:1000']]);
-
-        $message = StaffMessage::create([
-            'department' => $department,
-            'sender_role' => StaffMessage::RECEPTION,
-            'sender_name' => $receptionist->name,
-            'body' => $data['body'],
-        ]);
-
-        return response()->json(['data' => $message->toChatArray(StaffMessage::RECEPTION)], 201);
+        return response()->json(['data' => true]);
     }
 
     private function roomLabel(Booking $booking): string

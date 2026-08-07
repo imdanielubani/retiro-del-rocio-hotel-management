@@ -5,36 +5,42 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One message in an internal chat channel between Reception and a
- * department (Housekeeping, Maintenance, Security). Every channel is a
- * two-party conversation with the front desk — departments do not message
- * each other directly, so a department's whole channel is identified by
- * [department] alone.
+ * One message in an internal chat channel between two staff stations —
+ * Reception, Housekeeping, Maintenance, Security, or the Admin dashboard.
+ * A channel is identified purely by its pair of roles ({@see channelKey()}),
+ * so any two stations can message each other directly, not just each
+ * department with Reception.
  */
 class StaffMessage extends Model
 {
-    public const RECEPTION = 'reception';
-
-    /** The staff departments Reception can open a channel with. */
-    public const DEPARTMENTS = ['housekeeping', 'maintenance', 'security'];
+    /** Every station that can take part in a staff chat channel. */
+    public const ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'admin'];
 
     protected $fillable = [
-        'department', 'sender_role', 'sender_name', 'body', 'read_at',
+        'channel_key', 'sender_role', 'sender_name', 'body', 'read_at',
     ];
 
     protected $casts = [
         'read_at' => 'datetime',
     ];
 
-    public function isFromReception(): bool
+    /**
+     * The channel two roles share — alphabetically sorted, so
+     * `channelKey('maintenance', 'reception')` and
+     * `channelKey('reception', 'maintenance')` are always the same row.
+     */
+    public static function channelKey(string $roleA, string $roleB): string
     {
-        return $this->sender_role === self::RECEPTION;
+        $pair = [$roleA, $roleB];
+        sort($pair);
+
+        return implode('_', $pair);
     }
 
     /**
      * The payload a chat screen renders, from [$viewerRole]'s point of
-     * view — `reception` on the front desk's screen, or the department's
-     * own role once a department tablet gets its own chat screen.
+     * view — `is_mine` flips depending on which side of the channel is
+     * looking at it.
      */
     public function toChatArray(string $viewerRole): array
     {

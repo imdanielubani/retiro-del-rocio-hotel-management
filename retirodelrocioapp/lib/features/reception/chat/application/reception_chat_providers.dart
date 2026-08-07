@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retirodelrocioapp/core/config/app_config.dart';
+import 'package:retirodelrocioapp/core/realtime/room_channel.dart';
 import 'package:retirodelrocioapp/features/reception/chat/data/reception_chat_repository.dart';
 import 'package:retirodelrocioapp/features/reception/chat/domain/reception_chat_message.dart';
 import 'package:retirodelrocioapp/features/reception/chat/domain/reception_conversation.dart';
@@ -95,9 +97,64 @@ class ReceptionChatActions {
     _ref.invalidate(receptionStaffConversationsProvider(_token));
     return message;
   }
+
+  Future<void> sendTypingToGuest(int bookingId) => _ref
+      .read(receptionChatRepositoryProvider)
+      .sendTypingToGuest(_token, bookingId);
 }
 
 final receptionChatActionsProvider =
     Provider.family<ReceptionChatActions, String>(
       (ref, token) => ReceptionChatActions(ref, token),
+    );
+
+/// True while the guest in [roomUnitId]'s room is (recently) typing —
+/// opens a transient realtime subscription to that room's channel for as
+/// long as reception's thread panel is showing that conversation, and closes
+/// it the moment the desk switches away (a plain — not autoDispose-suppressed
+/// — family provider in Riverpod 3 already tears down once nothing watches
+/// it). Auto-clears a few seconds after the last signal, in case the
+/// "stopped typing" edge is ever missed.
+class ReceptionGuestTypingNotifier extends Notifier<bool> {
+  ReceptionGuestTypingNotifier(this.roomUnitId);
+
+  final int roomUnitId;
+
+  RoomChannel? _channel;
+  Timer? _timeout;
+
+  @override
+  bool build() {
+    ref.onDispose(() {
+      _timeout?.cancel();
+      _channel?.dispose();
+    });
+    unawaited(_connect());
+    return false;
+  }
+
+  Future<void> _connect() async {
+    final config = (await ref.read(appConfigProvider.future)).realtime;
+    if (config == null) return;
+
+    final channel = RoomChannel(config: config, roomUnitId: roomUnitId);
+    _channel = channel;
+    channel.connect(
+      onChanged: () {},
+      onTyping: (from) {
+        // The desk's own typing signal echoes back on this same channel;
+        // only the guest's is worth showing here.
+        if (from != 'guest') return;
+
+        state = true;
+        _timeout?.cancel();
+        _timeout = Timer(const Duration(seconds: 5), () => state = false);
+      },
+    );
+  }
+}
+
+final receptionGuestTypingProvider =
+    NotifierProvider.family<ReceptionGuestTypingNotifier, bool, int>(
+      ReceptionGuestTypingNotifier.new,
     );

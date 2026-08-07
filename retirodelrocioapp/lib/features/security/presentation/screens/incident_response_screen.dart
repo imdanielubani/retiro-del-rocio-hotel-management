@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -13,6 +12,7 @@ import 'package:retirodelrocioapp/features/security/domain/security_incident.dar
 import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
 import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_detail_panel.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_log_row.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
@@ -63,14 +63,12 @@ class _IncidentResponseScreenState
           ),
         );
       case SecurityNavItem.chat:
-        _comingSoon('Chat');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
+        );
     }
-  }
-
-  void _comingSoon(String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)),
-    );
   }
 
   void _openNotifications() {
@@ -109,8 +107,10 @@ class _IncidentResponseScreenState
       SnackBar(
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF1F2937),
-        content: Text('Room calling is coming soon.',
-            style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          'Room calling is coming soon.',
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -121,14 +121,18 @@ class _IncidentResponseScreenState
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
 
   Future<void> _pickFilter() async {
     final box = context.findRenderObject() as RenderBox?;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (box == null || overlay == null) return;
 
     const items = <(IncidentStatus?, String)>[
@@ -149,12 +153,19 @@ class _IncidentResponseScreenState
             child: Row(
               children: [
                 Icon(
-                  _filter == value ? Icons.check_rounded : Icons.circle_outlined,
+                  _filter == value
+                      ? Icons.check_rounded
+                      : Icons.circle_outlined,
                   size: 16,
-                  color: _filter == value ? AppColors.gold : Colors.white.withValues(alpha: 0.3),
+                  color: _filter == value
+                      ? AppColors.gold
+                      : Colors.white.withValues(alpha: 0.3),
                 ),
                 const SizedBox(width: 10),
-                Text(label, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+                Text(
+                  label,
+                  style: AppTypography.style(color: Colors.white, fontSize: 14),
+                ),
               ],
             ),
           ),
@@ -165,12 +176,12 @@ class _IncidentResponseScreenState
   }
 
   String get _filterLabel => switch (_filter) {
-        null => 'Filter',
-        IncidentStatus.active => 'Unacknowledged',
-        IncidentStatus.acknowledged => 'Acknowledged',
-        IncidentStatus.resolved => 'Resolved',
-        IncidentStatus.cancelled => 'Cancelled',
-      };
+    null => 'Filter',
+    IncidentStatus.active => 'Unacknowledged',
+    IncidentStatus.acknowledged => 'Acknowledged',
+    IncidentStatus.resolved => 'Resolved',
+    IncidentStatus.cancelled => 'Cancelled',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -179,12 +190,14 @@ class _IncidentResponseScreenState
     ref.watch(securityNotificationChimeProvider(_token));
     final logsAsync = ref.watch(incidentLogsProvider(_token));
     final weather = ref.watch(weatherProvider).value;
-    final unreadNotifications =
-        ref.watch(securityUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      securityUnreadNotificationsProvider(_token),
+    );
 
     final all = logsAsync.value ?? const <SecurityIncident>[];
-    final visible =
-        _filter == null ? all : all.where((i) => i.status == _filter).toList();
+    final visible = _filter == null
+        ? all
+        : all.where((i) => i.status == _filter).toList();
 
     // Keep the detail panel honest: if the selected incident falls out of the
     // list (e.g. filtered away), close it.
@@ -232,7 +245,10 @@ class _IncidentResponseScreenState
                               data: (_) => _body(visible, selected),
                               loading: () => all.isEmpty
                                   ? const Center(
-                                      child: CircularProgressIndicator(color: AppColors.gold))
+                                      child: CircularProgressIndicator(
+                                        color: AppColors.gold,
+                                      ),
+                                    )
                                   : _body(visible, selected),
                               error: (_, _) => all.isEmpty
                                   ? _errorState()
@@ -261,7 +277,10 @@ class _IncidentResponseScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Security', style: AppTypography.style(color: AppColors.gold, fontSize: 12)),
+              Text(
+                'Security',
+                style: AppTypography.style(color: AppColors.gold, fontSize: 12),
+              ),
               const SizedBox(height: 3),
               Text(
                 'SOS Alert Logs',
@@ -317,13 +336,20 @@ class _IncidentResponseScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.shield_outlined, size: 30, color: Colors.white.withValues(alpha: 0.3)),
+            Icon(
+              Icons.shield_outlined,
+              size: 30,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 12),
             Text(
               _filter == null
                   ? 'No SOS alerts have been raised.'
                   : 'No ${_filterLabel.toLowerCase()} alerts.',
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 15),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 15,
+              ),
             ),
           ],
         ),
@@ -353,11 +379,18 @@ class _IncidentResponseScreenState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off_rounded, size: 30, color: Colors.white.withValues(alpha: 0.4)),
+          Icon(
+            Icons.wifi_off_rounded,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
           Text(
             'Could not load the alert logs.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 16),
           Material(
@@ -367,7 +400,10 @@ class _IncidentResponseScreenState
               onTap: () => ref.invalidate(incidentLogsProvider(_token)),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Text(
                   'Retry',
                   style: AppTypography.style(

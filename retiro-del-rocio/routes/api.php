@@ -12,8 +12,10 @@ use App\Http\Controllers\Api\V1\ReceptionChatController;
 use App\Http\Controllers\Api\V1\ReceptionController;
 use App\Http\Controllers\Api\V1\SecurityController;
 use App\Http\Controllers\Api\V1\SosController;
+use App\Http\Controllers\Api\V1\StaffChatController;
 use App\Http\Controllers\Api\V1\TabletController;
 use App\Http\Controllers\Api\V1\VisitorPassController;
+use App\Http\Middleware\TouchLastSeen;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -81,7 +83,7 @@ $api->group(function () {
         ->name('api.v1.tablets.provision');
 
     // --- Authenticated (Sanctum bearer token) ---
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', TouchLastSeen::class])->group(function () {
         Route::get('auth/me', [AuthController::class, 'me'])->name('api.v1.auth.me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
 
@@ -178,6 +180,8 @@ $api->group(function () {
             ->name('api.v1.chat.messages.index');
         Route::post('chat/messages', [GuestChatController::class, 'store'])
             ->middleware('throttle:30,1')->name('api.v1.chat.messages.store');
+        Route::post('chat/typing', [GuestChatController::class, 'typing'])
+            ->middleware('throttle:60,1')->name('api.v1.chat.typing');
 
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])
@@ -197,7 +201,7 @@ $api->group(function () {
     // (not the device token) authorises the hotel-wide dashboard and lets them
     // acknowledge / resolve incoming SOS incidents. The role is re-checked in
     // the controller on every call.
-    Route::middleware('jwt')->group(function () {
+    Route::middleware(['jwt', TouchLastSeen::class])->group(function () {
         Route::get('security/overview', [SecurityController::class, 'overview'])
             ->name('api.v1.security.overview');
         Route::get('security/incidents', [SecurityController::class, 'incidents'])
@@ -301,19 +305,17 @@ $api->group(function () {
             ->whereNumber('notification')->name('api.v1.reception.notifications.read');
 
         // Reception's Chat screen — Concierge Chat threads with every
-        // in-house guest, and internal channels with each staff department.
+        // in-house guest. Reception's own staff-to-staff channels are served
+        // by the shared "staff/chat/*" routes below, alongside every other
+        // station's tablet.
         Route::get('reception/chat/guests', [ReceptionChatController::class, 'guestConversations'])
             ->name('api.v1.reception.chat.guests');
         Route::get('reception/chat/guests/{booking}/messages', [ReceptionChatController::class, 'guestMessages'])
             ->name('api.v1.reception.chat.guests.messages');
         Route::post('reception/chat/guests/{booking}/messages', [ReceptionChatController::class, 'sendGuestMessage'])
             ->middleware('throttle:30,1')->name('api.v1.reception.chat.guests.send');
-        Route::get('reception/chat/staff', [ReceptionChatController::class, 'staffConversations'])
-            ->name('api.v1.reception.chat.staff');
-        Route::get('reception/chat/staff/{department}/messages', [ReceptionChatController::class, 'staffMessages'])
-            ->name('api.v1.reception.chat.staff.messages');
-        Route::post('reception/chat/staff/{department}/messages', [ReceptionChatController::class, 'sendStaffMessage'])
-            ->middleware('throttle:30,1')->name('api.v1.reception.chat.staff.send');
+        Route::post('reception/chat/guests/{booking}/typing', [ReceptionChatController::class, 'typingToGuest'])
+            ->middleware('throttle:60,1')->name('api.v1.reception.chat.guests.typing');
 
         // --- Housekeeping tablet (staff JWT, housekeeping role) ---
         // The housekeeper signs in on the housekeeping station; their JWT
@@ -415,5 +417,18 @@ $api->group(function () {
             ->name('api.v1.maintenance.notifications.read-all');
         Route::post('maintenance/notifications/{notification}/read', [MaintenanceController::class, 'markNotificationRead'])
             ->whereNumber('notification')->name('api.v1.maintenance.notifications.read');
+
+        // --- Staff Chat (shared by every staff tablet's Chat screen) ---
+        // Reception, Housekeeping, Maintenance and Security all message each
+        // other — and the Admin dashboard — through this one set of routes.
+        // The caller's own station is read off their JWT, never the URL.
+        Route::get('staff/chat/channels', [StaffChatController::class, 'channels'])
+            ->name('api.v1.staff.chat.channels');
+        Route::get('staff/chat/channels/{role}/messages', [StaffChatController::class, 'messages'])
+            ->name('api.v1.staff.chat.channels.messages');
+        Route::post('staff/chat/channels/{role}/messages', [StaffChatController::class, 'send'])
+            ->middleware('throttle:30,1')->name('api.v1.staff.chat.channels.send');
+        Route::post('staff/chat/channels/{role}/typing', [StaffChatController::class, 'typing'])
+            ->middleware('throttle:60,1')->name('api.v1.staff.chat.channels.typing');
     });
 });

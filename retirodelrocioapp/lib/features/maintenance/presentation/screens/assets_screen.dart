@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -46,11 +45,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   }
 
   void _onNav(MaintenanceNavItem item) {
-    if (item == MaintenanceNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
-    MaintenanceNavigation.select(context, widget.session, item, current: MaintenanceNavItem.assets);
+    MaintenanceNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: MaintenanceNavItem.assets,
+    );
   }
 
   Future<void> _addAsset() async {
@@ -60,19 +60,29 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MaintenanceNotificationScreen(session: widget.session, current: MaintenanceNavItem.assets),
+        builder: (_) => MaintenanceNotificationScreen(
+          session: widget.session,
+          current: MaintenanceNavItem.assets,
+        ),
       ),
     );
   }
 
   void _openDetail(Asset asset) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AssetDetailScreen(session: widget.session, assetId: asset.id)),
+      MaterialPageRoute(
+        builder: (_) =>
+            AssetDetailScreen(session: widget.session, assetId: asset.id),
+      ),
     );
   }
 
   void _openPmSchedule() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => PmScheduleScreen(session: widget.session)));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PmScheduleScreen(session: widget.session),
+      ),
+    );
   }
 
   List<Asset> _visible(List<Asset> all) {
@@ -96,7 +106,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     final assetsAsync = ref.watch(maintenanceAssetsProvider(_token));
     final assets = assetsAsync.value ?? const <Asset>[];
     final dueCount = assets.where((a) => a.isDueForService).length;
-    final unreadNotifications = ref.watch(maintenanceUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      maintenanceUnreadNotificationsProvider(_token),
+    );
 
     return MaintenanceScaffold(
       session: widget.session,
@@ -108,7 +120,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       title: 'Assets',
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [_pmScheduleButton(), const SizedBox(width: 10), _addButton()],
+        children: [
+          _pmScheduleButton(),
+          const SizedBox(width: 10),
+          _addButton(),
+        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,14 +140,21 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
           Expanded(
             child: assetsAsync.when(
               data: (data) => _grid(data),
-              loading: () =>
-                  assets.isNotEmpty ? _grid(assets) : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              loading: () => assets.isNotEmpty
+                  ? _grid(assets)
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => assets.isNotEmpty
                   ? _grid(assets)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(maintenanceAssetsProvider(_token)),
-                        child: const Text('Could not load assets. Retry', style: TextStyle(color: AppColors.gold)),
+                        onPressed: () =>
+                            ref.invalidate(maintenanceAssetsProvider(_token)),
+                        child: const Text(
+                          'Could not load assets. Retry',
+                          style: TextStyle(color: AppColors.gold),
+                        ),
                       ),
                     ),
             ),
@@ -153,11 +176,19 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.event_available_outlined, size: 16, color: Colors.white70),
+              const Icon(
+                Icons.event_available_outlined,
+                size: 16,
+                color: Colors.white70,
+              ),
               const SizedBox(width: 6),
               Text(
                 'PM Schedule',
-                style: AppTypography.style(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -182,7 +213,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               const SizedBox(width: 6),
               Text(
                 'Add Asset',
-                style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.black,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -203,20 +238,36 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
           hintText: 'Search asset',
-          hintStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 14),
-          prefixIcon: Icon(Icons.search_rounded, size: 18, color: Colors.white.withValues(alpha: 0.4)),
+          hintStyle: AppTypography.style(
+            color: Colors.white.withValues(alpha: 0.35),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.5), width: 1),
+            borderSide: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.5),
+              width: 1,
+            ),
           ),
         ),
       ),
@@ -236,7 +287,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   Widget _chip(String label, _Filter value, {int? badge}) {
     final selected = _filter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _filter = value),
@@ -246,7 +299,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
@@ -256,7 +311,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               Text(
                 label,
                 style: AppTypography.style(
-                  color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+                  color: selected
+                      ? AppColors.gold
+                      : Colors.white.withValues(alpha: 0.6),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -264,14 +321,21 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               if (badge != null && badge > 0) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: kMtRed.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '$badge',
-                    style: AppTypography.style(color: kMtRed, fontSize: 11, fontWeight: FontWeight.w700),
+                    style: AppTypography.style(
+                      color: kMtRed,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -285,7 +349,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   Widget _grid(List<Asset> all) {
     final rows = _visible(all);
     if (rows.isEmpty) {
-      return const MaintenanceSectionEmpty(icon: Icons.inventory_2_outlined, message: 'No assets match this filter');
+      return const MaintenanceSectionEmpty(
+        icon: Icons.inventory_2_outlined,
+        message: 'No assets match this filter',
+      );
     }
     return RefreshIndicator(
       color: AppColors.gold,

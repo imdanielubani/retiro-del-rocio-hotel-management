@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -57,17 +56,21 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   }
 
   void _onNav(MaintenanceNavItem item) {
-    if (item == MaintenanceNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
-    MaintenanceNavigation.select(context, widget.session, item, current: MaintenanceNavItem.workOrders);
+    MaintenanceNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: MaintenanceNavItem.workOrders,
+    );
   }
 
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MaintenanceNotificationScreen(session: widget.session, current: MaintenanceNavItem.workOrders),
+        builder: (_) => MaintenanceNotificationScreen(
+          session: widget.session,
+          current: MaintenanceNavItem.workOrders,
+        ),
       ),
     );
   }
@@ -114,7 +117,13 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   }
 
   List<String> _categories(List<WorkOrder> all) {
-    return all.map((o) => o.assetCategory).whereType<String>().where((c) => c.isNotEmpty).toSet().toList()..sort();
+    return all
+        .map((o) => o.assetCategory)
+        .whereType<String>()
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
   }
 
   Future<void> _reportFault() async {
@@ -123,11 +132,17 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
 
   void _openDetail(WorkOrder order) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(session: widget.session, orderId: order.id)),
+      MaterialPageRoute(
+        builder: (_) =>
+            WorkOrderDetailScreen(session: widget.session, orderId: order.id),
+      ),
     );
   }
 
-  Future<void> _run(WorkOrder order, Future<WorkOrder> Function() action) async {
+  Future<void> _run(
+    WorkOrder order,
+    Future<WorkOrder> Function() action,
+  ) async {
     setState(() => _busyOrderId = order.id);
     try {
       await action();
@@ -146,7 +161,10 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -159,7 +177,9 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
 
     final ordersAsync = ref.watch(maintenanceWorkOrdersProvider(_token));
     final orders = ordersAsync.value ?? const <WorkOrder>[];
-    final unreadNotifications = ref.watch(maintenanceUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      maintenanceUnreadNotificationsProvider(_token),
+    );
 
     return MaintenanceScaffold(
       session: widget.session,
@@ -178,22 +198,30 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
         children: [
           _searchField(),
           const SizedBox(height: 12),
-          if (_view == _ViewMode.list) ...[_filterChips(), const SizedBox(height: 10)],
+          if (_view == _ViewMode.list) ...[
+            _filterChips(),
+            const SizedBox(height: 10),
+          ],
           _priorityChips(),
           const SizedBox(height: 10),
           _locationAndCategoryChips(orders),
           const SizedBox(height: 16),
           Expanded(
             child: ordersAsync.when(
-              data: (data) => _view == _ViewMode.board ? _board(data) : _list(data),
+              data: (data) =>
+                  _view == _ViewMode.board ? _board(data) : _list(data),
               loading: () => orders.isNotEmpty
                   ? (_view == _ViewMode.board ? _board(orders) : _list(orders))
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => orders.isNotEmpty
                   ? (_view == _ViewMode.board ? _board(orders) : _list(orders))
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(maintenanceWorkOrdersProvider(_token)),
+                        onPressed: () => ref.invalidate(
+                          maintenanceWorkOrdersProvider(_token),
+                        ),
                         child: const Text(
                           'Could not load work orders. Retry',
                           style: TextStyle(color: AppColors.gold),
@@ -231,10 +259,18 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
         height: 40,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.transparent,
+          color: selected
+              ? AppColors.gold.withValues(alpha: 0.16)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, size: 18, color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.5)),
+        child: Icon(
+          icon,
+          size: 18,
+          color: selected
+              ? AppColors.gold
+              : Colors.white.withValues(alpha: 0.5),
+        ),
       ),
     );
   }
@@ -255,7 +291,11 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
               const SizedBox(width: 6),
               Text(
                 'Report Fault',
-                style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.black,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -276,20 +316,36 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
           hintText: 'Search work order or asset',
-          hintStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 14),
-          prefixIcon: Icon(Icons.search_rounded, size: 18, color: Colors.white.withValues(alpha: 0.4)),
+          hintStyle: AppTypography.style(
+            color: Colors.white.withValues(alpha: 0.35),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 0.8,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.5), width: 1),
+            borderSide: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.5),
+              width: 1,
+            ),
           ),
         ),
       ),
@@ -350,10 +406,17 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
           _locationChip('Assets/Hotel-wide', _LocationFilter.other),
           if (categories.isNotEmpty) ...[
             const SizedBox(width: 16),
-            Container(width: 1, height: 18, color: Colors.white.withValues(alpha: 0.1)),
+            Container(
+              width: 1,
+              height: 18,
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
             const SizedBox(width: 16),
             _categoryChip('Any Category', null),
-            for (final category in categories) ...[const SizedBox(width: 8), _categoryChip(category, category)],
+            for (final category in categories) ...[
+              const SizedBox(width: 8),
+              _categoryChip(category, category),
+            ],
           ],
         ],
       ),
@@ -363,7 +426,9 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   Widget _locationChip(String label, _LocationFilter value) {
     final selected = _locationFilter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _locationFilter = value),
@@ -373,14 +438,18 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
           child: Text(
             label,
             style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.5),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.5),
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -393,7 +462,9 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   Widget _categoryChip(String label, String? value) {
     final selected = _categoryFilter == value;
     return Material(
-      color: selected ? kMtBlue.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? kMtBlue.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _categoryFilter = value),
@@ -403,7 +474,9 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? kMtBlue.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? kMtBlue.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
@@ -423,7 +496,9 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   Widget _priorityChip(String label, _PriorityFilter value) {
     final selected = _priorityFilter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _priorityFilter = value),
@@ -433,14 +508,18 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
           child: Text(
             label,
             style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.5),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.5),
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -453,7 +532,9 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   Widget _chip(String label, _StatusFilter value) {
     final selected = _filter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _filter = value),
@@ -463,14 +544,18 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
           child: Text(
             label,
             style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.6),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -483,11 +568,15 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
   Widget _list(List<WorkOrder> all) {
     final rows = _visible(all);
     if (rows.isEmpty) {
-      return const MaintenanceSectionEmpty(icon: Icons.build_circle_outlined, message: 'No work orders match this filter');
+      return const MaintenanceSectionEmpty(
+        icon: Icons.build_circle_outlined,
+        message: 'No work orders match this filter',
+      );
     }
     return RefreshIndicator(
       color: AppColors.gold,
-      onRefresh: () async => ref.invalidate(maintenanceWorkOrdersProvider(_token)),
+      onRefresh: () async =>
+          ref.invalidate(maintenanceWorkOrdersProvider(_token)),
       child: ListView.separated(
         padding: const EdgeInsets.only(bottom: 24),
         itemCount: rows.length,
@@ -513,19 +602,25 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
     final columns = [
       ('New', rows.where((o) => o.isNew).toList(), kMtSlate),
       ('Accepted', rows.where((o) => o.isAccepted).toList(), kMtBlue),
-      ('In Progress', rows.where((o) => o.isInProgress).toList(), AppColors.gold),
+      (
+        'In Progress',
+        rows.where((o) => o.isInProgress).toList(),
+        AppColors.gold,
+      ),
       ('Done', rows.where((o) => o.isDone).toList(), kMtGreen),
     ];
 
     return RefreshIndicator(
       color: AppColors.gold,
-      onRefresh: () async => ref.invalidate(maintenanceWorkOrdersProvider(_token)),
+      onRefresh: () async =>
+          ref.invalidate(maintenanceWorkOrdersProvider(_token)),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final (label, orders, color) in columns) _boardColumn(label, orders, color),
+            for (final (label, orders, color) in columns)
+              _boardColumn(label, orders, color),
           ],
         ),
       ),
@@ -545,14 +640,32 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
-                  Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     label.toUpperCase(),
-                    style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                   const SizedBox(width: 6),
-                  Text('${orders.length}', style: AppTypography.style(color: Colors.white.withValues(alpha: 0.3), fontSize: 12)),
+                  Text(
+                    '${orders.length}',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -563,12 +676,18 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.02),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.8),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          width: 0.8,
+                        ),
                       ),
                       child: Center(
                         child: Text(
                           'Nothing here',
-                          style: AppTypography.style(color: Colors.white.withValues(alpha: 0.25), fontSize: 12),
+                          style: AppTypography.style(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     )
@@ -581,9 +700,12 @@ class _WorkOrdersScreenState extends ConsumerState<WorkOrdersScreen> {
                         return WorkOrderCard(
                           order: order,
                           busy: _busyOrderId == order.id,
-                          onAccept: () => _run(order, () => actions.accept(order.id)),
-                          onStart: () => _run(order, () => actions.start(order.id)),
-                          onComplete: () => _run(order, () => actions.complete(order.id)),
+                          onAccept: () =>
+                              _run(order, () => actions.accept(order.id)),
+                          onStart: () =>
+                              _run(order, () => actions.start(order.id)),
+                          onComplete: () =>
+                              _run(order, () => actions.complete(order.id)),
                           onTap: () => _openDetail(order),
                         );
                       },

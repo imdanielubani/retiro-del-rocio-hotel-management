@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -29,10 +28,12 @@ class HousekeepingLostFoundScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<HousekeepingLostFoundScreen> createState() => _HousekeepingLostFoundScreenState();
+  ConsumerState<HousekeepingLostFoundScreen> createState() =>
+      _HousekeepingLostFoundScreenState();
 }
 
-class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFoundScreen> {
+class _HousekeepingLostFoundScreenState
+    extends ConsumerState<HousekeepingLostFoundScreen> {
   _Filter _filter = _Filter.all;
   int? _busyId;
 
@@ -46,18 +47,22 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
   }
 
   void _onNav(HousekeepingNavItem item) {
-    if (item == HousekeepingNavItem.chat) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Chat')));
-      return;
-    }
-    HousekeepingNavigation.select(context, widget.session, item, current: HousekeepingNavItem.lostFound);
+    HousekeepingNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: HousekeepingNavItem.lostFound,
+    );
   }
 
   void _openNotifications() {
     HousekeepingNavigation.push(
       context,
       'notifications',
-      HousekeepingNotificationScreen(session: widget.session, current: HousekeepingNavItem.lostFound),
+      HousekeepingNotificationScreen(
+        session: widget.session,
+        current: HousekeepingNavItem.lostFound,
+      ),
     );
   }
 
@@ -75,14 +80,21 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
   }
 
   Future<void> _markReturned(LostFoundItem item) async {
-    final claim = await showClaimLostFoundItemDialog(context, itemDescription: item.itemDescription);
+    final claim = await showClaimLostFoundItemDialog(
+      context,
+      itemDescription: item.itemDescription,
+    );
     if (claim == null) return;
 
     setState(() => _busyId = item.id);
     try {
       await ref
           .read(lostFoundActionsProvider(_token))
-          .markReturned(item.id, claimantName: claim.name, claimantContact: claim.contact);
+          .markReturned(
+            item.id,
+            claimantName: claim.name,
+            claimantContact: claim.contact,
+          );
     } catch (_) {
       _showError('Could not update this item.');
     } finally {
@@ -107,7 +119,10 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
       SnackBar(
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF7F1D1D),
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -119,7 +134,9 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
     final itemsAsync = ref.watch(lostFoundItemsProvider(_token));
     final items = itemsAsync.value ?? const <LostFoundItem>[];
     final unclaimedCount = items.where((i) => i.status == 'unclaimed').length;
-    final unreadNotifications = ref.watch(housekeepingUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      housekeepingUnreadNotificationsProvider(_token),
+    );
 
     return HousekeepingScaffold(
       session: widget.session,
@@ -140,12 +157,15 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
               data: (data) => _list(data),
               loading: () => items.isNotEmpty
                   ? _list(items)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => items.isNotEmpty
                   ? _list(items)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(lostFoundItemsProvider(_token)),
+                        onPressed: () =>
+                            ref.invalidate(lostFoundItemsProvider(_token)),
                         child: const Text(
                           'Could not load Lost & Found. Retry',
                           style: TextStyle(color: AppColors.gold),
@@ -175,7 +195,11 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
               const SizedBox(width: 6),
               Text(
                 'Log Item',
-                style: AppTypography.style(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.black,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -201,7 +225,9 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
   Widget _chip(String label, _Filter value, {int? badge}) {
     final selected = _filter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _filter = value),
@@ -211,7 +237,9 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
@@ -221,7 +249,9 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
               Text(
                 label,
                 style: AppTypography.style(
-                  color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+                  color: selected
+                      ? AppColors.gold
+                      : Colors.white.withValues(alpha: 0.6),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -229,14 +259,21 @@ class _HousekeepingLostFoundScreenState extends ConsumerState<HousekeepingLostFo
               if (badge != null && badge > 0) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gold.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '$badge',
-                    style: AppTypography.style(color: AppColors.gold, fontSize: 11, fontWeight: FontWeight.w700),
+                    style: AppTypography.style(
+                      color: AppColors.gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
