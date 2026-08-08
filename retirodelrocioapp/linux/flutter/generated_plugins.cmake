@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   charset_converter
   file_selector_linux
   flutter_secure_storage_linux
+  flutter_webrtc
   printing
   syncfusion_pdfviewer_linux
   url_launcher_linux

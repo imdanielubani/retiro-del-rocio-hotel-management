@@ -38,6 +38,9 @@ void watchReceptionIntercomCall(
             onEnd: (id) => ref
                 .read(receptionIntercomCallProvider(session.token).notifier)
                 .end(id),
+            onSignal: (callId, type, data) => ref
+                .read(receptionIntercomCallRepositoryProvider)
+                .signal(session.token, callId, type, data),
           ),
         ),
       );

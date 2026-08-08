@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\IntercomCallSignal;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\IntercomCall;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 /**
  * The guest tablet's Intercom — placing and receiving a call with Reception.
@@ -80,6 +82,33 @@ class GuestIntercomCallController extends Controller
         abort_unless($call->hangUp(), 409, 'This call has already ended.');
 
         return response()->json(['data' => $call->fresh()->toCallArray()]);
+    }
+
+    /**
+     * POST /intercom/calls/{call}/signal — relay a WebRTC offer/answer/ICE
+     * candidate to the other side of this call.
+     */
+    public function signal(Request $request, IntercomCall $call): JsonResponse
+    {
+        $device = $this->guestDevice($request);
+        $isParty = $call->isCaller($device->room_unit_id, null) || $call->isCallee($device->room_unit_id, null);
+        abort_unless($isParty, 403, 'Not this room\'s call.');
+        abort_unless(in_array($call->status, IntercomCall::ACTIVE_STATUSES, true), 409, 'This call is no longer active.');
+
+        $data = $request->validate([
+            'type' => ['required', 'string', 'in:offer,answer,ice-candidate'],
+            'data' => ['required', 'array'],
+        ]);
+
+        $from = $call->isCaller($device->room_unit_id, null) ? 'caller' : 'callee';
+
+        try {
+            broadcast(new IntercomCallSignal($call->id, $from, $data['type'], $data['data']));
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        return response()->json(['data' => true]);
     }
 
     private function activeCallFor(Device $device): ?IntercomCall

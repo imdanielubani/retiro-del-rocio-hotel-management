@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\IntercomCallSignal;
 use App\Http\Controllers\Controller;
 use App\Models\IntercomCall;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 /**
  * Internal staff Intercom — any staff tablet (Reception, Housekeeping,
@@ -89,6 +91,33 @@ class StaffIntercomCallController extends Controller
         abort_unless($call->hangUp(), 409, 'This call has already ended.');
 
         return response()->json(['data' => $call->fresh()->toCallArray()]);
+    }
+
+    /**
+     * POST /staff/intercom/calls/{call}/signal — relay a WebRTC
+     * offer/answer/ICE candidate to the other side of this call.
+     */
+    public function signal(Request $request, IntercomCall $call): JsonResponse
+    {
+        $me = $this->myRole($request);
+        $isParty = $call->isCaller(null, $me) || $call->isCallee(null, $me);
+        abort_unless($isParty, 403, 'Not this station\'s call.');
+        abort_unless(in_array($call->status, IntercomCall::ACTIVE_STATUSES, true), 409, 'This call is no longer active.');
+
+        $data = $request->validate([
+            'type' => ['required', 'string', 'in:offer,answer,ice-candidate'],
+            'data' => ['required', 'array'],
+        ]);
+
+        $from = $call->isCaller(null, $me) ? 'caller' : 'callee';
+
+        try {
+            broadcast(new IntercomCallSignal($call->id, $from, $data['type'], $data['data']));
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        return response()->json(['data' => true]);
     }
 
     private function activeCallFor(string $role): ?IntercomCall

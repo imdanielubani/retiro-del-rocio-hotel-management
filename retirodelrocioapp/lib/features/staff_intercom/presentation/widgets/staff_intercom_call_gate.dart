@@ -36,6 +36,9 @@ void watchStaffIntercomCall(
                 ref.read(staffIntercomCallProvider(key).notifier).decline(id),
             onEnd: (id) =>
                 ref.read(staffIntercomCallProvider(key).notifier).end(id),
+            onSignal: (callId, type, data) => ref
+                .read(staffIntercomCallRepositoryProvider)
+                .signal(session.token, callId, type, data),
           ),
         ),
       );

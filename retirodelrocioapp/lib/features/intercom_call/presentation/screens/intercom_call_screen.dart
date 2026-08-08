@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/audio/incoming_call_ringtone.dart';
+import 'package:retirodelrocioapp/core/config/app_config.dart';
+import 'package:retirodelrocioapp/core/realtime/intercom_webrtc_signal_channel.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
+import 'package:retirodelrocioapp/features/intercom_call/data/intercom_webrtc_session.dart';
 import 'package:retirodelrocioapp/features/intercom_call/domain/intercom_call.dart';
 
 const _greenColor = Color(0xFF34D399);
@@ -31,6 +34,7 @@ class IntercomCallScreen extends ConsumerStatefulWidget {
     required this.onAnswer,
     required this.onDecline,
     required this.onEnd,
+    required this.onSignal,
   });
 
   final IntercomCall? Function(WidgetRef ref) watchCall;
@@ -44,6 +48,16 @@ class IntercomCallScreen extends ConsumerStatefulWidget {
   final Future<void> Function(int callId) onDecline;
   final Future<void> Function(int callId) onEnd;
 
+  /// Relays one WebRTC signal (an offer/answer/ICE candidate) to the other
+  /// side of the call — the real audio connection's only way to negotiate,
+  /// since the two devices have no other channel to each other.
+  final Future<void> Function(
+    int callId,
+    String type,
+    Map<String, dynamic> data,
+  )
+  onSignal;
+
   @override
   ConsumerState<IntercomCallScreen> createState() => _IntercomCallScreenState();
 }
@@ -54,6 +68,18 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
   bool _ringtonePlaying = false;
   IntercomCall? _previous;
 
+  // --- Real audio: the peer connection for the call currently on screen,
+  // and the per-call channel that carries its offer/answer/ICE candidates.
+  // Both are keyed to a call id so a new call after this one never reuses a
+  // stale connection, and both are torn down the instant the call stops
+  // being answerable-or-connected (declined/cancelled/ended, or disposed).
+  IntercomWebRtcSession? _webrtc;
+  int? _webrtcCallId;
+  IntercomWebrtcSignalChannel? _signalChannel;
+  int? _signalChannelCallId;
+  bool _muted = false;
+  bool _speakerOn = false;
+
   bool _isMe(IntercomParty p) => widget.myRoomUnitId != null
       ? p.roomUnitId == widget.myRoomUnitId
       : p.role == widget.myRole;
@@ -61,6 +87,7 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
   @override
   void dispose() {
     unawaited(_ringtone.dispose());
+    unawaited(_teardownCall());
     super.dispose();
   }
 
@@ -73,6 +100,73 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
       _ringtonePlaying = false;
       unawaited(_ringtone.stop());
     }
+  }
+
+  /// Keeps the signal channel and the WebRTC session in sync with the call
+  /// actually on screen: subscribes to this call's own signaling channel as
+  /// soon as it exists (an incoming offer can arrive the instant the other
+  /// side sees "accepted", which may be before this side's own poll/realtime
+  /// notices it), and opens the real peer connection once the call is
+  /// [IntercomCallStatus.accepted] — never earlier, so ringing never asks
+  /// for the microphone.
+  void _syncWebRtc(IntercomCall? call) {
+    if (call == null || call.hasEnded) {
+      unawaited(_teardownCall());
+      return;
+    }
+
+    if (_signalChannelCallId != call.id) {
+      unawaited(_connectSignalChannel(call.id));
+    }
+
+    if (call.status == IntercomCallStatus.accepted &&
+        _webrtcCallId != call.id) {
+      _webrtcCallId = call.id;
+      final session = IntercomWebRtcSession(
+        isCaller: _isMe(call.from),
+        sendSignal: (type, data) => widget.onSignal(call.id, type, data),
+      );
+      _webrtc = session;
+      _muted = false;
+      unawaited(session.start());
+    }
+  }
+
+  Future<void> _connectSignalChannel(int callId) async {
+    _signalChannelCallId = callId;
+    _signalChannel?.dispose();
+    _signalChannel = null;
+
+    final config = (await ref.read(appConfigProvider.future)).realtime;
+    if (config == null || !mounted || _signalChannelCallId != callId) return;
+
+    final channel = IntercomWebrtcSignalChannel(config: config, callId: callId);
+    _signalChannel = channel;
+    channel.connect(
+      onSignal: (from, type, data) {
+        // Every party subscribes to the same public per-call channel, so
+        // this device also receives the echo of whatever it just sent
+        // itself — `from` identifies which side of the call originated the
+        // signal, and only the *other* side's is ever meaningful here.
+        final call = widget.watchCall(ref);
+        if (call == null || call.id != callId) return;
+        final selfFrom = _isMe(call.from) ? 'caller' : 'callee';
+        if (from == selfFrom) return;
+
+        unawaited(_webrtc?.handleRemoteSignal(type, data));
+      },
+    );
+  }
+
+  Future<void> _teardownCall() async {
+    _webrtcCallId = null;
+    final session = _webrtc;
+    _webrtc = null;
+    await session?.dispose();
+
+    _signalChannelCallId = null;
+    _signalChannel?.dispose();
+    _signalChannel = null;
   }
 
   Future<void> _act(Future<void> Function() action) async {
@@ -92,6 +186,7 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
   Widget build(BuildContext context) {
     final call = widget.watchCall(ref);
     _syncRingtone(call);
+    _syncWebRtc(call);
 
     // The call cleared (ended long enough ago to drop out of "current") —
     // this screen has nothing left to show, so it dismisses itself. Uses a
@@ -153,7 +248,22 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
         other: other,
         answeredAt: call.answeredAt ?? call.startedAt,
         busy: _busy,
-        onEnd: () => _act(() => widget.onEnd(call.id)),
+        muted: _muted,
+        speakerOn: _speakerOn,
+        onToggleMute: () {
+          final session = _webrtc;
+          if (session == null) return;
+          setState(() => _muted = session.toggleMute());
+        },
+        onToggleSpeaker: () {
+          final on = !_speakerOn;
+          setState(() => _speakerOn = on);
+          unawaited(_webrtc?.setSpeaker(on));
+        },
+        onEnd: () => _act(() async {
+          await _teardownCall();
+          await widget.onEnd(call.id);
+        }),
       );
     }
 
@@ -331,12 +441,24 @@ class _ConnectedView extends StatefulWidget {
     required this.other,
     required this.answeredAt,
     required this.busy,
+    required this.muted,
+    required this.speakerOn,
+    required this.onToggleMute,
+    required this.onToggleSpeaker,
     required this.onEnd,
   });
 
   final IntercomParty other;
   final DateTime answeredAt;
   final bool busy;
+
+  /// Real state of the WebRTC session's local mic track / speakerphone,
+  /// owned by the parent screen (which owns the session itself) rather than
+  /// this widget, so it actually reflects what the other side hears.
+  final bool muted;
+  final bool speakerOn;
+  final VoidCallback onToggleMute;
+  final VoidCallback onToggleSpeaker;
   final VoidCallback onEnd;
 
   @override
@@ -346,8 +468,6 @@ class _ConnectedView extends StatefulWidget {
 class _ConnectedViewState extends State<_ConnectedView> {
   Timer? _ticker;
   Duration _elapsed = Duration.zero;
-  bool _muted = false;
-  bool _speaker = false;
 
   @override
   void initState() {
@@ -448,10 +568,12 @@ class _ConnectedViewState extends State<_ConnectedView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _actionButton(
-              icon: _muted ? Icons.mic_off_rounded : Icons.mic_none_rounded,
+              icon: widget.muted
+                  ? Icons.mic_off_rounded
+                  : Icons.mic_none_rounded,
               label: 'Mute',
-              color: _muted ? _redColor : Colors.white,
-              onTap: () => setState(() => _muted = !_muted),
+              color: widget.muted ? _redColor : Colors.white,
+              onTap: widget.onToggleMute,
             ),
             const SizedBox(width: 24),
             _actionButton(
@@ -464,12 +586,12 @@ class _ConnectedViewState extends State<_ConnectedView> {
             ),
             const SizedBox(width: 24),
             _actionButton(
-              icon: _speaker
+              icon: widget.speakerOn
                   ? Icons.volume_up_rounded
                   : Icons.volume_down_rounded,
               label: 'Speaker',
-              color: _speaker ? AppColors.goldAccent : Colors.white,
-              onTap: () => setState(() => _speaker = !_speaker),
+              color: widget.speakerOn ? AppColors.goldAccent : Colors.white,
+              onTap: widget.onToggleSpeaker,
             ),
           ],
         ),

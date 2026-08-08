@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Events\IntercomCallRinging;
+use App\Events\IntercomCallSignal;
 use App\Events\IntercomCallUpdated;
 use App\Models\Booking;
 use App\Models\IntercomCall;
@@ -188,6 +189,34 @@ class ReceptionIntercomCallTest extends TestCase
         $this->withToken($this->receptionToken())
             ->postJson('/api/v1/reception/intercom/calls', ['booking_id' => $this->booking->id])
             ->assertStatus(409);
+    }
+
+    public function test_signal_relays_a_webrtc_answer_from_reception(): void
+    {
+        Event::fake([IntercomCallSignal::class]);
+
+        $call = IntercomCall::create([
+            'from_room_unit_id' => $this->unit->id,
+            'from_label' => 'Room 101',
+            'to_role' => 'reception',
+            'to_label' => 'Reception',
+            'status' => IntercomCall::ACCEPTED,
+            'answered_at' => now(),
+        ]);
+
+        $this->withToken($this->receptionToken())
+            ->postJson("/api/v1/reception/intercom/calls/{$call->id}/signal", [
+                'type' => 'answer',
+                'data' => ['sdp' => 'v=0...', 'type' => 'answer'],
+            ])
+            ->assertOk();
+
+        Event::assertDispatched(
+            IntercomCallSignal::class,
+            fn (IntercomCallSignal $e) => $e->callId === $call->id
+                && $e->from === 'callee'
+                && $e->type === 'answer',
+        );
     }
 
     public function test_current_returns_null_when_the_desk_has_no_active_call(): void

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Events\IntercomCallRinging;
+use App\Events\IntercomCallSignal;
 use App\Events\IntercomCallUpdated;
 use App\Models\IntercomCall;
 use App\Models\User;
@@ -136,6 +137,43 @@ class StaffIntercomCallTest extends TestCase
             ->getJson('/api/v1/staff/intercom/calls/current')
             ->assertOk()
             ->assertJson(['data' => null]);
+    }
+
+    public function test_signal_relays_an_ice_candidate_and_ignores_a_call_that_has_ended(): void
+    {
+        Event::fake([IntercomCallSignal::class]);
+
+        $call = IntercomCall::create([
+            'from_role' => 'security',
+            'from_label' => 'Security',
+            'to_role' => 'maintenance',
+            'to_label' => 'Maintenance',
+            'status' => IntercomCall::ACCEPTED,
+            'answered_at' => now(),
+        ]);
+
+        $this->withToken($this->tokenFor('security'))
+            ->postJson("/api/v1/staff/intercom/calls/{$call->id}/signal", [
+                'type' => 'ice-candidate',
+                'data' => ['candidate' => 'candidate:1 1 UDP ...', 'sdpMid' => '0', 'sdpMLineIndex' => 0],
+            ])
+            ->assertOk();
+
+        Event::assertDispatched(
+            IntercomCallSignal::class,
+            fn (IntercomCallSignal $e) => $e->callId === $call->id
+                && $e->from === 'caller'
+                && $e->type === 'ice-candidate',
+        );
+
+        $call->update(['status' => IntercomCall::ENDED, 'ended_at' => now()]);
+
+        $this->withToken($this->tokenFor('security'))
+            ->postJson("/api/v1/staff/intercom/calls/{$call->id}/signal", [
+                'type' => 'ice-candidate',
+                'data' => ['candidate' => 'candidate:2 1 UDP ...'],
+            ])
+            ->assertStatus(409);
     }
 
     public function test_reception_placing_a_staff_call_is_visible_via_the_reception_endpoint(): void

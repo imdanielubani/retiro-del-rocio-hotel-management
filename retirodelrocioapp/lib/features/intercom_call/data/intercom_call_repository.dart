@@ -65,6 +65,27 @@ class IntercomCallRepository {
   Future<IntercomCall> end(String token, int callId) =>
       _action(token, '/$callId/end', const {});
 
+  /// Relay a WebRTC offer/answer/ICE candidate to the other side of
+  /// [callId]. Fire-and-forget from the caller's point of view — a dropped
+  /// signal just means that one candidate/attempt is lost, not that the
+  /// whole call fails, so failures are swallowed rather than surfaced.
+  Future<void> signal(
+    String token,
+    int callId,
+    String type,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('$basePath/$callId/signal')),
+        data: {'type': type, 'data': data},
+        options: _auth(token),
+      );
+    } catch (error) {
+      debugPrint('IntercomCallRepository: signal failed — $error');
+    }
+  }
+
   Future<IntercomCall> _action(
     String token,
     String suffix,

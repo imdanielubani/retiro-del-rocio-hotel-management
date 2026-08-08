@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Events\IntercomCallRinging;
+use App\Events\IntercomCallSignal;
 use App\Events\IntercomCallUpdated;
 use App\Models\Booking;
 use App\Models\Device;
@@ -239,6 +240,48 @@ class GuestIntercomCallTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.id', $call->id)
             ->assertJsonPath('data.status', 'ended');
+    }
+
+    public function test_signal_relays_a_webrtc_offer_from_the_calling_room(): void
+    {
+        Event::fake([IntercomCallSignal::class]);
+
+        $callId = $this->withToken($this->deviceToken)
+            ->postJson('/api/v1/intercom/calls')
+            ->json('data.id');
+
+        $this->withToken($this->deviceToken)
+            ->postJson("/api/v1/intercom/calls/{$callId}/signal", [
+                'type' => 'offer',
+                'data' => ['sdp' => 'v=0...', 'type' => 'offer'],
+            ])
+            ->assertOk();
+
+        Event::assertDispatched(
+            IntercomCallSignal::class,
+            fn (IntercomCallSignal $e) => $e->callId === $callId
+                && $e->from === 'caller'
+                && $e->type === 'offer'
+                && $e->data === ['sdp' => 'v=0...', 'type' => 'offer'],
+        );
+    }
+
+    public function test_signal_is_rejected_for_a_call_this_room_is_not_party_to(): void
+    {
+        $otherRoom = RoomUnit::create(['room_id' => $this->unit->room_id, 'number' => '202', 'status' => 'occupied']);
+        $call = IntercomCall::create([
+            'from_room_unit_id' => $otherRoom->id,
+            'from_label' => 'Room 202',
+            'to_role' => 'reception',
+            'to_label' => 'Reception',
+        ]);
+
+        $this->withToken($this->deviceToken)
+            ->postJson("/api/v1/intercom/calls/{$call->id}/signal", [
+                'type' => 'offer',
+                'data' => ['sdp' => 'v=0...'],
+            ])
+            ->assertStatus(403);
     }
 
     public function test_an_unauthenticated_request_cannot_place_a_call(): void

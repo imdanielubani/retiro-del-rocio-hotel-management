@@ -187,7 +187,8 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.chat.typing');
 
         // Intercom — voice-call signalling with Reception from a guest's
-        // in-room tablet. No real audio: ringing/answer/decline/hang-up only.
+        // in-room tablet, plus the WebRTC offer/answer/ICE relay that opens
+        // the two devices' real peer-to-peer audio connection once answered.
         Route::post('intercom/calls', [GuestIntercomCallController::class, 'store'])
             ->middleware('throttle:20,1')->name('api.v1.intercom.calls.store');
         Route::get('intercom/calls/current', [GuestIntercomCallController::class, 'current'])
@@ -198,6 +199,10 @@ $api->group(function () {
             ->middleware('throttle:20,1')->name('api.v1.intercom.calls.decline');
         Route::post('intercom/calls/{call}/end', [GuestIntercomCallController::class, 'end'])
             ->middleware('throttle:20,1')->name('api.v1.intercom.calls.end');
+        // Higher throttle than the other actions — a single call can trickle
+        // in a dozen-plus ICE candidates within a couple of seconds.
+        Route::post('intercom/calls/{call}/signal', [GuestIntercomCallController::class, 'signal'])
+            ->middleware('throttle:120,1')->name('api.v1.intercom.calls.signal');
 
         // Staff sign-in on a staff tablet (device token identifies the station).
         Route::post('tablets/staff-login', [TabletController::class, 'staffLogin'])
@@ -334,7 +339,8 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.reception.chat.guests.typing');
 
         // Reception's Intercom — voice-call signalling with a checked-in
-        // guest's room. No real audio: ringing/answer/decline/hang-up only.
+        // guest's room, plus the WebRTC offer/answer/ICE relay that opens
+        // the real peer-to-peer audio connection once answered.
         Route::post('reception/intercom/calls', [ReceptionIntercomCallController::class, 'store'])
             ->middleware('throttle:20,1')->name('api.v1.reception.intercom.calls.store');
         Route::get('reception/intercom/calls/current', [ReceptionIntercomCallController::class, 'current'])
@@ -345,6 +351,8 @@ $api->group(function () {
             ->middleware('throttle:20,1')->name('api.v1.reception.intercom.calls.decline');
         Route::post('reception/intercom/calls/{call}/end', [ReceptionIntercomCallController::class, 'end'])
             ->middleware('throttle:20,1')->name('api.v1.reception.intercom.calls.end');
+        Route::post('reception/intercom/calls/{call}/signal', [ReceptionIntercomCallController::class, 'signal'])
+            ->middleware('throttle:120,1')->name('api.v1.reception.intercom.calls.signal');
 
         // --- Housekeeping tablet (staff JWT, housekeeping role) ---
         // The housekeeper signs in on the housekeeping station; their JWT
@@ -461,10 +469,11 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.staff.chat.channels.typing');
 
         // --- Staff Intercom (shared by every staff tablet's Intercom screen) ---
-        // Voice-call signalling between any two stations. No real audio:
-        // ringing/answer/decline/hang-up only, same as the guest ↔ Reception
-        // calls in GuestIntercomCallController/ReceptionIntercomCallController —
-        // all three write to the same intercom_calls table.
+        // Voice-call signalling between any two stations, plus the WebRTC
+        // offer/answer/ICE relay that opens the real peer-to-peer audio
+        // connection once answered — same as the guest ↔ Reception calls in
+        // GuestIntercomCallController/ReceptionIntercomCallController — all
+        // three write to the same intercom_calls table.
         Route::post('staff/intercom/calls', [StaffIntercomCallController::class, 'store'])
             ->middleware('throttle:20,1')->name('api.v1.staff.intercom.calls.store');
         Route::get('staff/intercom/calls/current', [StaffIntercomCallController::class, 'current'])
@@ -475,5 +484,7 @@ $api->group(function () {
             ->middleware('throttle:20,1')->name('api.v1.staff.intercom.calls.decline');
         Route::post('staff/intercom/calls/{call}/end', [StaffIntercomCallController::class, 'end'])
             ->middleware('throttle:20,1')->name('api.v1.staff.intercom.calls.end');
+        Route::post('staff/intercom/calls/{call}/signal', [StaffIntercomCallController::class, 'signal'])
+            ->middleware('throttle:120,1')->name('api.v1.staff.intercom.calls.signal');
     });
 });
