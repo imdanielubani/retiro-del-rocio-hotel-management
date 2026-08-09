@@ -79,12 +79,12 @@
                 ['label' => 'Reservations', 'href' => route('admin.restaurant.reservations'), 'active' => request()->routeIs('admin.restaurant.reservations')],
             ]],
             ['key' => 'kitchen', 'label' => 'Kitchen', 'icon' => 'kitchen', 'children' => [
-                ['label' => 'Menu', 'href' => '#'],
-                ['label' => 'Orders', 'href' => '#'],
+                ['label' => 'Menu', 'href' => route('admin.kitchen.menu'), 'active' => request()->routeIs('admin.kitchen.menu')],
+                ['label' => 'Orders', 'href' => route('admin.kitchen.orders'), 'active' => request()->routeIs('admin.kitchen.orders')],
             ]],
             ['key' => 'bar', 'label' => 'Bar & Lounge', 'icon' => 'bar', 'children' => [
-                ['label' => 'Drinks Menu', 'href' => '#'],
-                ['label' => 'Orders', 'href' => '#'],
+                ['label' => 'Drinks Menu', 'href' => route('admin.bar-lounge.menu'), 'active' => request()->routeIs('admin.bar-lounge.menu')],
+                ['label' => 'Orders', 'href' => route('admin.bar-lounge.orders'), 'active' => request()->routeIs('admin.bar-lounge.orders')],
             ]],
         ]],
         ['label' => 'Inventory Management', 'items' => [

@@ -15,7 +15,10 @@ use App\Models\CinemaBooking;
 use App\Models\CinemaSeatHold;
 use App\Models\CinemaSnack;
 use App\Models\Device;
+use App\Models\DiningOrder;
 use App\Models\GuestNotification;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
 use App\Models\Movie;
 use App\Models\ReceptionNotification;
 use App\Models\RoomUnit;
@@ -321,6 +324,9 @@ class TabletController extends Controller
      * onto the room folio — it is a tax line, remitted, not room revenue.
      */
     private const VAT_RATE = 0.075;
+
+    /** Flat fee added to every room-service order (Figma: "Room Service Fee"). */
+    private const DINING_SERVICE_FEE = 1000;
 
     /**
      * POST /tablets/extend-stay/initialize — price the extension and open a
@@ -891,6 +897,295 @@ class TabletController extends Controller
         ];
 
         return $payload;
+    }
+
+    /* ---------------- Dining (Place Order) ---------------- */
+
+    /**
+     * GET /tablets/dining/menu — the restaurant's bookable menu items, for
+     * the guest tablet's Place Order screen.
+     */
+    public function diningMenu(Request $request): JsonResponse
+    {
+        $this->activeStay($request);
+
+        $items = MenuItem::active()->ordered()->get();
+
+        return response()->json(['data' => [
+            'items' => $items->map->toGuestArray()->values(),
+            'categories' => MenuCategory::ordered()->pluck('slug'),
+            'service_fee' => self::DINING_SERVICE_FEE,
+            'service_fee_label' => 'NGN '.number_format(self::DINING_SERVICE_FEE),
+        ]]);
+    }
+
+    /**
+     * GET /tablets/dining/orders — the checked-in guest's own dining orders,
+     * newest first: every confirmed order, whether charged to the room or
+     * paid directly via Paystack. Same filtering rule as {@see spaAppointments()}
+     * — a Paystack checkout the guest never completed stays `pending` and is
+     * left out.
+     */
+    public function diningOrders(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+
+        $orders = DiningOrder::where('booking_id', $booking->id)
+            ->whereIn('status', ['confirmed', 'preparing', 'ready', 'on_way', 'delivered'])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json(['data' => $orders->map->toGuestOrderArray()->values()]);
+    }
+
+    /**
+     * POST /tablets/dining/book — charge a food order straight to the room's
+     * folio, no Paystack round trip needed. Confirmed the moment it's placed.
+     */
+    public function bookDiningToRoom(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+        $data = $this->validateDiningOrder($request);
+        $q = $this->diningQuote($data['items']);
+
+        $order = DiningOrder::create([
+            'booking_id' => $booking->id,
+            'reference' => 'DN-'.$booking->id.'-'.strtoupper(Str::random(10)),
+            'items' => $q['lineItems'],
+            'has_food' => $q['hasFood'],
+            'has_drinks' => $q['hasDrinks'],
+            'item_count' => $q['itemCount'],
+            'subtotal' => $q['subtotal'],
+            'service_fee' => $q['serviceFee'],
+            'total' => $q['total'],
+            'customer_name' => $booking->customer_name,
+            'customer_email' => $booking->customer_email,
+            'customer_phone' => $booking->customer_phone,
+            // Confirmed the moment it's placed, but not "paid" — the charge
+            // sits on the room folio until the guest settles it (My Bills),
+            // same reasoning as bookSpaToRoom().
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'payment_method' => 'room_charge',
+        ]);
+
+        $this->notifyDiningOrdered($booking, $unit, $order);
+
+        return response()->json(['data' => $order->toGuestConfirmationArray()], 201);
+    }
+
+    /**
+     * POST /tablets/dining/initialize — price the order and open a Paystack
+     * transaction, for the guest paying directly rather than charging the room.
+     */
+    public function initializeDiningOrder(Request $request): JsonResponse
+    {
+        [$booking] = $this->activeStay($request);
+        $data = $this->validateDiningOrder($request);
+        $q = $this->diningQuote($data['items']);
+
+        $secret = config('services.paystack.secret_key');
+        abort_if(blank($secret), 503, 'Online payment is not available right now.');
+
+        $reference = 'DN-'.$booking->id.'-'.strtoupper(Str::random(10));
+        $callbackUrl = rtrim((string) config('app.url'), '/').'/tablet/extend-return';
+        $email = $booking->customer_email ?: 'guest'.$booking->id.'@retirodelrocio.ng';
+
+        try {
+            $response = Http::withToken($secret)->acceptJson()->post(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/initialize',
+                [
+                    'email' => $email,
+                    'amount' => $q['total'] * 100,
+                    'reference' => $reference,
+                    'callback_url' => $callbackUrl,
+                    'metadata' => [
+                        'booking_id' => $booking->id,
+                        'purpose' => 'dining_order',
+                    ],
+                ],
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not start the payment. Please try again.');
+        }
+
+        $authUrl = data_get($response->json(), 'data.authorization_url');
+        abort_if(! $response->ok() || ! $authUrl, 502, 'Could not start the payment. Please try again.');
+
+        DiningOrder::create([
+            'booking_id' => $booking->id,
+            'reference' => $reference,
+            'items' => $q['lineItems'],
+            'has_food' => $q['hasFood'],
+            'has_drinks' => $q['hasDrinks'],
+            'item_count' => $q['itemCount'],
+            'subtotal' => $q['subtotal'],
+            'service_fee' => $q['serviceFee'],
+            'total' => $q['total'],
+            'customer_name' => $booking->customer_name,
+            'customer_email' => $booking->customer_email,
+            'customer_phone' => $booking->customer_phone,
+            'status' => 'pending',
+            'payment_status' => 'pending',
+        ]);
+
+        return response()->json(['data' => [
+            'authorization_url' => $authUrl,
+            'reference' => $reference,
+            'callback_url' => $callbackUrl,
+            'subtotal' => $q['subtotal'],
+            'subtotal_label' => 'NGN '.number_format($q['subtotal']),
+            'service_fee' => $q['serviceFee'],
+            'service_fee_label' => 'NGN '.number_format($q['serviceFee']),
+            'total' => $q['total'],
+            'total_label' => 'NGN '.number_format($q['total']),
+        ]]);
+    }
+
+    /**
+     * POST /tablets/dining/confirm — verify the Paystack charge and confirm
+     * the order. Idempotent: a repeated call for an already-applied
+     * reference just returns the order.
+     */
+    public function confirmDiningOrder(Request $request): JsonResponse
+    {
+        [$booking, $unit] = $this->activeStay($request);
+
+        $data = $request->validate(['reference' => ['required', 'string']]);
+
+        $order = DiningOrder::where('reference', $data['reference'])
+            ->where('booking_id', $booking->id)
+            ->first();
+        abort_unless($order, 404, 'We could not find that order.');
+
+        if ($order->payment_status === 'paid') {
+            return response()->json(['data' => $order->toGuestConfirmationArray()]);
+        }
+
+        $secret = config('services.paystack.secret_key');
+        try {
+            $verify = Http::withToken($secret)->acceptJson()->get(
+                rtrim((string) config('services.paystack.payment_url'), '/').'/transaction/verify/'.$data['reference']
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            abort(502, 'Could not verify the payment. Please try again.');
+        }
+
+        $body = $verify->json();
+        abort_unless(
+            $verify->ok() && data_get($body, 'data.status') === 'success',
+            402,
+            'Your payment was not completed.'
+        );
+        abort_if(
+            (int) data_get($body, 'data.amount') < (int) $order->total * 100,
+            402,
+            'The payment amount did not match.'
+        );
+
+        $order->update([
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => data_get($body, 'data.channel'),
+            'paid_at' => now(),
+        ]);
+
+        $this->notifyDiningOrdered($booking, $unit, $order->fresh());
+
+        return response()->json(['data' => $order->fresh()->toGuestConfirmationArray()]);
+    }
+
+    /**
+     * @return array{items: array<int, array{menu_item_id:int, qty:int, note:?string}>}
+     */
+    private function validateDiningOrder(Request $request): array
+    {
+        return $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.menu_item_id' => ['required', 'integer'],
+            'items.*.qty' => ['required', 'integer', 'min:1', 'max:20'],
+            'items.*.note' => ['nullable', 'string', 'max:255'],
+        ]);
+    }
+
+    /**
+     * Price a cart of menu items: each item's price is read fresh from the
+     * database (never trusted from the client) and snapshotted onto the
+     * order, plus the flat room-service fee.
+     *
+     * @param  array<int, array{menu_item_id:int, qty:int, note?:?string}>  $itemsInput
+     * @return array{lineItems: array, subtotal: int, serviceFee: int, total: int, itemCount: int, hasFood: bool, hasDrinks: bool}
+     */
+    private function diningQuote(array $itemsInput): array
+    {
+        $lineItems = [];
+        $subtotal = 0;
+        $itemCount = 0;
+        $hasFood = false;
+        $hasDrinks = false;
+        // Computed once per order, not per line item — a category's
+        // department (food/drink) can only be told apart via the admin's
+        // MenuCategory catalog now that categories aren't a fixed list.
+        $drinkSlugs = MenuCategory::drink()->pluck('slug')->all();
+
+        foreach ($itemsInput as $entry) {
+            $menuItem = MenuItem::active()->find($entry['menu_item_id']);
+            abort_unless($menuItem, 404, 'One of the dishes in your order is no longer available.');
+
+            $qty = (int) $entry['qty'];
+            $subtotal += (int) $menuItem->price * $qty;
+            $itemCount += $qty;
+
+            if (in_array($menuItem->category, $drinkSlugs, true)) {
+                $hasDrinks = true;
+            } else {
+                $hasFood = true;
+            }
+
+            $lineItems[] = [
+                'menu_item_id' => $menuItem->id,
+                'name' => $menuItem->name,
+                'price' => (int) $menuItem->price,
+                'qty' => $qty,
+                'note' => $entry['note'] ?? null,
+                // Snapshotted so the guest tablet's ETA estimate, My Orders
+                // thumbnail, and the Kitchen/Bar & Lounge admin queues all
+                // reflect what was true when the order was placed, not
+                // today's menu (a dish's photo/prep time/category can change
+                // later — the order's has_food/has_drinks flags below are
+                // derived from this same snapshot, not a live lookup).
+                'prep_minutes' => $menuItem->prep_minutes,
+                'image_url' => $menuItem->imageUrl(),
+                'category' => $menuItem->category,
+            ];
+        }
+
+        $serviceFee = self::DINING_SERVICE_FEE;
+        $total = $subtotal + $serviceFee;
+
+        return compact('lineItems', 'subtotal', 'serviceFee', 'total', 'itemCount', 'hasFood', 'hasDrinks');
+    }
+
+    /** Notify the guest's own tablet feed and the front desk of a new dining order. */
+    private function notifyDiningOrdered(Booking $booking, RoomUnit $unit, DiningOrder $order): void
+    {
+        GuestNotification::notify(
+            $booking,
+            $unit,
+            'dining',
+            'Order Placed',
+            $order->itemsLabel().' is on its way to your room.',
+        );
+
+        ReceptionNotification::notify(
+            'booking',
+            'New Dining Order',
+            ($booking->customer_name ?: 'A guest').' in Room '.($unit->number ?? $booking->room_name).
+                ' ordered '.$order->itemsLabel().'.',
+            $booking,
+        );
     }
 
     /* ---------------- Cinema ---------------- */

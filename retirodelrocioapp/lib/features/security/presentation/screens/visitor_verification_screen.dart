@@ -17,6 +17,7 @@ import 'package:retirodelrocioapp/features/security/presentation/widgets/securit
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_code_keypad.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_verification_row.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 const Color _green = Color(0xFF22C55E);
@@ -261,6 +262,7 @@ class _VisitorVerificationScreenState
     ref.watch(securityRealtimeProvider(_token));
     ref.watch(securityNotificationsRealtimeProvider(_token));
     ref.watch(securityNotificationChimeProvider(_token));
+    watchStaffIntercomCall(context, ref, widget.session);
     final passes =
         ref.watch(securityVisitorsProvider(_token)).value ?? const [];
     final overview = ref.watch(securityOverviewProvider(_token)).value;

@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Events\IntercomCallSignal;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\IntercomCall;
 use App\Models\User;
+use App\Support\AgoraTokenBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Throwable;
 
 /**
  * Reception's Intercom — placing a call to any checked-in guest's room, and
@@ -96,30 +95,25 @@ class ReceptionIntercomCallController extends Controller
     }
 
     /**
-     * POST /reception/intercom/calls/{call}/signal — relay a WebRTC
-     * offer/answer/ICE candidate to the other side of this call.
+     * GET /reception/intercom/calls/{call}/token — the desk's Agora
+     * credentials for the call's voice channel.
      */
-    public function signal(Request $request, IntercomCall $call): JsonResponse
+    public function token(Request $request, IntercomCall $call): JsonResponse
     {
         $this->receptionist($request);
         $isParty = $call->isCaller(null, 'reception') || $call->isCallee(null, 'reception');
         abort_unless($isParty, 403, 'Not this station\'s call.');
         abort_unless(in_array($call->status, IntercomCall::ACTIVE_STATUSES, true), 409, 'This call is no longer active.');
 
-        $data = $request->validate([
-            'type' => ['required', 'string', 'in:offer,answer,ice-candidate'],
-            'data' => ['required', 'array'],
-        ]);
+        $uid = $call->isCaller(null, 'reception') ? 1 : 2;
+        $channel = 'intercom-'.$call->id;
 
-        $from = $call->isCaller(null, 'reception') ? 'caller' : 'callee';
-
-        try {
-            broadcast(new IntercomCallSignal($call->id, $from, $data['type'], $data['data']));
-        } catch (Throwable $e) {
-            report($e);
-        }
-
-        return response()->json(['data' => true]);
+        return response()->json(['data' => [
+            'app_id' => config('services.agora.app_id'),
+            'channel' => $channel,
+            'uid' => $uid,
+            'token' => AgoraTokenBuilder::forUid($channel, $uid),
+        ]]);
     }
 
     private function activeCallFor(string $role): ?IntercomCall

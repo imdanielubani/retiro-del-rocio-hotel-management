@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\BillPayment;
 use App\Models\Booking;
 use App\Models\CinemaBooking;
+use App\Models\DiningOrder;
 use App\Models\SpaBooking;
 use App\Models\StayExtensionPayment;
 use Illuminate\Support\Carbon;
@@ -66,6 +67,15 @@ trait ComputesBookingBill
             'amount_label' => 'NGN '.number_format((int) $b->subtotal),
         ])->values()->all();
 
+        $diningOrders = DiningOrder::where('booking_id', $booking->id)
+            ->where('payment_method', 'room_charge')
+            ->get();
+        $diningLines = $diningOrders->map(fn (DiningOrder $o) => [
+            'label' => $o->itemsLabel(),
+            'sub' => optional($o->created_at)->format('M j, Y g:i A'),
+            'amount_label' => 'NGN '.number_format((int) $o->subtotal + (int) $o->service_fee),
+        ])->values()->all();
+
         // "Room Charges" totals only extensions actually charged to the room
         // — a Paystack-paid extension never shows up here, matching the same
         // rule Spa and Cinema already follow.
@@ -75,6 +85,10 @@ trait ComputesBookingBill
         $spaVat = (int) $spaBookings->sum('vat');
         $cinemaSubtotal = (int) $cinemaBookings->sum('subtotal');
         $cinemaVat = (int) $cinemaBookings->sum('vat');
+        // No separate VAT line for dining — the service fee is folded straight
+        // into the base amount, matching the Room Service Fee shown on the
+        // guest tablet's own order summary rather than a second tax line.
+        $diningBase = (int) $diningOrders->sum('subtotal') + (int) $diningOrders->sum('service_fee');
 
         $categories = [
             [
@@ -98,11 +112,11 @@ trait ComputesBookingBill
             [
                 'key' => 'restaurant',
                 'label' => 'Restaurant & Bar',
-                'item_count' => 0,
-                'amount' => 0,
-                'amount_label' => null,
-                'has_charges' => false,
-                'items' => [],
+                'item_count' => $diningOrders->count(),
+                'amount' => $diningBase,
+                'amount_label' => $diningOrders->isNotEmpty() ? 'NGN '.number_format($diningBase) : null,
+                'has_charges' => $diningOrders->isNotEmpty(),
+                'items' => $diningLines,
             ],
             [
                 'key' => 'cinema',
@@ -125,7 +139,7 @@ trait ComputesBookingBill
         ];
 
         $outstandingExtensionVat = (int) $outstandingExtensions->sum('vat');
-        $outstandingBase = $outstandingExtensionBase + $spaSubtotal + $cinemaSubtotal;
+        $outstandingBase = $outstandingExtensionBase + $spaSubtotal + $cinemaSubtotal + $diningBase;
         $outstandingVat = $outstandingExtensionVat + $spaVat + $cinemaVat;
         $raw = $outstandingBase + $outstandingVat;
 
@@ -147,6 +161,9 @@ trait ComputesBookingBill
         }
         if ($cinemaSubtotal > 0) {
             $summaryLines[] = ['label' => 'Cinema', 'amount_label' => 'NGN '.number_format($cinemaSubtotal)];
+        }
+        if ($diningBase > 0) {
+            $summaryLines[] = ['label' => 'Restaurant & Bar', 'amount_label' => 'NGN '.number_format($diningBase)];
         }
         if ($outstandingVat > 0) {
             $summaryLines[] = ['label' => 'VAT (7.5%)', 'amount_label' => 'NGN '.number_format($outstandingVat)];
@@ -212,6 +229,11 @@ trait ComputesBookingBill
             ->update(['payment_status' => 'paid', 'paid_at' => $now]);
 
         CinemaBooking::where('booking_id', $booking->id)
+            ->where('payment_method', 'room_charge')
+            ->where('payment_status', '!=', 'paid')
+            ->update(['payment_status' => 'paid', 'paid_at' => $now]);
+
+        DiningOrder::where('booking_id', $booking->id)
             ->where('payment_method', 'room_charge')
             ->where('payment_status', '!=', 'paid')
             ->update(['payment_status' => 'paid', 'paid_at' => $now]);

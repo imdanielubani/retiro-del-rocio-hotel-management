@@ -31,7 +31,7 @@ abstract final class GuestServices {
 
   static const dining = GuestService(
     id: 'dining',
-    title: 'Dining',
+    title: 'Place Order',
     tagline: 'Order Anytime',
     icon: Icons.restaurant_rounded,
     iconAsset: 'assets/icons/dinning.png',

@@ -32,6 +32,8 @@ use App\Livewire\Admin\Housekeeping\Requests;
 use App\Livewire\Admin\Housekeeping\RequestTypes;
 use App\Livewire\Admin\Housekeeping\RoomStatus;
 use App\Livewire\Admin\Housekeeping\StaffWorkload;
+use App\Livewire\Admin\Kitchen\Menu;
+use App\Livewire\Admin\Kitchen\Orders;
 use App\Livewire\Admin\Maintenance\Assets as MaintenanceAssets;
 use App\Livewire\Admin\Maintenance\PartsRequests as MaintenancePartsRequests;
 use App\Livewire\Admin\Maintenance\WorkOrders as MaintenanceWorkOrders;
@@ -1226,6 +1228,14 @@ $adminRoutes->group(function () {
         Route::get('cinema/bookings/{booking}/receipt', function (CinemaBooking $booking) {
             return view('cinema-receipt', ['b' => $booking]);
         })->name('cinema.receipt');
+
+        // Kitchen — food menu + orders placed from the guest tablet's Place Order screen
+        Route::get('kitchen/menu', Menu::class)->name('kitchen.menu');
+        Route::get('kitchen/orders', Orders::class)->name('kitchen.orders');
+
+        // Bar & Lounge — drinks menu + orders, same guest tablet Place Order flow
+        Route::get('bar-lounge/menu', App\Livewire\Admin\BarLounge\Menu::class)->name('bar-lounge.menu');
+        Route::get('bar-lounge/orders', App\Livewire\Admin\BarLounge\Orders::class)->name('bar-lounge.orders');
 
         // Payment — transactions captured from checkout
         Route::get('payment', App\Livewire\Admin\Payment\Index::class)->name('payment.index');

@@ -50,7 +50,7 @@ abstract final class ApiConfig {
   static String get baseUrl {
     if (_override.isNotEmpty) return _override;
     return switch (environment) {
-      AppEnvironment.dev => 'http://192.168.18.14:8000/api',
+      AppEnvironment.dev => 'http://10.247.50.53:8000/api',
       AppEnvironment.staging => 'https://api.staging.retirodelrocio.com',
       AppEnvironment.prod => 'https://api.retirodelrocio.com',
     };

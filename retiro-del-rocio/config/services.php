@@ -41,6 +41,27 @@ return [
         'payment_url' => env('PAYSTACK_PAYMENT_URL', 'https://api.paystack.co'),
     ],
 
+    /*
+    | Agora — real-time voice for the Intercom (guest ↔ Reception, and the
+    | staff mesh). Agora's SDK owns the actual peer-to-peer audio connection
+    | (NAT traversal, relay, jitter buffer, echo cancellation); this app only
+    | ever generates the short-lived token a tablet needs to join one call's
+    | channel. `app_certificate` is optional: leave it unset while the Agora
+    | project has App Certificate disabled (App ID alone is enough to join a
+    | channel then) — set it the moment that's enabled in the Agora console,
+    | since every join will be rejected without a valid signed token from
+    | that point on. See App\Support\AgoraTokenBuilder.
+    */
+    'agora' => [
+        'app_id' => env('AGORA_APP_ID'),
+        'app_certificate' => env('AGORA_APP_CERTIFICATE'),
+        // How long a token stays valid after being issued. A call is
+        // answered and joined within seconds of this being generated, so
+        // this only needs to comfortably outlast the longest realistic
+        // call — not the token's own the issuance latency.
+        'token_ttl_seconds' => (int) env('AGORA_TOKEN_TTL_SECONDS', 14400),
+    ],
+
     'ttlock' => [
         // All TTLock credentials/tokens are configured via .env (single source
         // of truth). Refreshed tokens are held in the cache at runtime.

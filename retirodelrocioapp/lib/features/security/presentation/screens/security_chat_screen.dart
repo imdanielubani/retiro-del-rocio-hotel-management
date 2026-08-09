@@ -14,6 +14,7 @@ import 'package:retirodelrocioapp/features/security/presentation/screens/visitor
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/staff_chat/presentation/widgets/staff_chat_body.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The security tablet's Chat screen — the shared Staff Chat body (talk to
@@ -79,6 +80,7 @@ class _SecurityChatScreenState extends ConsumerState<SecurityChatScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(securityNotificationChimeProvider(_token));
+    watchStaffIntercomCall(context, ref, widget.session);
     final weather = ref.watch(weatherProvider).value;
     final unreadNotifications = ref.watch(
       securityUnreadNotificationsProvider(_token),

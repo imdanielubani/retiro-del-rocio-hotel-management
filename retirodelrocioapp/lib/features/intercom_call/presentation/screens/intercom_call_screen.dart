@@ -3,11 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/audio/incoming_call_ringtone.dart';
-import 'package:retirodelrocioapp/core/config/app_config.dart';
-import 'package:retirodelrocioapp/core/realtime/intercom_webrtc_signal_channel.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/features/intercom_call/data/intercom_webrtc_session.dart';
+import 'package:retirodelrocioapp/features/intercom_call/data/intercom_agora_session.dart';
+import 'package:retirodelrocioapp/features/intercom_call/data/intercom_call_repository.dart';
 import 'package:retirodelrocioapp/features/intercom_call/domain/intercom_call.dart';
 
 const _greenColor = Color(0xFF34D399);
@@ -34,7 +33,7 @@ class IntercomCallScreen extends ConsumerStatefulWidget {
     required this.onAnswer,
     required this.onDecline,
     required this.onEnd,
-    required this.onSignal,
+    required this.onFetchToken,
   });
 
   final IntercomCall? Function(WidgetRef ref) watchCall;
@@ -48,15 +47,8 @@ class IntercomCallScreen extends ConsumerStatefulWidget {
   final Future<void> Function(int callId) onDecline;
   final Future<void> Function(int callId) onEnd;
 
-  /// Relays one WebRTC signal (an offer/answer/ICE candidate) to the other
-  /// side of the call — the real audio connection's only way to negotiate,
-  /// since the two devices have no other channel to each other.
-  final Future<void> Function(
-    int callId,
-    String type,
-    Map<String, dynamic> data,
-  )
-  onSignal;
+  /// This device's Agora join credentials for the call's voice channel.
+  final Future<AgoraCallCredentials?> Function(int callId) onFetchToken;
 
   @override
   ConsumerState<IntercomCallScreen> createState() => _IntercomCallScreenState();
@@ -68,15 +60,17 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
   bool _ringtonePlaying = false;
   IntercomCall? _previous;
 
-  // --- Real audio: the peer connection for the call currently on screen,
-  // and the per-call channel that carries its offer/answer/ICE candidates.
-  // Both are keyed to a call id so a new call after this one never reuses a
-  // stale connection, and both are torn down the instant the call stops
-  // being answerable-or-connected (declined/cancelled/ended, or disposed).
-  IntercomWebRtcSession? _webrtc;
-  int? _webrtcCallId;
-  IntercomWebrtcSignalChannel? _signalChannel;
-  int? _signalChannelCallId;
+  /// The id of a call Answer/Decline has already silenced. Kept so
+  /// [_syncRingtone] never re-arms the ring for the SAME call — see
+  /// [_stopRingtoneNow] for why that would otherwise happen.
+  int? _ringtoneSilencedCallId;
+
+  // --- Real audio: the Agora session for the call currently on screen.
+  // Keyed to a call id so a new call after this one never reuses a stale
+  // session, and torn down the instant the call stops being
+  // answerable-or-connected (declined/cancelled/ended, or disposed).
+  IntercomAgoraSession? _agora;
+  int? _agoraCallId;
   bool _muted = false;
   bool _speakerOn = false;
 
@@ -92,7 +86,12 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
   }
 
   void _syncRingtone(IntercomCall? call) {
-    final shouldRing = call != null && call.isRinging && !_isMe(call.from);
+    // A call this screen already silenced (Answer/Decline tapped) never
+    // re-rings, even if the provider's state still briefly reads "ringing"
+    // — see [_stopRingtoneNow] for why that in-between state exists.
+    final silenced = call != null && call.id == _ringtoneSilencedCallId;
+    final shouldRing =
+        call != null && call.isRinging && !_isMe(call.from) && !silenced;
     if (shouldRing && !_ringtonePlaying) {
       _ringtonePlaying = true;
       unawaited(_ringtone.start());
@@ -102,71 +101,52 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
     }
   }
 
-  /// Keeps the signal channel and the WebRTC session in sync with the call
-  /// actually on screen: subscribes to this call's own signaling channel as
-  /// soon as it exists (an incoming offer can arrive the instant the other
-  /// side sees "accepted", which may be before this side's own poll/realtime
-  /// notices it), and opens the real peer connection once the call is
-  /// [IntercomCallStatus.accepted] — never earlier, so ringing never asks
-  /// for the microphone.
+  /// Silences the ringtone the instant Answer/Decline is tapped, rather than
+  /// waiting for [_syncRingtone] to notice the call left "ringing" — that
+  /// only happens once the answer/decline POST round-trips and the
+  /// provider's state updates. Recording [_ringtoneSilencedCallId] (not just
+  /// stopping the player once) matters because tapping Answer/Decline also
+  /// calls `setState` (via [_act]'s busy flag), which rebuilds this screen —
+  /// and re-runs [_syncRingtone] — before that POST resolves. Without the
+  /// id recorded, that rebuild would see the call still reading "ringing"
+  /// and immediately restart the very ringtone this method just stopped.
+  void _stopRingtoneNow(int callId) {
+    _ringtoneSilencedCallId = callId;
+    if (_ringtonePlaying) {
+      _ringtonePlaying = false;
+      unawaited(_ringtone.stop());
+    }
+  }
+
+  /// Keeps the Agora session in sync with the call actually on screen: joins
+  /// the call's voice channel once it's [IntercomCallStatus.accepted] —
+  /// never earlier, so ringing never asks for the microphone.
   void _syncWebRtc(IntercomCall? call) {
     if (call == null || call.hasEnded) {
       unawaited(_teardownCall());
       return;
     }
 
-    if (_signalChannelCallId != call.id) {
-      unawaited(_connectSignalChannel(call.id));
-    }
-
-    if (call.status == IntercomCallStatus.accepted &&
-        _webrtcCallId != call.id) {
-      _webrtcCallId = call.id;
-      final session = IntercomWebRtcSession(
-        isCaller: _isMe(call.from),
-        sendSignal: (type, data) => widget.onSignal(call.id, type, data),
+    if (call.status == IntercomCallStatus.accepted && _agoraCallId != call.id) {
+      _agoraCallId = call.id;
+      final session = IntercomAgoraSession(
+        fetchCredentials: () => widget.onFetchToken(call.id),
       );
-      _webrtc = session;
+      _agora = session;
       _muted = false;
+      // Speaker defaults on for the UI (the button still lets either side
+      // turn it back off) — see IntercomAgoraSession.start() for why the
+      // actual native call happens there, not here.
+      _speakerOn = true;
       unawaited(session.start());
     }
   }
 
-  Future<void> _connectSignalChannel(int callId) async {
-    _signalChannelCallId = callId;
-    _signalChannel?.dispose();
-    _signalChannel = null;
-
-    final config = (await ref.read(appConfigProvider.future)).realtime;
-    if (config == null || !mounted || _signalChannelCallId != callId) return;
-
-    final channel = IntercomWebrtcSignalChannel(config: config, callId: callId);
-    _signalChannel = channel;
-    channel.connect(
-      onSignal: (from, type, data) {
-        // Every party subscribes to the same public per-call channel, so
-        // this device also receives the echo of whatever it just sent
-        // itself — `from` identifies which side of the call originated the
-        // signal, and only the *other* side's is ever meaningful here.
-        final call = widget.watchCall(ref);
-        if (call == null || call.id != callId) return;
-        final selfFrom = _isMe(call.from) ? 'caller' : 'callee';
-        if (from == selfFrom) return;
-
-        unawaited(_webrtc?.handleRemoteSignal(type, data));
-      },
-    );
-  }
-
   Future<void> _teardownCall() async {
-    _webrtcCallId = null;
-    final session = _webrtc;
-    _webrtc = null;
+    _agoraCallId = null;
+    final session = _agora;
+    _agora = null;
     await session?.dispose();
-
-    _signalChannelCallId = null;
-    _signalChannel?.dispose();
-    _signalChannel = null;
   }
 
   Future<void> _act(Future<void> Function() action) async {
@@ -238,8 +218,14 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
       return _IncomingCallView(
         other: other,
         busy: _busy,
-        onAnswer: () => _act(() => widget.onAnswer(call.id)),
-        onDecline: () => _act(() => widget.onDecline(call.id)),
+        onAnswer: () {
+          _stopRingtoneNow(call.id);
+          unawaited(_act(() => widget.onAnswer(call.id)));
+        },
+        onDecline: () {
+          _stopRingtoneNow(call.id);
+          unawaited(_act(() => widget.onDecline(call.id)));
+        },
       );
     }
 
@@ -251,14 +237,14 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
         muted: _muted,
         speakerOn: _speakerOn,
         onToggleMute: () {
-          final session = _webrtc;
+          final session = _agora;
           if (session == null) return;
           setState(() => _muted = session.toggleMute());
         },
         onToggleSpeaker: () {
           final on = !_speakerOn;
           setState(() => _speakerOn = on);
-          unawaited(_webrtc?.setSpeaker(on));
+          unawaited(_agora?.setSpeaker(on));
         },
         onEnd: () => _act(() async {
           await _teardownCall();

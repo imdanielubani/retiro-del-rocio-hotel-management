@@ -7,16 +7,18 @@ import 'package:retirodelrocioapp/features/guest/chat/application/chat_providers
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/intercom/application/guest_intercom_call_providers.dart';
 import 'package:retirodelrocioapp/features/guest/intercom/domain/intercom_department.dart';
+import 'package:retirodelrocioapp/features/guest/intercom/presentation/screens/room_to_room_screen.dart';
 import 'package:retirodelrocioapp/features/intercom_call/data/intercom_call_repository.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
 /// 2.9 — Intercom (Figma 335:4684 / 335:5021). A voice-call directory to the
-/// hotel's departments plus a general "Room Call" to the front desk.
-/// Reception is the only station with a receiving screen built, so its card
-/// (and the header's "Room Call" button) place a real, ringing call; the
-/// other three departments have no receiving tablet yet, so their "Call"
-/// stays the same confirmation-toast placeholder as before.
+/// hotel's departments, plus the header's "Room Call" button which opens
+/// Room to Room (Figma 341:6821) — a dial pad for calling another checked-in
+/// guest's room directly. Reception is the only department with a receiving
+/// screen built, so its card places a real, ringing call; the other three
+/// departments have no receiving tablet yet, so their "Call" stays the same
+/// confirmation-toast placeholder as before.
 class GuestIntercomScreen extends ConsumerStatefulWidget {
   const GuestIntercomScreen({
     super.key,
@@ -66,6 +68,15 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
     } finally {
       if (mounted) setState(() => _placingCall = false);
     }
+  }
+
+  void _openRoomToRoom() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            RoomToRoomScreen(device: widget.device, status: widget.status),
+      ),
+    );
   }
 
   void _toast(String message, {bool error = false}) {
@@ -189,7 +200,7 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
       color: AppColors.gold,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: _placingCall ? null : _callReception,
+        onTap: _openRoomToRoom,
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

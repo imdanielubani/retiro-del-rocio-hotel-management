@@ -14,6 +14,7 @@ import 'package:retirodelrocioapp/features/security/presentation/screens/visitor
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_body.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The security tablet's Intercom screen — the shared staff directory
@@ -81,6 +82,7 @@ class _SecurityIntercomScreenState
   @override
   Widget build(BuildContext context) {
     ref.watch(securityNotificationChimeProvider(_token));
+    watchStaffIntercomCall(context, ref, widget.session);
     final weather = ref.watch(weatherProvider).value;
     final unreadNotifications = ref.watch(
       securityUnreadNotificationsProvider(_token),

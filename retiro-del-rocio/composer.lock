@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a9221f60c544fb83bb517e7b0ea0dfe9",
+    "content-hash": "600539b19d5aa66d942b6fda6553b0ce",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -59,6 +59,40 @@
                 "source": "https://github.com/Bacon/BaconQrCode/tree/2.0.8"
             },
             "time": "2022-12-07T17:46:57+00:00"
+        },
+        {
+            "name": "boogiefromzk/agora-token",
+            "version": "v1.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/boogiefromzk/agora-token-php.git",
+                "reference": "dd824e8d23c19757facae813759cf996701e55d8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/boogiefromzk/agora-token-php/zipball/dd824e8d23c19757facae813759cf996701e55d8",
+                "reference": "dd824e8d23c19757facae813759cf996701e55d8",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "BoogieFromZk\\AgoraToken\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "ISC"
+            ],
+            "description": "Intended to make Agora Tools for PHP repository folder as a package installable with Composer.",
+            "support": {
+                "issues": "https://github.com/boogiefromzk/agora-token-php/issues",
+                "source": "https://github.com/boogiefromzk/agora-token-php/tree/v1.0.3"
+            },
+            "time": "2026-04-03T10:23:13+00:00"
         },
         {
             "name": "brick/math",

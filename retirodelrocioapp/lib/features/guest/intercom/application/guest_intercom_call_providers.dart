@@ -48,6 +48,13 @@ class GuestIntercomCallNotifier extends Notifier<IntercomCall?> {
     state = await ref.read(guestIntercomCallRepositoryProvider).place(token);
   }
 
+  /// Room to Room: call another checked-in guest's room directly.
+  Future<void> callRoom(String roomNumber) async {
+    state = await ref
+        .read(guestIntercomCallRepositoryProvider)
+        .callRoom(token, roomNumber);
+  }
+
   Future<void> answer(int callId) async {
     state = await ref
         .read(guestIntercomCallRepositoryProvider)

@@ -10,6 +10,7 @@ import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_devic
 import 'package:retirodelrocioapp/features/guest/bills/presentation/screens/guest_bills_screen.dart';
 import 'package:retirodelrocioapp/features/guest/chat/presentation/screens/guest_chat_screen.dart';
 import 'package:retirodelrocioapp/features/guest/cinema/presentation/screens/guest_cinema_screen.dart';
+import 'package:retirodelrocioapp/features/guest/dining/presentation/screens/guest_dining_screen.dart';
 import 'package:retirodelrocioapp/features/guest/home/domain/guest_service.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/current_stay_card.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
@@ -132,6 +133,21 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => MyStayScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
+    // Place Order (Dining) is built — take the guest there rather than "coming soon".
+    if (service.id == GuestServices.dining.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GuestDiningScreen(
             device: widget.device,
             status: live ?? widget.status,
           ),

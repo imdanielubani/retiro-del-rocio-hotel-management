@@ -18,6 +18,7 @@ import 'package:retirodelrocioapp/features/security/presentation/screens/visitor
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_log_row.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// Incident Response — the SOS Alert Logs (Figma 222:8280) with the slide-in
@@ -195,6 +196,7 @@ class _IncidentResponseScreenState
     ref.watch(securityRealtimeProvider(_token));
     ref.watch(securityNotificationsRealtimeProvider(_token));
     ref.watch(securityNotificationChimeProvider(_token));
+    watchStaffIntercomCall(context, ref, widget.session);
     final logsAsync = ref.watch(incidentLogsProvider(_token));
     final weather = ref.watch(weatherProvider).value;
     final unreadNotifications = ref.watch(

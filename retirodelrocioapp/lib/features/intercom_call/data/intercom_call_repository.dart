@@ -12,6 +12,65 @@ class IntercomCallException implements Exception {
   String toString() => message;
 }
 
+/// This device's Agora credentials for one call's voice channel, returned by
+/// `GET .../{callId}/token`. [token] is null when the Agora project is still
+/// in Testing Mode (App Certificate disabled) — App ID alone is enough to
+/// join the channel then.
+class AgoraCallCredentials {
+  const AgoraCallCredentials({
+    required this.appId,
+    required this.channel,
+    required this.uid,
+    required this.token,
+  });
+
+  factory AgoraCallCredentials.fromJson(Map<String, dynamic> json) =>
+      AgoraCallCredentials(
+        appId: json['app_id'] as String,
+        channel: json['channel'] as String,
+        uid: json['uid'] as int,
+        token: json['token'] as String?,
+      );
+
+  final String appId;
+  final String channel;
+  final int uid;
+  final String? token;
+}
+
+/// The result of looking up a room number on the guest tablet's Room to Room
+/// dial pad (`GET intercom/rooms/{number}`) — whether that room is currently
+/// occupied by a checked-in guest, and if so, who and where. [isOwnRoom] is
+/// true when the number typed is this same device's own room — still
+/// "found" (so the dial pad can show it), just not callable.
+class RoomLookupResult {
+  const RoomLookupResult({
+    required this.found,
+    this.number,
+    this.suiteLabel,
+    this.roomTypeLabel,
+    this.guestName,
+    this.isOwnRoom = false,
+  });
+
+  factory RoomLookupResult.fromJson(Map<String, dynamic> json) =>
+      RoomLookupResult(
+        found: json['found'] as bool? ?? false,
+        number: json['number'] as String?,
+        suiteLabel: json['suite_label'] as String?,
+        roomTypeLabel: json['room_type_label'] as String?,
+        guestName: json['guest_name'] as String?,
+        isOwnRoom: json['is_own_room'] as bool? ?? false,
+      );
+
+  final bool found;
+  final String? number;
+  final String? suiteLabel;
+  final String? roomTypeLabel;
+  final String? guestName;
+  final bool isOwnRoom;
+}
+
 /// Talks to the Intercom call endpoints — shared by the guest tablet
 /// (`intercom/calls/*`) and Reception (`reception/intercom/calls/*`), which
 /// are otherwise identical in shape. [basePath] picks which audience this
@@ -65,24 +124,59 @@ class IntercomCallRepository {
   Future<IntercomCall> end(String token, int callId) =>
       _action(token, '/$callId/end', const {});
 
-  /// Relay a WebRTC offer/answer/ICE candidate to the other side of
-  /// [callId]. Fire-and-forget from the caller's point of view — a dropped
-  /// signal just means that one candidate/attempt is lost, not that the
-  /// whole call fails, so failures are swallowed rather than surfaced.
-  Future<void> signal(
-    String token,
-    int callId,
-    String type,
-    Map<String, dynamic> data,
-  ) async {
+  /// GET intercom/rooms/{number} — Room to Room's live dial-pad lookup.
+  /// Guest-only, so it isn't relative to [basePath] the way every other
+  /// method here is (Reception/Staff never call it).
+  Future<RoomLookupResult> lookupRoom(String token, String number) async {
     try {
-      await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('$basePath/$callId/signal')),
-        data: {'type': type, 'data': data},
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('intercom/rooms/$number')),
         options: _auth(token),
       );
+      final data = response.data?['data'];
+      return data is Map
+          ? RoomLookupResult.fromJson(data.cast())
+          : const RoomLookupResult(found: false);
     } catch (error) {
-      debugPrint('IntercomCallRepository: signal failed — $error');
+      debugPrint('IntercomCallRepository: lookupRoom failed — $error');
+      return const RoomLookupResult(found: false);
+    }
+  }
+
+  /// POST intercom/calls/room — Room to Room: call another checked-in
+  /// guest's room directly by room number, no staff involved. Guest-only,
+  /// same reasoning as [lookupRoom].
+  Future<IntercomCall> callRoom(String token, String roomNumber) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('intercom/calls/room')),
+        data: {'room_number': roomNumber},
+        options: _auth(token),
+      );
+      return IntercomCall.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw IntercomCallException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('IntercomCallRepository: callRoom failed — $error');
+      throw IntercomCallException('Something went wrong. Please try again.');
+    }
+  }
+
+  /// GET .../{callId}/token — this identity's Agora credentials for the
+  /// call's voice channel. Called once the call is accepted.
+  Future<AgoraCallCredentials?> fetchToken(String token, int callId) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('$basePath/$callId/token')),
+        options: _auth(token),
+      );
+      final data = response.data?['data'];
+      return data is Map ? AgoraCallCredentials.fromJson(data.cast()) : null;
+    } catch (error) {
+      debugPrint('IntercomCallRepository: fetchToken failed — $error');
+      return null;
     }
   }
 

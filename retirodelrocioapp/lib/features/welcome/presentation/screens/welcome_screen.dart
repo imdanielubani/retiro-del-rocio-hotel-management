@@ -67,9 +67,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               onEnd: (id) => ref
                   .read(guestIntercomCallProvider(device.token).notifier)
                   .end(id),
-              onSignal: (callId, type, data) => ref
+              onFetchToken: (callId) => ref
                   .read(guestIntercomCallRepositoryProvider)
-                  .signal(device.token, callId, type, data),
+                  .fetchToken(device.token, callId),
             ),
           ),
         );
