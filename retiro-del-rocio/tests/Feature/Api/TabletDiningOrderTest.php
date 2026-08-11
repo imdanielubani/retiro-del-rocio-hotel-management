@@ -129,8 +129,8 @@ class TabletDiningOrderTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.items_label', 'Salmon, Wagyu')
             ->assertJsonPath('data.item_count', 3)
-            // subtotal = 9000 + 15000*2 = 39000, +1000 service fee = 40000
-            ->assertJsonPath('data.total_label', 'NGN 40,000')
+            // subtotal = 9000 + 15000*2 = 39000, +7.5% VAT (2925) +1000 service fee = 42925
+            ->assertJsonPath('data.total_label', 'NGN 42,925')
             ->assertJsonPath('data.payment_method', 'room_charge');
 
         $order = DiningOrder::where('booking_id', $this->booking->id)->first();
@@ -139,8 +139,9 @@ class TabletDiningOrderTest extends TestCase
         $this->assertSame('pending', $order->payment_status);
         $this->assertNull($order->paid_at);
         $this->assertSame(39000, (int) $order->subtotal);
+        $this->assertSame(2925, (int) $order->vat);
         $this->assertSame(1000, (int) $order->service_fee);
-        $this->assertSame(40000, (int) $order->total);
+        $this->assertSame(42925, (int) $order->total);
         $this->assertCount(2, $order->items);
         $this->assertSame('No truffle please', $order->items[1]['note']);
 
@@ -305,7 +306,7 @@ class TabletDiningOrderTest extends TestCase
             ], 200),
             '*/transaction/verify/*' => Http::response([
                 'status' => true,
-                'data' => ['status' => 'success', 'amount' => 1000000, 'channel' => 'card'],
+                'data' => ['status' => 'success', 'amount' => 1067500, 'channel' => 'card'],
             ], 200),
         ]);
 
@@ -314,7 +315,7 @@ class TabletDiningOrderTest extends TestCase
                 'items' => [['menu_item_id' => $salmon->id, 'qty' => 1]],
             ])
             ->assertOk()
-            ->assertJsonPath('data.total_label', 'NGN 10,000') // 9000 + 1000 fee
+            ->assertJsonPath('data.total_label', 'NGN 10,675') // 9000 + 675 VAT + 1000 fee
             ->json('data.reference');
 
         $this->assertSame('pending', DiningOrder::where('reference', $reference)->first()->payment_status);

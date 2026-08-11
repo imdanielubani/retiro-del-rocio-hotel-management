@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BarController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\GuestChatController;
 use App\Http\Controllers\Api\V1\GuestIntercomCallController;
@@ -472,6 +473,58 @@ $api->group(function () {
             ->name('api.v1.maintenance.notifications.read-all');
         Route::post('maintenance/notifications/{notification}/read', [MaintenanceController::class, 'markNotificationRead'])
             ->whereNumber('notification')->name('api.v1.maintenance.notifications.read');
+
+        // --- Bar tablet (staff JWT, bar role) ---
+        // The waiter/bartender signs in on the bar station; their JWT
+        // authorises the POS + order board. The role is re-checked in the
+        // controller on every call. Orders here are the exact same
+        // DiningOrder rows the Bar & Lounge admin dashboard manages.
+        Route::get('bar/overview', [BarController::class, 'overview'])
+            ->name('api.v1.bar.overview');
+        Route::get('bar/orders', [BarController::class, 'liveOrders'])
+            ->name('api.v1.bar.orders');
+        Route::get('bar/orders/{order}', [BarController::class, 'orderDetail'])
+            ->name('api.v1.bar.orders.show');
+        Route::post('bar/orders/{order}/prepare', [BarController::class, 'markPreparing'])
+            ->middleware('throttle:60,1')->name('api.v1.bar.orders.prepare');
+        Route::post('bar/orders/{order}/serve', [BarController::class, 'markServed'])
+            ->middleware('throttle:60,1')->name('api.v1.bar.orders.serve');
+        Route::post('bar/orders/{order}/void-item', [BarController::class, 'voidItem'])
+            ->middleware('throttle:60,1')->name('api.v1.bar.orders.void-item');
+        Route::post('bar/orders/{order}/verify-age', [BarController::class, 'verifyAge'])
+            ->middleware('throttle:60,1')->name('api.v1.bar.orders.verify-age');
+        Route::post('bar/orders/{order}/assign', [BarController::class, 'assignOrder'])
+            ->middleware('throttle:30,1')->name('api.v1.bar.orders.assign');
+        Route::get('bar/bartenders', [BarController::class, 'bartenders'])
+            ->name('api.v1.bar.bartenders');
+
+        Route::get('bar/tabs', [BarController::class, 'tabs'])
+            ->name('api.v1.bar.tabs');
+        Route::get('bar/tabs/{tab}', [BarController::class, 'tabDetail'])
+            ->name('api.v1.bar.tabs.show');
+        Route::post('bar/tabs', [BarController::class, 'openTab'])
+            ->middleware('throttle:30,1')->name('api.v1.bar.tabs.open');
+        Route::post('bar/tabs/{tab}/orders', [BarController::class, 'addOrderToTab'])
+            ->middleware('throttle:60,1')->name('api.v1.bar.tabs.orders.create');
+        Route::post('bar/tabs/{tab}/close', [BarController::class, 'closeTab'])
+            ->middleware('throttle:30,1')->name('api.v1.bar.tabs.close');
+        Route::post('bar/tabs/{tab}/vip', [BarController::class, 'toggleVip'])
+            ->middleware('throttle:30,1')->name('api.v1.bar.tabs.vip');
+
+        Route::get('bar/menu', [BarController::class, 'menu'])
+            ->name('api.v1.bar.menu');
+        Route::post('bar/menu/{id}/toggle', [BarController::class, 'toggleMenuItemAvailability'])
+            ->whereNumber('id')->middleware('throttle:30,1')->name('api.v1.bar.menu.toggle');
+
+        Route::get('bar/history', [BarController::class, 'history'])
+            ->name('api.v1.bar.history');
+
+        Route::get('bar/notifications', [BarController::class, 'notifications'])
+            ->name('api.v1.bar.notifications');
+        Route::post('bar/notifications/read-all', [BarController::class, 'markAllNotificationsRead'])
+            ->name('api.v1.bar.notifications.read-all');
+        Route::post('bar/notifications/{notification}/read', [BarController::class, 'markNotificationRead'])
+            ->whereNumber('notification')->name('api.v1.bar.notifications.read');
 
         // --- Staff Chat (shared by every staff tablet's Chat screen) ---
         // Reception, Housekeeping, Maintenance and Security all message each

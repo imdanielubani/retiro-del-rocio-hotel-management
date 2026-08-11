@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Payment;
 use App\Models\BillPayment;
 use App\Models\Booking;
 use App\Models\CinemaBooking;
+use App\Models\DiningOrder;
 use App\Models\GymMembership;
 use App\Models\RestaurantReservation;
 use App\Models\SpaBooking;
@@ -196,6 +197,50 @@ class Index extends Component
             ->whereBetween($dateCol, [$start, $end]);
     }
 
+    /**
+     * Kitchen (food) dining orders, filtered. Same date column + payment-centric
+     * status map. A guest-tablet room-charge order is excluded — like Spa/Cinema,
+     * that money isn't lost, it's counted via {@see billPaymentQuery()} once the
+     * guest settles their room folio. A Bar Tablet POS tab charged to a room has
+     * no booking to defer to (a walk-in has no folio), so it's already fully
+     * paid at settle time and stays in — the `bar_tab_id` check tells the two
+     * apart.
+     */
+    protected function diningKitchenQuery()
+    {
+        $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
+
+        return DiningOrder::forKitchen()
+            ->where(fn ($q) => $q->whereNotNull('bar_tab_id')->orWhere('payment_method', '!=', 'room_charge'))
+            ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
+                ->where('reference', 'like', "%{$this->search}%")
+                ->orWhere('customer_name', 'like', "%{$this->search}%")
+                ->orWhere('customer_email', 'like', "%{$this->search}%")
+                ->orWhere('id', 'like', "%{$this->search}%")))
+            ->tap(fn ($q) => $this->applyPaymentStatus($q))
+            ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
+            ->whereBetween($dateCol, [$start, $end]);
+    }
+
+    /** Bar & Lounge (drinks-only) dining orders, filtered. Same rules as {@see diningKitchenQuery()}. */
+    protected function diningBarQuery()
+    {
+        $dateCol = 'paid_at';
+        [$start, $end] = $this->statsBounds();
+
+        return DiningOrder::forBarLounge()->where('has_food', false)
+            ->where(fn ($q) => $q->whereNotNull('bar_tab_id')->orWhere('payment_method', '!=', 'room_charge'))
+            ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
+                ->where('reference', 'like', "%{$this->search}%")
+                ->orWhere('customer_name', 'like', "%{$this->search}%")
+                ->orWhere('customer_email', 'like', "%{$this->search}%")
+                ->orWhere('id', 'like', "%{$this->search}%")))
+            ->tap(fn ($q) => $this->applyPaymentStatus($q))
+            ->when($this->method, fn ($q) => $q->where('payment_method', $this->method))
+            ->whereBetween($dateCol, [$start, $end]);
+    }
+
     // Guest-paid stay extensions, filtered. Each successful extension is its own
     // dated transaction; only 'success' rows are real payments, so pending ones
     // (the guest abandoned Paystack) never surface. A charge-to-room extension
@@ -372,6 +417,13 @@ class Index extends Component
         // to when it was actually paid off, not when the charge was first
         // made. Without this bucket a settled room-charge balance had nowhere
         // to count toward revenue at all.
+        // A dining order counts toward revenue the same way Spa/Cinema do —
+        // paid, and not a guest-tablet room-charge order still awaiting
+        // settlement (a POS tab charged to a room has no booking to defer
+        // to, so it's already fully paid and stays in — see
+        // {@see diningKitchenQuery()}).
+        $diningNotDeferred = fn ($q) => $q->where(fn ($w) => $w->whereNotNull('bar_tab_id')->orWhere('payment_method', '!=', 'room_charge'));
+
         $periodByDept = [
             'Rooms' => (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
             'Room Charges' => (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
@@ -379,6 +431,8 @@ class Index extends Component
             'Gym' => (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('price'),
             'Restaurant' => (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('fee'),
             'Cinema' => (int) CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('amount'),
+            'Kitchen' => (int) DiningOrder::forKitchen()->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('total'),
+            'Bar & Lounge' => (int) DiningOrder::forBarLounge()->where('has_food', false)->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('total'),
         ];
         $periodRevenue = array_sum($periodByDept);
 
@@ -389,14 +443,18 @@ class Index extends Component
             + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
             + (int) StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
-            + (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat');
+            + (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) DiningOrder::forKitchen()->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat')
+            + (int) DiningOrder::forBarLounge()->where('has_food', false)->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->sum('vat');
 
         $prevRevenue = (int) Booking::whereIn('status', self::PAID_BOOKING_STATUSES)->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount')
             + (int) BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount')
             + (int) SpaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('total')
             + (int) GymMembership::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('price')
             + (int) RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount');
+            + (int) CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('amount')
+            + (int) DiningOrder::forKitchen()->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('total')
+            + (int) DiningOrder::forBarLounge()->where('has_food', false)->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$prevStart, $prevEnd])->sum('total');
 
         $revenueDelta = $prevRevenue > 0
             ? (int) round((($periodRevenue - $prevRevenue) / $prevRevenue) * 100)
@@ -411,7 +469,7 @@ class Index extends Component
             ? 'from '.$prevStart->format('M')
             : 'vs previous period';
 
-        $deptColors = ['Rooms' => '#f38c00', 'Room Charges' => '#0891b2', 'Spa' => '#7c3aed', 'Gym' => '#c2620a', 'Restaurant' => '#b91c1c', 'Cinema' => '#a16207'];
+        $deptColors = ['Rooms' => '#f38c00', 'Room Charges' => '#0891b2', 'Spa' => '#7c3aed', 'Gym' => '#c2620a', 'Restaurant' => '#b91c1c', 'Cinema' => '#a16207', 'Kitchen' => '#ea580c', 'Bar & Lounge' => '#0d9488'];
         $departments = collect($periodByDept)
             ->map(fn (int $amt, string $label) => [
                 'label' => $label,
@@ -431,7 +489,9 @@ class Index extends Component
             + RestaurantReservation::where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + CinemaBooking::where('payment_status', 'paid')->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
             + StayExtensionPayment::where('status', StayExtensionPayment::SUCCESS)->where('payment_method', '!=', 'room_charge')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
-            + BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->count();
+            + BillPayment::where('status', BillPayment::SUCCESS)->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + DiningOrder::forKitchen()->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count()
+            + DiningOrder::forBarLounge()->where('has_food', false)->tap($diningNotDeferred)->where('payment_status', 'paid')->whereBetween('paid_at', [$periodStart, $periodEnd])->count();
 
         // Pending has no paid_at yet, so it's scoped by when it was initiated.
         // Room-charge items excluded — they're not a standalone "pending
@@ -440,12 +500,16 @@ class Index extends Component
             + (int) SpaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total')
             + (int) GymMembership::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('price')
             + (int) RestaurantReservation::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('fee')
-            + (int) CinemaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount');
+            + (int) CinemaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('amount')
+            + (int) DiningOrder::forKitchen()->tap($diningNotDeferred)->where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total')
+            + (int) DiningOrder::forBarLounge()->where('has_food', false)->tap($diningNotDeferred)->where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total');
         $pendingCount = Booking::where('status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
             + SpaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
             + GymMembership::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
             + RestaurantReservation::where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
-            + CinemaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->count();
+            + CinemaBooking::where('payment_status', 'pending')->where('payment_method', '!=', 'room_charge')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
+            + DiningOrder::forKitchen()->tap($diningNotDeferred)->where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count()
+            + DiningOrder::forBarLounge()->where('has_food', false)->tap($diningNotDeferred)->where('payment_status', 'pending')->whereBetween('created_at', [$periodStart, $periodEnd])->count();
 
         // Refunds = money actually returned. For rooms that is the completed
         // refund_amount, not the full value of every cancelled booking (many
@@ -493,14 +557,19 @@ class Index extends Component
         // ---- Filtered summary (both sources) ----
         // The guest's actual total paid (base + VAT), matching the "Total Paid"
         // column in the transaction table below — not just the pre-VAT subtotal.
-        $summaryCount = (clone $this->roomQuery())->count() + (clone $this->spaQuery())->count() + (clone $this->gymQuery())->count() + (clone $this->restaurantQuery())->count() + (clone $this->cinemaQuery())->count() + (clone $this->stayExtensionQuery())->count() + (clone $this->billPaymentQuery())->count();
+        $summaryCount = (clone $this->roomQuery())->count() + (clone $this->spaQuery())->count() + (clone $this->gymQuery())->count() + (clone $this->restaurantQuery())->count() + (clone $this->cinemaQuery())->count() + (clone $this->stayExtensionQuery())->count() + (clone $this->billPaymentQuery())->count() + (clone $this->diningKitchenQuery())->count() + (clone $this->diningBarQuery())->count();
         $summaryAmount = $this->sumWithVat($this->roomQuery(), 'amount')
             + $this->sumWithVat($this->spaQuery(), 'total')
             + $this->sumWithVat($this->gymQuery(), 'price')
             + $this->sumWithVat($this->restaurantQuery(), 'fee')
             + $this->sumWithVat($this->cinemaQuery(), 'amount')
             + $this->sumWithVat($this->stayExtensionQuery(), 'amount')
-            + $this->sumWithVat($this->billPaymentQuery(), 'amount');
+            + $this->sumWithVat($this->billPaymentQuery(), 'amount')
+            // Dining's `total` already bakes in its own vat column (unlike the
+            // other sources above, which store a pre-VAT base) — sum it
+            // directly rather than adding vat on top a second time.
+            + (int) ((clone $this->diningKitchenQuery())->toBase()->selectRaw('SUM(total) as t')->value('t') ?? 0)
+            + (int) ((clone $this->diningBarQuery())->toBase()->selectRaw('SUM(total) as t')->value('t') ?? 0);
 
         // Whether any filter is active (drives the "Clear all" button).
         $hasFilters = (bool) ($this->search || $this->range || $this->year || $this->month
@@ -514,6 +583,8 @@ class Index extends Component
             ->concat($this->cinemaQuery()->get())
             ->concat($this->stayExtensionQuery()->get())
             ->concat($this->billPaymentQuery()->get())
+            ->concat($this->diningKitchenQuery()->get())
+            ->concat($this->diningBarQuery()->get())
             ->sortByDesc(fn ($t) => ($t->paid_at ?? $t->created_at)?->timestamp ?? 0)
             ->values();
 
@@ -543,6 +614,7 @@ class Index extends Component
             ->merge($yearsOf(CinemaBooking::class))
             ->merge($yearsOf(StayExtensionPayment::class))
             ->merge($yearsOf(BillPayment::class))
+            ->merge($yearsOf(DiningOrder::class))
             ->filter()->unique()->sortDesc()->values();
 
         $methods = Booking::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method')
@@ -552,6 +624,7 @@ class Index extends Component
             ->merge(CinemaBooking::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
             ->merge(StayExtensionPayment::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
             ->merge(BillPayment::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
+            ->merge(DiningOrder::query()->whereNotNull('payment_method')->distinct()->pluck('payment_method'))
             ->filter()->unique()->sort()->values();
 
         return view('admin.payment.index', [

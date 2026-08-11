@@ -9,13 +9,14 @@ use Illuminate\Support\Facades\Storage;
 class MenuItem extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'category', 'price', 'prep_minutes', 'description', 'image', 'is_active', 'sort_order',
+        'name', 'slug', 'category', 'price', 'prep_minutes', 'description', 'image', 'is_active', 'is_alcoholic', 'sort_order',
     ];
 
     protected $casts = [
         'price' => 'integer',
         'prep_minutes' => 'integer',
         'is_active' => 'boolean',
+        'is_alcoholic' => 'boolean',
         'sort_order' => 'integer',
     ];
 
@@ -77,6 +78,8 @@ class MenuItem extends Model
             'prep_minutes' => $this->prep_minutes,
             'prep_label' => $this->prepLabel(),
             'image_url' => $this->imageUrl(),
+            'is_alcoholic' => (bool) $this->is_alcoholic,
+            'is_active' => (bool) $this->is_active,
         ];
     }
 

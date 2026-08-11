@@ -168,7 +168,10 @@ class _GuestDiningScreenState extends ConsumerState<GuestDiningScreen> {
     setState(() => _placingOrder = true);
 
     final subtotal = _cart.fold<int>(0, (sum, l) => sum + l.lineTotal);
-    final total = subtotal + serviceFee;
+    // 7.5% VAT, matching every other guest checkout (Spa, Cinema, Room) —
+    // the server recomputes and is authoritative; this is just a preview.
+    final vat = (subtotal * 0.075).round();
+    final total = subtotal + vat + serviceFee;
     final itemsLabel = _cart.map((l) => l.item.name).join(', ');
     final payload = _buildPayload();
 
@@ -176,6 +179,7 @@ class _GuestDiningScreenState extends ConsumerState<GuestDiningScreen> {
       context,
       itemsLabel: itemsLabel,
       subtotalLabel: 'NGN ${_naira.format(subtotal)}',
+      vatLabel: 'NGN ${_naira.format(vat)}',
       serviceFeeLabel: 'NGN ${_naira.format(serviceFee)}',
       totalLabel: 'NGN ${_naira.format(total)}',
       onConfirmRoom: () => _bookToRoom(payload),

@@ -216,7 +216,9 @@
                                             'bg-[#fef9c3] text-[#a16207]' => $t->sourceLabel() === 'Cinema',
                                             'bg-[#dcfce7] text-[#15803d]' => $t->sourceLabel() === 'Extension',
                                             'bg-[#fce7f3] text-[#be185d]' => $t->sourceLabel() === 'Bill Settlement',
-                                            'bg-[#e0f2fe] text-[#0369a1]' => ! in_array($t->sourceLabel(), ['Spa', 'Gym', 'Restaurant', 'Cinema', 'Extension', 'Bill Settlement'], true),
+                                            'bg-[#ffedd5] text-[#ea580c]' => $t->sourceLabel() === 'Kitchen',
+                                            'bg-[#ccfbf1] text-[#0d9488]' => $t->sourceLabel() === 'Bar & Lounge',
+                                            'bg-[#e0f2fe] text-[#0369a1]' => ! in_array($t->sourceLabel(), ['Spa', 'Gym', 'Restaurant', 'Cinema', 'Extension', 'Bill Settlement', 'Kitchen', 'Bar & Lounge'], true),
                                         ])>{{ $t->sourceLabel() }}</span>
                                     </span>
                                 </td>

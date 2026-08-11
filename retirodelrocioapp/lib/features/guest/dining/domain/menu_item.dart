@@ -235,6 +235,7 @@ class DiningOrderQuote {
     required this.reference,
     required this.callbackUrl,
     required this.subtotalLabel,
+    required this.vatLabel,
     required this.serviceFeeLabel,
     required this.totalLabel,
   });
@@ -243,6 +244,7 @@ class DiningOrderQuote {
   final String reference;
   final String callbackUrl;
   final String subtotalLabel;
+  final String vatLabel;
   final String serviceFeeLabel;
   final String totalLabel;
 
@@ -252,6 +254,7 @@ class DiningOrderQuote {
         reference: json['reference'] as String? ?? '',
         callbackUrl: json['callback_url'] as String? ?? '',
         subtotalLabel: json['subtotal_label'] as String? ?? 'NGN 0',
+        vatLabel: json['vat_label'] as String? ?? 'NGN 0',
         serviceFeeLabel: json['service_fee_label'] as String? ?? 'NGN 0',
         totalLabel: json['total_label'] as String? ?? 'NGN 0',
       );

@@ -36,7 +36,11 @@ class CartDrawer extends StatelessWidget {
   static final _naira = NumberFormat('#,###');
 
   int get _subtotal => cart.fold(0, (sum, line) => sum + line.lineTotal);
-  int get _total => _subtotal + (cart.isEmpty ? 0 : serviceFee);
+
+  /// 7.5% VAT on the subtotal, matching every other guest checkout — the
+  /// server recomputes and is authoritative; this is just a preview.
+  int get _vat => cart.isEmpty ? 0 : (_subtotal * 0.075).round();
+  int get _total => _subtotal + _vat + (cart.isEmpty ? 0 : serviceFee);
   int get _itemCount => cart.fold(0, (sum, line) => sum + line.qty);
 
   @override
@@ -305,6 +309,8 @@ class CartDrawer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _summaryRow('Subtotal', 'NGN ${_naira.format(_subtotal)}'),
+          const SizedBox(height: 8),
+          _summaryRow('VAT (7.5%)', 'NGN ${_naira.format(_vat)}'),
           const SizedBox(height: 8),
           _summaryRow('Room Service Fee', 'NGN ${_naira.format(serviceFee)}'),
           const SizedBox(height: 12),

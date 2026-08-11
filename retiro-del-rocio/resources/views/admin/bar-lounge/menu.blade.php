@@ -139,6 +139,10 @@
                         <input type="checkbox" wire:model="fActive" class="size-4 rounded border-[#d1d5db] text-[#f38c00] focus:ring-[#f38c00]/30">
                         <span class="text-[13px] text-[#374151]">On the menu (shown on Place Order)</span>
                     </label>
+                    <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-3">
+                        <input type="checkbox" wire:model="fAlcoholic" class="size-4 rounded border-[#d1d5db] text-[#f38c00] focus:ring-[#f38c00]/30">
+                        <span class="text-[13px] text-[#374151]">Contains alcohol (requires age verification on the Bar Tablet)</span>
+                    </label>
                 </div>
                 <div class="flex justify-end gap-2 border-t border-[#e5e7eb] px-6 py-4">
                     <button type="button" wire:click="$set('showForm', false)" class="rounded-xl border border-[#e5e7eb] px-5 py-2.5 text-[14px] font-medium text-[#374151] transition hover:bg-[#f9fafb]">Cancel</button>

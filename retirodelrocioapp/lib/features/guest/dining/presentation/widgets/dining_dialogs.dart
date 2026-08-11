@@ -18,6 +18,7 @@ Future<DiningOrderConfirmation?> showDiningPaymentDialog(
   BuildContext context, {
   required String itemsLabel,
   required String subtotalLabel,
+  required String vatLabel,
   required String serviceFeeLabel,
   required String totalLabel,
   required Future<DiningOrderConfirmation?> Function() onConfirmRoom,
@@ -29,6 +30,7 @@ Future<DiningOrderConfirmation?> showDiningPaymentDialog(
     builder: (_) => _DiningPaymentDialog(
       itemsLabel: itemsLabel,
       subtotalLabel: subtotalLabel,
+      vatLabel: vatLabel,
       serviceFeeLabel: serviceFeeLabel,
       totalLabel: totalLabel,
       onConfirmRoom: onConfirmRoom,
@@ -54,6 +56,7 @@ class _DiningPaymentDialog extends StatefulWidget {
   const _DiningPaymentDialog({
     required this.itemsLabel,
     required this.subtotalLabel,
+    required this.vatLabel,
     required this.serviceFeeLabel,
     required this.totalLabel,
     required this.onConfirmRoom,
@@ -62,6 +65,7 @@ class _DiningPaymentDialog extends StatefulWidget {
 
   final String itemsLabel;
   final String subtotalLabel;
+  final String vatLabel;
   final String serviceFeeLabel;
   final String totalLabel;
   final Future<DiningOrderConfirmation?> Function() onConfirmRoom;
@@ -152,6 +156,8 @@ class _DiningPaymentDialogState extends State<_DiningPaymentDialog> {
                   ),
                   const SizedBox(height: 16),
                   _row(widget.itemsLabel, widget.subtotalLabel),
+                  const SizedBox(height: 12),
+                  _row('VAT (7.5%)', widget.vatLabel),
                   const SizedBox(height: 12),
                   _row('Room Service Fee', widget.serviceFeeLabel),
                   const SizedBox(height: 16),

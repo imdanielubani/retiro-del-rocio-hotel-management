@@ -36,6 +36,8 @@ class Menu extends Component
 
     public bool $fActive = true;
 
+    public bool $fAlcoholic = true;
+
     public $fImage;
 
     public ?string $fImagePath = null;
@@ -64,6 +66,7 @@ class Menu extends Component
         $this->reset(['editingId', 'fName', 'fPrice', 'fDescription', 'fPrepMinutes', 'fActive', 'fImage', 'fImagePath']);
         $this->fCategory = MenuCategory::drink()->ordered()->value('slug') ?? '';
         $this->fActive = true;
+        $this->fAlcoholic = true;
         $this->resetValidation();
         $this->showForm = true;
     }
@@ -78,6 +81,7 @@ class Menu extends Component
         $this->fDescription = (string) $item->description;
         $this->fPrepMinutes = $item->prep_minutes;
         $this->fActive = $item->is_active;
+        $this->fAlcoholic = $item->is_alcoholic;
         $this->fImagePath = $item->image;
         $this->reset(['fImage']);
         $this->resetValidation();
@@ -111,6 +115,7 @@ class Menu extends Component
             'prep_minutes' => $data['fPrepMinutes'] !== '' ? (int) $data['fPrepMinutes'] : null,
             'image' => $imagePath,
             'is_active' => $this->fActive,
+            'is_alcoholic' => $this->fAlcoholic,
         ];
 
         if ($this->editingId) {

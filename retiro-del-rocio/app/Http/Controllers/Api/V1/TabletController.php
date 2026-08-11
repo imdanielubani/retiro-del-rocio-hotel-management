@@ -31,6 +31,7 @@ use App\Models\VisitorPass;
 use App\Services\DeviceCommandService;
 use App\Services\JwtService;
 use App\Support\ComputesBookingBill;
+use App\Support\DiningOrderPricer;
 use Closure;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -326,7 +327,7 @@ class TabletController extends Controller
     private const VAT_RATE = 0.075;
 
     /** Flat fee added to every room-service order (Figma: "Room Service Fee"). */
-    private const DINING_SERVICE_FEE = 1000;
+    private const DINING_SERVICE_FEE = DiningOrderPricer::SERVICE_FEE;
 
     /**
      * POST /tablets/extend-stay/initialize — price the extension and open a
@@ -956,6 +957,7 @@ class TabletController extends Controller
             'has_drinks' => $q['hasDrinks'],
             'item_count' => $q['itemCount'],
             'subtotal' => $q['subtotal'],
+            'vat' => $q['vat'],
             'service_fee' => $q['serviceFee'],
             'total' => $q['total'],
             'customer_name' => $booking->customer_name,
@@ -1021,6 +1023,7 @@ class TabletController extends Controller
             'has_drinks' => $q['hasDrinks'],
             'item_count' => $q['itemCount'],
             'subtotal' => $q['subtotal'],
+            'vat' => $q['vat'],
             'service_fee' => $q['serviceFee'],
             'total' => $q['total'],
             'customer_name' => $booking->customer_name,
@@ -1036,6 +1039,8 @@ class TabletController extends Controller
             'callback_url' => $callbackUrl,
             'subtotal' => $q['subtotal'],
             'subtotal_label' => 'NGN '.number_format($q['subtotal']),
+            'vat' => $q['vat'],
+            'vat_label' => 'NGN '.number_format($q['vat']),
             'service_fee' => $q['serviceFee'],
             'service_fee_label' => 'NGN '.number_format($q['serviceFee']),
             'total' => $q['total'],
@@ -1120,52 +1125,7 @@ class TabletController extends Controller
      */
     private function diningQuote(array $itemsInput): array
     {
-        $lineItems = [];
-        $subtotal = 0;
-        $itemCount = 0;
-        $hasFood = false;
-        $hasDrinks = false;
-        // Computed once per order, not per line item — a category's
-        // department (food/drink) can only be told apart via the admin's
-        // MenuCategory catalog now that categories aren't a fixed list.
-        $drinkSlugs = MenuCategory::drink()->pluck('slug')->all();
-
-        foreach ($itemsInput as $entry) {
-            $menuItem = MenuItem::active()->find($entry['menu_item_id']);
-            abort_unless($menuItem, 404, 'One of the dishes in your order is no longer available.');
-
-            $qty = (int) $entry['qty'];
-            $subtotal += (int) $menuItem->price * $qty;
-            $itemCount += $qty;
-
-            if (in_array($menuItem->category, $drinkSlugs, true)) {
-                $hasDrinks = true;
-            } else {
-                $hasFood = true;
-            }
-
-            $lineItems[] = [
-                'menu_item_id' => $menuItem->id,
-                'name' => $menuItem->name,
-                'price' => (int) $menuItem->price,
-                'qty' => $qty,
-                'note' => $entry['note'] ?? null,
-                // Snapshotted so the guest tablet's ETA estimate, My Orders
-                // thumbnail, and the Kitchen/Bar & Lounge admin queues all
-                // reflect what was true when the order was placed, not
-                // today's menu (a dish's photo/prep time/category can change
-                // later — the order's has_food/has_drinks flags below are
-                // derived from this same snapshot, not a live lookup).
-                'prep_minutes' => $menuItem->prep_minutes,
-                'image_url' => $menuItem->imageUrl(),
-                'category' => $menuItem->category,
-            ];
-        }
-
-        $serviceFee = self::DINING_SERVICE_FEE;
-        $total = $subtotal + $serviceFee;
-
-        return compact('lineItems', 'subtotal', 'serviceFee', 'total', 'itemCount', 'hasFood', 'hasDrinks');
+        return DiningOrderPricer::quote($itemsInput);
     }
 
     /** Notify the guest's own tablet feed and the front desk of a new dining order. */
