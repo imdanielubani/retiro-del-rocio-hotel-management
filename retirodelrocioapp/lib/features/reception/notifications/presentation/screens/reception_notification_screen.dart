@@ -1,0 +1,546 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retirodelrocioapp/core/theme/app_colors.dart';
+import 'package:retirodelrocioapp/core/theme/app_typography.dart';
+import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
+import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
+import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/application/reception_notification_providers.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/data/reception_notification_repository.dart';
+import 'package:retirodelrocioapp/features/reception/notifications/domain/reception_notification.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/reception_navigation.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_nav_rail.dart';
+import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_scaffold.dart';
+
+/// The "All" / "Unread" tabs sit alongside the category chips but aren't
+/// [ReceptionNotificationCategory] values, so the filter needs one more state
+/// than the enum alone provides.
+enum _Filter { all, unread }
+
+/// The front desk's real hotel-updates feed (`GET /reception/notifications`):
+/// an unread count, category filter chips and the notification list — same
+/// visual language as the guest tablet's Notifications screen (Figma
+/// 140:3647), inside the standard reception shell (nav rail + top bar) so it
+/// stays consistent with every other reception screen. A new arrival is
+/// pushed live over the hotel-wide `reception` realtime channel (see
+/// `receptionBookingsRealtimeProvider`); `receptionNotificationChimeProvider`
+/// (watched by every reception screen via `ReceptionScaffold`) is what rings
+/// the chime and lights the bell's badge — this screen just renders the feed
+/// and lets the receptionist act on it.
+class ReceptionNotificationScreen extends ConsumerStatefulWidget {
+  const ReceptionNotificationScreen({
+    super.key,
+    required this.session,
+    required this.current,
+  });
+
+  final StaffSession session;
+
+  /// The reception module the receptionist was on before opening the bell —
+  /// kept so the nav rail still highlights it and Back reads naturally.
+  final ReceptionNavItem current;
+
+  @override
+  ConsumerState<ReceptionNotificationScreen> createState() =>
+      _ReceptionNotificationScreenState();
+}
+
+class _ReceptionNotificationScreenState
+    extends ConsumerState<ReceptionNotificationScreen> {
+  Object _filter = _Filter.all;
+
+  /// The notification whose read-state change is mid-request, so only that
+  /// card reacts while it's in flight.
+  int? _busyId;
+  bool _markingAll = false;
+
+  String get _token => widget.session.token;
+
+  List<ReceptionNotification> _visible(List<ReceptionNotification> all) {
+    if (_filter == _Filter.all) return all;
+    if (_filter == _Filter.unread) {
+      return all.where((n) => !n.read).toList();
+    }
+    final category = _filter as ReceptionNotificationCategory;
+    return all.where((n) => n.category == category).toList();
+  }
+
+  Future<void> _markAllRead() async {
+    setState(() => _markingAll = true);
+    try {
+      await ref
+          .read(receptionNotificationActionsProvider(_token))
+          .markAllRead();
+    } on ReceptionNotificationException catch (e) {
+      if (mounted) _toast(e.message, error: true);
+    } catch (_) {
+      if (mounted) {
+        _toast('Something went wrong. Please try again.', error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _markingAll = false);
+    }
+  }
+
+  Future<void> _open(ReceptionNotification n) async {
+    if (n.read) return;
+    setState(() => _busyId = n.id);
+    try {
+      await ref
+          .read(receptionNotificationActionsProvider(_token))
+          .markRead(n.id);
+    } on ReceptionNotificationException catch (e) {
+      if (mounted) _toast(e.message, error: true);
+    } catch (_) {
+      if (mounted) {
+        _toast('Something went wrong. Please try again.', error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  void _toast(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: error
+            ? const Color(0xFF7F1D1D)
+            : const Color(0xFF14532D),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showLogoutConfirmDialog(context);
+    if (!confirmed) return;
+    await ref.read(authControllerProvider.notifier).logout();
+    if (mounted) ReceptionNavigation.afterLogout(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notificationsAsync = ref.watch(receptionNotificationsProvider(_token));
+    final notifications = notificationsAsync.value ?? const [];
+    final unreadCount = notifications.where((n) => !n.read).length;
+
+    return ReceptionScaffold(
+      session: widget.session,
+      active: widget.current,
+      onNav: (item) => ReceptionNavigation.select(
+        context,
+        widget.session,
+        item,
+        current: widget.current,
+      ),
+      onLogout: _logout,
+      onBack: () => Navigator.of(context).maybePop(),
+      title: 'Notifications',
+      trailing: _markAllReadButton(unreadCount),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _unreadPill(unreadCount),
+          const SizedBox(height: 16),
+          _filterChips(unreadCount),
+          const SizedBox(height: 19),
+          Expanded(
+            child: notificationsAsync.when(
+              data: (data) => _list(data),
+              loading: () => notifications.isNotEmpty
+                  ? _list(notifications)
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
+              error: (_, _) => notifications.isNotEmpty
+                  ? _list(notifications)
+                  : _errorState(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _unreadPill(int unreadCount) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: AppColors.gold,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          unreadCount == 1 ? '1 unread' : '$unreadCount unread',
+          style: AppTypography.style(color: AppColors.gold, fontSize: 15),
+        ),
+      ],
+    );
+  }
+
+  Widget _markAllReadButton(int unreadCount) {
+    final enabled = unreadCount > 0 && !_markingAll;
+    return Material(
+      color: Colors.white.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: enabled ? _markAllRead : null,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 0.8,
+            ),
+          ),
+          child: _markingAll
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.gold,
+                  ),
+                )
+              : Text(
+                  'Mark all read',
+                  style: AppTypography.style(
+                    color: enabled
+                        ? AppColors.gold
+                        : AppColors.gold.withValues(alpha: 0.4),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChips(int unreadCount) {
+    return SizedBox(
+      height: 41,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _chip(label: 'All', value: _Filter.all),
+          const SizedBox(width: 8),
+          _chip(label: 'Unread', value: _Filter.unread, badge: unreadCount),
+          for (final category in ReceptionNotificationCategory.values) ...[
+            const SizedBox(width: 8),
+            _chip(label: category.label, value: category),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _chip({required String label, required Object value, int? badge}) {
+    final selected = _filter == value;
+
+    return Material(
+      color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: () => setState(() => _filter = value),
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.2),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: AppTypography.style(
+                  color: selected
+                      ? const Color(0xFF0A0F1E)
+                      : Colors.white.withValues(alpha: 0.6),
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+              if (badge != null && badge > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$badge',
+                    style: AppTypography.style(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _list(List<ReceptionNotification> all) {
+    final items = _visible(all);
+
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 32,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No notifications here',
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.gold,
+      onRefresh: () async =>
+          ref.invalidate(receptionNotificationsProvider(_token)),
+      child: ListView.separated(
+        padding: EdgeInsets.zero,
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 19),
+        itemBuilder: (_, i) => _card(items[i]),
+      ),
+    );
+  }
+
+  /// A "Two Bedroom Suite · Room 101 · Daniel Ubani" style line showing
+  /// which room and guest a notification is about, skipping whichever parts
+  /// are missing.
+  Widget _roomGuestLine(String? suite, String? room, String? guest) {
+    final parts = <String>[
+      if ((suite ?? '').isNotEmpty) suite!,
+      if ((room ?? '').isNotEmpty) 'Room $room',
+      if ((guest ?? '').isNotEmpty) guest!,
+    ];
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.meeting_room_outlined,
+          size: 13,
+          color: AppColors.gold.withValues(alpha: 0.6),
+        ),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            parts.join(' · '),
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.style(
+              color: AppColors.gold.withValues(alpha: 0.75),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _card(ReceptionNotification n) {
+    final busy = _busyId == n.id;
+
+    return Material(
+      color: n.read
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: busy ? null : () => _open(n),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(21),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: n.read
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : AppColors.gold.withValues(alpha: 0.14),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.gold,
+                        ),
+                      )
+                    : Icon(n.category.icon, size: 20, color: AppColors.gold),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            n.title,
+                            style: AppTypography.style(
+                              color: n.read
+                                  ? Colors.white.withValues(alpha: 0.7)
+                                  : Colors.white,
+                              fontSize: 14,
+                              fontWeight: n.read
+                                  ? FontWeight.w500
+                                  : FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (!n.read) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.gold,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      n.message,
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (n.hasRoomContext) ...[
+                      const SizedBox(height: 6),
+                      _roomGuestLine(n.suiteName, n.roomNumber, n.guestName),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      _timeAgo(n.time),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _errorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Could not load the notifications.',
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Material(
+            color: AppColors.gold,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: () =>
+                  ref.invalidate(receptionNotificationsProvider(_token)),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                child: Text(
+                  'Retry',
+                  style: AppTypography.style(
+                    color: AppColors.onGold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _timeAgo(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) {
+      return diff.inHours == 1 ? '1 hr ago' : '${diff.inHours} hrs ago';
+    }
+    return diff.inDays == 1 ? '1 day ago' : '${diff.inDays} days ago';
+  }
+}

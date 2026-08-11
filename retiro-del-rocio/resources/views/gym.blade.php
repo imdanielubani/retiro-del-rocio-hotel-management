@@ -274,11 +274,15 @@
                             <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke-linecap="round"/></svg>
                             Card details are entered securely in the Paystack window. We never store your card.
                         </p>
+                        <div x-show="selectedPlan" class="mt-6 flex flex-col gap-1.5 border-t border-white/10 pt-4 text-body text-white">
+                            <div class="flex items-center justify-between"><span class="text-white/70">Plan price</span><span class="font-medium" x-text="selectedPlan ? selectedPlan.price_label : '—'"></span></div>
+                            <div class="flex items-center justify-between"><span class="text-white/70">VAT (7.5%)</span><span class="font-medium" x-text="money(vat)"></span></div>
+                        </div>
                         <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
                             <button type="button" @click="pay()" class="flex h-[64px] min-w-[240px] flex-1 items-center justify-center rounded-[10px] bg-[#f38c00] text-body-lg font-semibold text-white transition hover:bg-[#dd7f00] sm:flex-none">Complete Payment</button>
                             <div class="flex flex-col text-white">
                                 <span class="text-body font-semibold">Total</span>
-                                <span class="text-h3 font-semibold" x-text="selectedPlan ? selectedPlan.price_label + ' / ' + selectedPlan.period_short : '—'"></span>
+                                <span class="text-h3 font-semibold" x-text="selectedPlan ? money(total) + ' / ' + selectedPlan.period_short : '—'"></span>
                             </div>
                         </div>
                     </div>
@@ -304,6 +308,11 @@
                             <p class="flex justify-between gap-3"><span class="text-white/55">Contact number</span><span x-text="success ? (success.customer_phone || '—') : ''"></span></p>
                             <p class="flex justify-between gap-3"><span class="text-white/55">Email Address</span><span class="break-all" x-text="success ? success.customer_email : ''"></span></p>
                             <p class="flex justify-between gap-3"><span class="text-white/55">Valid till</span><span x-text="success ? success.ends_at : ''"></span></p>
+                        </div>
+                        <div class="mt-2 flex w-full flex-col gap-2 border-t border-white/10 pt-5 text-body text-white/80">
+                            <p class="flex justify-between gap-3"><span class="text-white/55">Plan price</span><span x-text="success ? success.price_label : ''"></span></p>
+                            <p class="flex justify-between gap-3"><span class="text-white/55">VAT (7.5%)</span><span x-text="success ? success.vat_label : ''"></span></p>
+                            <p class="flex justify-between gap-3 text-title font-semibold text-white"><span>Amount Paid</span><span x-text="success ? success.total_label : ''"></span></p>
                         </div>
                         <div class="mt-4 flex w-full flex-col gap-3">
                             <button type="button" onclick="window.print()" class="flex h-[64px] w-full items-center justify-center gap-2.5 rounded-[10px] bg-[#f38c00] text-body-lg font-semibold text-white transition hover:bg-[#dd7f00]">

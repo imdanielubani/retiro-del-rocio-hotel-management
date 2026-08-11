@@ -52,6 +52,18 @@
                                     <span>{{ $order['pickup_vehicle'] }}</span>
                                 </div>
                             @endif
+                            <div class="flex items-center justify-between gap-4 border-t border-white/10 py-4 font-normal text-white/70">
+                                <span>Subtotal</span>
+                                <span>{{ $order['subtotal_label'] ?? '' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-4 border-t border-white/10 py-4 font-normal text-white/70">
+                                <span>VAT ({{ $order['vat_rate_label'] ?? '7.5%' }})</span>
+                                <span>{{ $order['vat_label'] ?? '' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-4 border-t border-white/10 py-4 text-title text-[#f38c00]">
+                                <span>Total Paid</span>
+                                <span>{{ $order['total_label'] ?? '' }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

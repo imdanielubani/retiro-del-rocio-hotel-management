@@ -15,18 +15,28 @@ class VisitorPassException implements Exception {
 /// is what scopes every call to this room.
 class VisitorPassRepository {
   VisitorPassRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 8),
-              receiveTimeout: const Duration(seconds: 8),
-            ));
+              // Issuing a pass writes the row first and pushes the gate code
+              // afterwards, so this is normally instant — but a loaded server
+              // still deserves more headroom than the connect handshake, since
+              // giving up here would tell the guest the pass failed when it did not.
+              receiveTimeout: const Duration(seconds: 25),
+              sendTimeout: const Duration(seconds: 25),
+            ),
+          );
 
   final Dio _dio;
 
-  Options _auth(String deviceToken) => Options(headers: {
-        'Authorization': 'Bearer $deviceToken',
-        'Accept': 'application/json',
-      });
+  Options _auth(String deviceToken) => Options(
+    headers: {
+      'Authorization': 'Bearer $deviceToken',
+      'Accept': 'application/json',
+    },
+  );
 
   /// This room's visitor history, newest first. Failures fall back to an empty
   /// list — the screen still renders, just without history.
@@ -72,7 +82,9 @@ class VisitorPassRepository {
       throw VisitorPassException(_messageFrom(error));
     } catch (error) {
       debugPrint('VisitorPassRepository: create failed — $error');
-      throw VisitorPassException('Could not create the pass. Please try again.');
+      throw VisitorPassException(
+        'Could not create the pass. Please try again.',
+      );
     }
   }
 
@@ -81,17 +93,28 @@ class VisitorPassRepository {
     // Laravel validation: surface the first field error verbatim.
     if (data is Map && data['errors'] is Map) {
       final errors = (data['errors'] as Map).values;
-      if (errors.isNotEmpty && errors.first is List && (errors.first as List).isNotEmpty) {
+      if (errors.isNotEmpty &&
+          errors.first is List &&
+          (errors.first as List).isNotEmpty) {
         return (errors.first as List).first.toString();
       }
     }
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
-    if (error.type == DioExceptionType.connectionError ||
-        error.type == DioExceptionType.connectionTimeout) {
-      return 'No connection. Please try again.';
+    switch (error.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+        return 'No connection. Please try again.';
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        // The server may well have created the pass — say so rather than
+        // inviting the guest to issue a second one for the same visitor.
+        return 'The server is taking a while. Check Visitor History before trying again.';
+      default:
+        return 'Could not create the pass. Please try again.';
     }
-    return 'Could not create the pass. Please try again.';
   }
 }

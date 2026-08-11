@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Http\Middleware\TouchLastSeen;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -29,6 +30,7 @@ class User extends Authenticatable
         'status',
         'last_login_at',
         'last_login_ip',
+        'last_seen_at',
     ];
 
     /**
@@ -51,6 +53,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -62,6 +65,17 @@ class User extends Authenticatable
     {
         return $this->status === 'active'
             && $this->hasAnyRole(['super-admin', 'admin', 'manager', 'it-administrator']);
+    }
+
+    /**
+     * True when this user has hit an authenticated API endpoint within the
+     * device heartbeat window — the "online" dot on a staff chat channel.
+     * Touched on every authenticated request by {@see TouchLastSeen}.
+     */
+    public function isRecentlyActive(): bool
+    {
+        return $this->last_seen_at !== null
+            && $this->last_seen_at->gt(now()->subSeconds(config('devices.heartbeat_timeout')));
     }
 
     /**

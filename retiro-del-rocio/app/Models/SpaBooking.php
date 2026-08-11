@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class SpaBooking extends Model
 {
     protected $fillable = [
-        'reference', 'services', 'guests', 'date', 'time', 'special_request',
-        'subtotal', 'fees', 'taxes', 'total',
+        'booking_id', 'reference', 'services', 'guests', 'date', 'time', 'special_request',
+        'subtotal', 'fees', 'taxes', 'vat', 'total',
         'customer_name', 'customer_email', 'customer_phone',
         'status', 'payment_status', 'payment_method', 'paid_at',
     ];
@@ -20,9 +20,73 @@ class SpaBooking extends Model
         'subtotal' => 'integer',
         'fees' => 'integer',
         'taxes' => 'integer',
+        'vat' => 'integer',
         'total' => 'integer',
         'paid_at' => 'datetime',
     ];
+
+    /** The room booking this session was charged against, for a tablet booking. */
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class);
+    }
+
+    /**
+     * The payload the guest tablet's confirmation screen renders. Labelled
+     * "NGN" rather than "₦", matching the rest of the guest tablet (the ₦
+     * labels on {@see totalWithVatLabel} are for the admin dashboard).
+     */
+    public function toGuestConfirmationArray(): array
+    {
+        $totalWithVat = (int) $this->total + (int) $this->vat;
+
+        return [
+            'id' => $this->id,
+            'reference' => $this->reference,
+            'service_name' => collect($this->services)->pluck('name')->implode(', '),
+            'time' => $this->time,
+            'date' => optional($this->date)->toDateString(),
+            'total' => $totalWithVat,
+            'total_label' => 'NGN '.number_format($totalWithVat),
+            'payment_method' => $this->payment_method,
+        ];
+    }
+
+    /**
+     * The payload the guest tablet's "My Appointments" list renders — one row
+     * per confirmed/paid session, past or upcoming. Same "NGN" labelling as
+     * {@see toGuestConfirmationArray}.
+     */
+    public function toGuestAppointmentArray(): array
+    {
+        $totalWithVat = (int) $this->total + (int) $this->vat;
+
+        return [
+            'id' => $this->id,
+            'reference' => $this->reference,
+            'service_name' => collect($this->services)->pluck('name')->implode(', ') ?: 'Spa session',
+            'date' => optional($this->date)->toDateString(),
+            'date_label' => optional($this->date)->format('D, M j, Y'),
+            'time' => $this->time,
+            'status' => $this->status,
+            'status_label' => $this->statusLabel(),
+            'charged_to_room' => $this->payment_method === 'room_charge',
+            'payment_method_label' => $this->payment_method === 'room_charge' ? 'Charged to Room' : 'Paid Online',
+            'total_label' => 'NGN '.number_format($totalWithVat),
+        ];
+    }
+
+    /** VAT (7.5%) charged on top of the total at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the total plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->total + (int) $this->vat);
+    }
 
     /** Human session code shown in the admin table, e.g. "SP-1041". */
     public function sessionCode(): string

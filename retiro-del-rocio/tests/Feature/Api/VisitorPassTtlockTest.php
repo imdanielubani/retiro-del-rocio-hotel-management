@@ -92,22 +92,26 @@ class VisitorPassTtlockTest extends TestCase
             '*/v3/keyboardPwd/add' => Http::response(['keyboardPwdId' => 909]),
         ]);
 
+        // The tablet is answered immediately, on the offline code; the gate code
+        // is minted once the response is on its way.
         $data = $this->withToken($this->deviceToken)
             ->postJson('/api/v1/visitor-passes', [
                 'visitor_name' => 'Michael Brown',
                 'visitor_email' => 'm.brown@mail.com',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.ttlock_status', 'active')
+            ->assertJsonPath('data.ttlock_status', 'pending')
             ->json('data');
 
+        $pass = VisitorPass::latest('id')->first();
+
         // Distinct 6-digit online + offline codes.
-        $this->assertMatchesRegularExpression('/^\d{6}$/', $data['online_code']);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $pass->online_code);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $data['offline_code']);
-        $this->assertNotSame($data['online_code'], $data['offline_code']);
+        $this->assertNotSame($pass->online_code, $data['offline_code']);
 
         $this->assertDatabaseHas('visitor_passes', [
-            'online_code' => $data['online_code'],
+            'id' => $pass->id,
             'keyboard_pwd_id' => '909',
             'lock_id' => 'GATE1',
             'ttlock_status' => 'active',
@@ -134,11 +138,9 @@ class VisitorPassTtlockTest extends TestCase
             return Http::response(['errcode' => 0]);
         });
 
-        $data = $this->withToken($this->deviceToken)
+        $this->withToken($this->deviceToken)
             ->postJson('/api/v1/visitor-passes', ['visitor_name' => 'Michael Brown'])
-            ->assertCreated()
-            ->assertJsonPath('data.ttlock_status', 'active')
-            ->json('data');
+            ->assertCreated();
 
         // The SAME code was added to BOTH gates.
         $this->assertCount(2, $adds);
@@ -150,7 +152,8 @@ class VisitorPassTtlockTest extends TestCase
         $grants = collect($pass->ttlock_grants);
         $this->assertCount(2, $grants);
         $this->assertEqualsCanonicalizing(['111', '222'], $grants->pluck('keyboardPwdId')->all());
-        $this->assertSame($data['online_code'], $pass->online_code);
+        $this->assertSame($adds[0]['code'], $pass->online_code);
+        $this->assertSame('active', $pass->ttlock_status);
     }
 
     public function test_using_the_code_deletes_it_from_every_gate(): void
@@ -209,11 +212,15 @@ class VisitorPassTtlockTest extends TestCase
         $data = $this->withToken($this->deviceToken)
             ->postJson('/api/v1/visitor-passes', ['visitor_name' => 'Zara Ahmed'])
             ->assertCreated()
-            ->assertJsonPath('data.ttlock_status', 'offline')
             ->json('data');
 
         $this->assertNull($data['online_code']);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $data['offline_code']);
+
+        // Provisioning settles to "offline" once the response has gone out.
+        $pass = VisitorPass::latest('id')->first();
+        $this->assertSame('offline', $pass->ttlock_status);
+        $this->assertNull($pass->online_code);
     }
 
     public function test_the_officer_can_verify_by_the_online_code(): void
@@ -267,6 +274,55 @@ class VisitorPassTtlockTest extends TestCase
         $this->assertSame('lock', $pass->verified_via);
         $this->assertSame('used', $pass->ttlock_status);
         $this->assertNull($pass->handled_by); // nobody keyed it — the visitor did
+    }
+
+    public function test_checking_the_host_out_kills_their_visitors_gate_codes(): void
+    {
+        $booking = $this->unit->booking;
+
+        $open = VisitorPass::create([
+            'room_unit_id' => $this->unit->id,
+            'booking_id' => $booking->id,
+            'visitor_name' => 'Still Expected',
+            'code' => '444555',
+            'online_code' => '777888',
+            'keyboard_pwd_id' => '909',
+            'lock_id' => 'GATE1',
+            'ttlock_status' => 'active',
+            'status' => VisitorPass::PENDING,
+            'expires_at' => now()->addHours(6),
+        ]);
+
+        // Someone who already came in stays on the register untouched.
+        $inside = VisitorPass::create([
+            'room_unit_id' => $this->unit->id,
+            'booking_id' => $booking->id,
+            'visitor_name' => 'Already Inside',
+            'code' => '666777',
+            'status' => VisitorPass::VERIFIED,
+            'verified_at' => now(),
+        ]);
+
+        $deletes = [];
+        Http::fake(function ($request) use (&$deletes) {
+            if (str_contains($request->url(), '/v3/keyboardPwd/delete')) {
+                $deletes[] = $request['keyboardPwdId'];
+            }
+
+            return Http::response(['errcode' => 0]);
+        });
+
+        $closed = app(\App\Services\VisitorPassProvisioner::class)->closeOutBooking($booking->id);
+
+        $this->assertSame(1, $closed);
+        $this->assertSame('cancelled', $open->fresh()->status);
+        $this->assertSame(['909'], $deletes); // pulled off the gate
+        $this->assertSame('verified', $inside->fresh()->status);
+
+        // And the code no longer opens anything at the gate.
+        $this->withToken($this->officerToken())
+            ->postJson('/api/v1/security/visitors/verify', ['code' => '777888'])
+            ->assertNotFound();
     }
 
     public function test_reconcile_expires_a_pass_whose_window_has_closed(): void

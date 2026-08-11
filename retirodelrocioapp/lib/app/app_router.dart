@@ -11,6 +11,12 @@ import 'package:retirodelrocioapp/features/welcome/presentation/screens/welcome_
 /// Overridden in `main()` after reading [DeviceSessionStore].
 final bootstrapDeviceProvider = Provider<ProvisionedDevice?>((ref) => null);
 
+/// The single Navigator go_router manages, shared by every imperatively
+/// pushed guest/staff screen. Exposed so [CheckoutResetWatcher] — which lives
+/// above the Navigator and is never itself buried — can pop back to the root
+/// route from outside the widget tree that's actually pushing screens.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Central navigation graph.
 ///
 /// First-time flow: splash → onboarding → device setup → welcome.
@@ -20,6 +26,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final paired = ref.read(bootstrapDeviceProvider);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: paired != null ? Routes.welcome : Routes.splash,
     routes: [
       GoRoute(

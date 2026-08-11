@@ -8,6 +8,31 @@
 FROM node:20-alpine AS assets
 WORKDIR /app
 
+# Vite inlines every `import.meta.env.VITE_*` reference into the compiled JS
+# at BUILD time, not runtime — .env is deliberately excluded from the Docker
+# build context (see .dockerignore), so these must arrive as build args here.
+# Without them, resources/js/echo.js bakes in a literal `undefined` Reverb
+# host, `new Echo(...)` throws synchronously on page load, and — since that
+# throw happens inside the first import in app.js — every Alpine component
+# registered further down the same file (window.spaReservation,
+# gymMembership, restaurantReservation, cinemaBooking, cmsImageUpload) never
+# gets defined either, breaking every booking flow on the public site with
+# no server-side error to show for it.
+#
+# Pass these as build args wherever this image is built (Dokploy's build
+# args / build-time variables panel, or `docker build --build-arg`) — not as
+# ordinary container/runtime env vars, which arrive too late for Vite to see.
+ARG VITE_APP_NAME
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_SCHEME
+ENV VITE_APP_NAME=${VITE_APP_NAME} \
+    VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
+    VITE_REVERB_HOST=${VITE_REVERB_HOST} \
+    VITE_REVERB_PORT=${VITE_REVERB_PORT} \
+    VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}
+
 # Install JS deps from the lockfile (cached unless package files change).
 COPY package.json package-lock.json ./
 RUN npm ci

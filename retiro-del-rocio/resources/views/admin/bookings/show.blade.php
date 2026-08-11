@@ -115,6 +115,46 @@
                 </div>
             </div>
 
+            {{-- Identity Document (captured at reception check-in) --}}
+            @if ($b->identityDocumentLabel() || $b->id_document_number || $b->hasIdentityDocument())
+                <div class="rounded-2xl border border-[#e5e7eb] bg-white">
+                    <div class="flex items-center justify-between border-b border-[#e5e7eb] px-6 py-4">
+                        <p class="text-[15px] font-bold text-[#1e1e1e]">Identity Document</p>
+                        @if ($b->identity_verified_at)
+                            <span class="inline-flex items-center gap-1 rounded-full bg-[#dcfce7] px-2.5 py-1 text-[12px] font-medium text-[#16a34a]">
+                                Verified {{ $b->identity_verified_at->format('M j, g:i A') }}
+                            </span>
+                        @endif
+                    </div>
+                    <div class="grid grid-cols-1 gap-y-5 px-6 py-5 sm:grid-cols-2 sm:gap-x-8">
+                        <div>
+                            <p class="text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">Document Type</p>
+                            <p class="mt-1 text-[14px] font-medium text-[#1e1e1e]">{{ $b->identityDocumentLabel() ?: '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">Document Number</p>
+                            <p class="mt-1 text-[14px] font-medium text-[#1e1e1e]">{{ $b->id_document_number ?: '—' }}</p>
+                        </div>
+                        @if ($b->hasIdentityDocument())
+                            <div class="sm:col-span-2">
+                                <p class="text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">Uploaded Document</p>
+                                <div class="mt-2 flex items-center gap-3">
+                                    <a href="{{ $b->id_document_url }}" target="_blank" rel="noopener"
+                                       class="block size-16 shrink-0 overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f9fafb]">
+                                        <img src="{{ $b->id_document_url }}" alt="ID document" class="size-full object-cover"
+                                             onerror="this.style.display='none';this.parentElement.classList.add('flex','items-center','justify-center');this.parentElement.innerHTML='<span class=&quot;text-[11px] text-[#6b7280]&quot;>FILE</span>';">
+                                    </a>
+                                    <a href="{{ $b->id_document_url }}" target="_blank" rel="noopener"
+                                       class="inline-flex items-center gap-1.5 rounded-lg border border-[#e5e7eb] px-3.5 py-2 text-[13px] font-medium text-[#f38c00] hover:bg-[#fff3e0]">
+                                        View uploaded file
+                                    </a>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             {{-- Booking Information --}}
             <div class="rounded-2xl border border-[#e5e7eb] bg-white">
                 <div class="border-b border-[#e5e7eb] px-6 py-4">
@@ -142,7 +182,21 @@
                     @endforeach
                     <div class="sm:col-span-2">
                         <p class="text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">Status</p>
-                        <span class="mt-1.5 inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
+                        <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
+                            @if ($b->originLabel())
+                                <span class="inline-flex items-center gap-1 rounded-full bg-[#eff6ff] px-2.5 py-1 text-[12px] font-medium text-[#2563eb]" title="Booked at the front desk">
+                                    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    {{ $b->originLabel() }}
+                                </span>
+                            @endif
+                            @if ($b->wasExtended())
+                                <span class="inline-flex items-center gap-1 rounded-full bg-[#fff7ed] px-2.5 py-1 text-[12px] font-medium text-[#c2620a]" title="{{ $b->extensionSummary() }}">
+                                    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 14v4M10 16h4"/></svg>
+                                    {{ $b->extensionSummary() }}
+                                </span>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
@@ -166,18 +220,17 @@
                             <span class="font-medium text-[#1e1e1e]">{{ $naira($payment['pickup']) }}</span>
                         </div>
                     @endif
-                    <div class="flex items-center justify-between">
-                        <span class="text-[#6b7280]">Taxes &amp; fees ({{ $payment['tax_pct'] }}%)</span>
-                        <span class="font-medium text-[#1e1e1e]">{{ $naira($payment['taxes']) }}</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-[#6b7280]">Service charge</span>
-                        <span class="font-medium text-[#1e1e1e]">{{ $naira($payment['service']) }}</span>
-                    </div>
-
                     <div class="mt-1 flex items-center justify-between border-t border-[#e5e7eb] pt-3">
-                        <span class="text-[15px] font-bold text-[#1e1e1e]">Total</span>
-                        <span class="text-[15px] font-bold text-[#f38c00]">{{ $naira($payment['total']) }}</span>
+                        <span class="text-[#6b7280]">Subtotal</span>
+                        <span class="font-medium text-[#1e1e1e]">{{ $naira($payment['total']) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[#6b7280]">VAT (7.5%)</span>
+                        <span class="font-medium text-[#1e1e1e]">{{ $naira($payment['vat']) }}</span>
+                    </div>
+                    <div class="mt-1 flex items-center justify-between border-t border-[#e5e7eb] pt-3">
+                        <span class="text-[15px] font-bold text-[#1e1e1e]">Total Paid</span>
+                        <span class="text-[15px] font-bold text-[#f38c00]">{{ $naira($payment['total_paid']) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[#6b7280]">Payment method</span>
@@ -365,7 +418,7 @@
                     <input type="date" wire:model="renewCheckOut" class="h-11 w-full rounded-xl border border-[#e5e7eb] px-3.5 text-[14px] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
                     @error('renewCheckOut') <span class="mt-1 block text-[12px] text-[#dc2626]">{{ $message }}</span> @enderror
 
-                    <p class="mt-3 text-[12px] text-[#6b7280]">Extra nights are added to the booking total at the room's nightly rate (plus 7.5% VAT). A checked-out guest is set back to <span class="font-medium">Checked In</span>.</p>
+                    <p class="mt-3 text-[12px] text-[#6b7280]">Extra nights are added to the booking total at the room's nightly rate. A checked-out guest is set back to <span class="font-medium">Checked In</span>.</p>
                 </div>
                 <div class="flex items-center justify-end gap-2 border-t border-[#e5e7eb] px-5 py-4">
                     <button type="button" wire:click="$set('renewing', false)" class="rounded-xl border border-[#e5e7eb] px-4 py-2.5 text-[14px] font-medium text-[#374151] hover:bg-[#f9fafb]">Cancel</button>

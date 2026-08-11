@@ -4,16 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/data/visitor_pass_repository.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/domain/visitor_pass.dart';
 
-final visitorPassRepositoryProvider =
-    Provider<VisitorPassRepository>((ref) => VisitorPassRepository());
+final visitorPassRepositoryProvider = Provider<VisitorPassRepository>(
+  (ref) => VisitorPassRepository(),
+);
 
 /// This room's visitor history, keyed by the tablet's device token.
 ///
 /// Re-polled every 30 seconds so a security verify / deny reflects on the guest
 /// tablet without a manual refresh — the same belt-and-braces poll as room
 /// status and SOS, just slower because a pass is not time-critical.
-final visitorPassesProvider =
-    FutureProvider.family<List<VisitorPass>, String>((ref, deviceToken) async {
+final visitorPassesProvider = FutureProvider.family<List<VisitorPass>, String>((
+  ref,
+  deviceToken,
+) async {
   final repo = ref.watch(visitorPassRepositoryProvider);
 
   final timer = Timer(const Duration(seconds: 30), ref.invalidateSelf);

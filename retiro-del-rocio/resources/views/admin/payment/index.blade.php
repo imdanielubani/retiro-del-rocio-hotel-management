@@ -24,6 +24,34 @@
         @endforeach
     </div>
 
+    {{-- ===== Revenue by department (this month) ===== --}}
+    <div class="rounded-2xl border border-[#e5e7eb] bg-white px-5 py-4">
+        <div class="flex items-center justify-between">
+            <p class="text-[13px] font-semibold text-[#1e1e1e]">Revenue by Department</p>
+            <p class="text-[11px] text-[#6b7280]">{{ $periodLabel }} · Revenue <span class="font-bold text-[#1e1e1e]">{{ $monthRevenueLabel }}</span> · VAT (7.5%) <span class="font-bold text-[#16a34a]">{{ $vatCollectedLabel }}</span></p>
+        </div>
+        {{-- Proportional bar --}}
+        <div class="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-[#f1f1ee]">
+            @foreach ($departments as $d)
+                @if ($d['pct'] > 0)
+                    <div class="h-full" style="width: {{ $d['pct'] }}%; background: {{ $d['color'] }}" title="{{ $d['label'] }} · {{ $d['value'] }}"></div>
+                @endif
+            @endforeach
+        </div>
+        {{-- Legend --}}
+        <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 xl:grid-cols-5">
+            @foreach ($departments as $d)
+                <div class="flex items-center gap-2">
+                    <span class="size-2.5 shrink-0 rounded-full" style="background: {{ $d['color'] }}"></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[12px] font-medium text-[#1e1e1e]">{{ $d['label'] }}</p>
+                        <p class="text-[11px] text-[#6b7280]">{{ $d['value'] }} · {{ $d['pct'] }}%</p>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
     {{-- ===== Filter bar ===== --}}
     <div class="flex flex-col gap-3 rounded-2xl border border-[#e5e7eb] bg-white px-5 py-4">
         <div class="flex flex-wrap items-center gap-3">
@@ -168,14 +196,14 @@
                 <table class="w-full min-w-[900px] border-collapse">
                     <thead>
                         <tr class="bg-[#f9fafb] text-left">
-                            @foreach (['Transaction ID', 'Booking', 'Guest', 'Amount', 'Method', 'Date', 'Status'] as $col)
+                            @foreach (['Transaction ID', 'Booking', 'Guest', 'Total Paid', 'Method', 'Date', 'Status'] as $col)
                                 <th class="border-b border-[#e5e7eb] px-4 py-2.5 text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">{{ $col }}</th>
                             @endforeach
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($transactions as $t)
-                            <tr wire:key="txn-{{ $t->id }}" class="border-b border-[#e5e7eb] {{ $loop->even ? 'bg-[#f9fafb]' : 'bg-white' }}">
+                            <tr wire:key="txn-{{ $t->sourceLabel() }}-{{ $t->id }}" class="border-b border-[#e5e7eb] {{ $loop->even ? 'bg-[#f9fafb]' : 'bg-white' }}">
                                 <td class="px-4 py-3.5 text-[13px] font-medium text-[#f38c00]">{{ $t->txnId() }}</td>
                                 <td class="px-4 py-3.5 text-[13px] text-[#6b7280]">
                                     <span class="inline-flex items-center gap-1.5">
@@ -186,12 +214,16 @@
                                             'bg-[#fff7ed] text-[#c2620a]' => $t->sourceLabel() === 'Gym',
                                             'bg-[#fef2f2] text-[#b91c1c]' => $t->sourceLabel() === 'Restaurant',
                                             'bg-[#fef9c3] text-[#a16207]' => $t->sourceLabel() === 'Cinema',
-                                            'bg-[#e0f2fe] text-[#0369a1]' => ! in_array($t->sourceLabel(), ['Spa', 'Gym', 'Restaurant', 'Cinema'], true),
+                                            'bg-[#dcfce7] text-[#15803d]' => $t->sourceLabel() === 'Extension',
+                                            'bg-[#fce7f3] text-[#be185d]' => $t->sourceLabel() === 'Bill Settlement',
+                                            'bg-[#ffedd5] text-[#ea580c]' => $t->sourceLabel() === 'Kitchen',
+                                            'bg-[#ccfbf1] text-[#0d9488]' => $t->sourceLabel() === 'Bar & Lounge',
+                                            'bg-[#e0f2fe] text-[#0369a1]' => ! in_array($t->sourceLabel(), ['Spa', 'Gym', 'Restaurant', 'Cinema', 'Extension', 'Bill Settlement', 'Kitchen', 'Bar & Lounge'], true),
                                         ])>{{ $t->sourceLabel() }}</span>
                                     </span>
                                 </td>
                                 <td class="px-4 py-3.5 text-[13px] font-medium text-[#1e1e1e]">{{ $t->customer_name ?: '—' }}</td>
-                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $t->amountLabel() }}</td>
+                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $t->totalWithVatLabel() }}</td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ $t->methodLabel() }}</td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ optional($t->paid_at ?? $t->created_at)->format('M j, Y') }}</td>
                                 <td class="px-4 py-3.5">
@@ -206,14 +238,14 @@
             {{-- Mobile cards --}}
             <div class="flex flex-col divide-y divide-[#e5e7eb] md:hidden">
                 @foreach ($transactions as $t)
-                    <div wire:key="txn-m-{{ $t->id }}" class="flex flex-col gap-2 px-4 py-3.5">
+                    <div wire:key="txn-m-{{ $t->sourceLabel() }}-{{ $t->id }}" class="flex flex-col gap-2 px-4 py-3.5">
                         <div class="flex items-center justify-between">
                             <span class="text-[13px] font-medium text-[#f38c00]">{{ $t->txnId() }}</span>
                             <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium {{ $t->paymentStatusBadge() }}">{{ $t->paymentStatusLabel() }}</span>
                         </div>
                         <div class="flex items-center justify-between">
                             <p class="text-[14px] font-medium text-[#1e1e1e]">{{ $t->customer_name ?: '—' }}</p>
-                            <p class="text-[14px] font-bold text-[#1e1e1e]">{{ $t->amountLabel() }}</p>
+                            <p class="text-[14px] font-bold text-[#1e1e1e]">{{ $t->totalWithVatLabel() }}</p>
                         </div>
                         <div class="flex items-center justify-between text-[12px] text-[#6b7280]">
                             <span>{{ $t->bookingCode() }} · {{ $t->sourceLabel() }} · {{ $t->methodLabel() }}</span>

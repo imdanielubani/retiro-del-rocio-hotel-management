@@ -62,9 +62,9 @@
             ['label' => 'Task Center', 'icon' => 'task', 'href' => '#'],
         ]],
         ['label' => 'Guest Management', 'items' => [
-            ['label' => 'Guests', 'icon' => 'guests', 'href' => '#'],
-            ['label' => 'Service Requests', 'icon' => 'requests', 'href' => '#'],
-            ['label' => 'Stay History', 'icon' => 'history', 'href' => '#'],
+            ['label' => 'Guests', 'icon' => 'guests', 'href' => route('admin.guests.index'), 'active' => request()->routeIs('admin.guests.*')],
+            ['label' => 'Service Requests', 'icon' => 'requests', 'href' => route('admin.housekeeping.requests'), 'active' => request()->routeIs('admin.housekeeping.requests')],
+            ['label' => 'Stay History', 'icon' => 'history', 'href' => route('admin.stay-history.index'), 'active' => request()->routeIs('admin.stay-history.*')],
         ]],
         ['label' => 'Property Management', 'items' => [
             ['key' => 'apartments', 'label' => 'Apartments', 'icon' => 'apartments', 'children' => [
@@ -79,21 +79,26 @@
                 ['label' => 'Reservations', 'href' => route('admin.restaurant.reservations'), 'active' => request()->routeIs('admin.restaurant.reservations')],
             ]],
             ['key' => 'kitchen', 'label' => 'Kitchen', 'icon' => 'kitchen', 'children' => [
-                ['label' => 'Menu', 'href' => '#'],
-                ['label' => 'Orders', 'href' => '#'],
+                ['label' => 'Menu', 'href' => route('admin.kitchen.menu'), 'active' => request()->routeIs('admin.kitchen.menu')],
+                ['label' => 'Orders', 'href' => route('admin.kitchen.orders'), 'active' => request()->routeIs('admin.kitchen.orders')],
             ]],
             ['key' => 'bar', 'label' => 'Bar & Lounge', 'icon' => 'bar', 'children' => [
-                ['label' => 'Drinks Menu', 'href' => '#'],
-                ['label' => 'Orders', 'href' => '#'],
+                ['label' => 'Drinks Menu', 'href' => route('admin.bar-lounge.menu'), 'active' => request()->routeIs('admin.bar-lounge.menu')],
+                ['label' => 'Orders', 'href' => route('admin.bar-lounge.orders'), 'active' => request()->routeIs('admin.bar-lounge.orders')],
             ]],
         ]],
         ['label' => 'Inventory Management', 'items' => [
             ['label' => 'Kitchen Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Bar Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Spa Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Cinema Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Housekeeping Inventory', 'icon' => 'box', 'href' => '#'],
-            ['label' => 'Suppliers', 'icon' => 'truck', 'href' => '#'],
+            ['key' => 'bar-inventory', 'label' => 'Bar Inventory', 'icon' => 'box', 'children' => [
+                ['label' => 'Dashboard', 'href' => route('admin.bar-inventory.dashboard'), 'active' => request()->routeIs('admin.bar-inventory.dashboard')],
+                ['label' => 'Inventory Items', 'href' => route('admin.bar-inventory.items'), 'active' => request()->routeIs('admin.bar-inventory.items')],
+                ['label' => 'Stock In', 'href' => route('admin.bar-inventory.stock-in'), 'active' => request()->routeIs('admin.bar-inventory.stock-in')],
+                ['label' => 'Stock Out', 'href' => route('admin.bar-inventory.stock-out'), 'active' => request()->routeIs('admin.bar-inventory.stock-out')],
+                ['label' => 'Bottle Tracking', 'href' => route('admin.bar-inventory.bottle-tracking'), 'active' => request()->routeIs('admin.bar-inventory.bottle-tracking')],
+                ['label' => 'Consumption Tracking', 'href' => route('admin.bar-inventory.consumption'), 'active' => request()->routeIs('admin.bar-inventory.consumption')],
+                ['label' => 'Stock Adjustments', 'href' => route('admin.bar-inventory.adjustments'), 'active' => request()->routeIs('admin.bar-inventory.adjustments')],
+                ['label' => 'Reorder Alerts', 'href' => route('admin.bar-inventory.reorder-alerts'), 'active' => request()->routeIs('admin.bar-inventory.reorder-alerts')],
+            ]],
         ]],
         ['label' => 'Facility Management', 'items' => [
             ['key' => 'spa', 'label' => 'Spa & Wellness', 'icon' => 'spa', 'children' => [
@@ -113,6 +118,7 @@
             ['key' => 'vehicle-pickups', 'label' => 'Vehicle Pickups', 'icon' => 'car', 'children' => [
                 ['label' => 'Vehicles', 'href' => route('admin.vehicles.index'), 'active' => request()->routeIs('admin.vehicles.index')],
                 ['label' => 'Bookings', 'href' => route('admin.vehicles.bookings'), 'active' => request()->routeIs('admin.vehicles.bookings')],
+                ['label' => 'Drivers', 'href' => route('admin.vehicles.drivers'), 'active' => request()->routeIs('admin.vehicles.drivers')],
             ]],
         ]],
         ['label' => 'Membership Management', 'items' => [
@@ -122,15 +128,19 @@
             ['label' => 'Access Logs', 'icon' => 'list', 'href' => '#'],
         ]],
         ['label' => 'Staff Management', 'items' => [
-            ['label' => 'Housekeeping', 'icon' => 'cleaning', 'href' => '#'],
+            ['key' => 'housekeeping', 'label' => 'Housekeeping', 'icon' => 'cleaning', 'children' => [
+                ['label' => 'Room Status', 'href' => route('admin.housekeeping.room-status'), 'active' => request()->routeIs('admin.housekeeping.room-status')],
+                ['label' => 'Lost & Found', 'href' => route('admin.housekeeping.lost-found'), 'active' => request()->routeIs('admin.housekeeping.lost-found')],
+                ['label' => 'Staff Workload', 'href' => route('admin.housekeeping.staff-workload'), 'active' => request()->routeIs('admin.housekeeping.staff-workload')],
+                ['label' => 'Request Types', 'href' => route('admin.housekeeping.request-types'), 'active' => request()->routeIs('admin.housekeeping.request-types')],
+            ]],
             ['key' => 'maintenance', 'label' => 'Maintenance', 'icon' => 'wrench', 'children' => [
-                ['label' => 'Tasks', 'href' => '#'],
-                ['label' => 'Assets', 'href' => '#'],
-                ['label' => 'Service History', 'href' => '#'],
+                ['label' => 'Tasks', 'href' => route('admin.maintenance.work-orders'), 'active' => request()->routeIs('admin.maintenance.work-orders')],
+                ['label' => 'Assets', 'href' => route('admin.maintenance.assets'), 'active' => request()->routeIs('admin.maintenance.assets')],
+                ['label' => 'Parts Requests', 'href' => route('admin.maintenance.parts-requests'), 'active' => request()->routeIs('admin.maintenance.parts-requests')],
             ]],
             ['label' => 'Security', 'icon' => 'shield', 'href' => route('admin.security.incidents'), 'active' => request()->routeIs('admin.security.incidents')],
             ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users')],
-            ['label' => 'Departments', 'icon' => 'dashboard', 'href' => '#'],
         ]],
         ['label' => 'Device Management', 'items' => [
             ['label' => 'Tablets', 'icon' => 'tablet', 'href' => route('admin.devices.tablets'), 'active' => request()->routeIs('admin.devices.tablets') || request()->routeIs('admin.devices.dashboard') || request()->routeIs('admin.devices.show')],
@@ -138,18 +148,17 @@
         ]],
         ['label' => 'Access Control', 'items' => [
             ['label' => 'Gate Pass', 'icon' => 'lock', 'href' => route('admin.ttlock.locks'), 'active' => request()->routeIs('admin.ttlock.*')],
-            ['label' => 'RFID Cards', 'icon' => 'card', 'href' => '#'],
             ['label' => 'Visitor Access', 'icon' => 'door', 'href' => route('admin.security.visitor-access'), 'active' => request()->routeIs('admin.security.visitor-access')],
             ['label' => 'Access Logs', 'icon' => 'list', 'href' => '#'],
         ]],
         ['label' => 'Analytics Management', 'items' => [
             ['label' => 'Payments', 'icon' => 'payments', 'href' => route('admin.payment.index'), 'active' => request()->routeIs('admin.payment.*')],
-            ['label' => 'Billing', 'icon' => 'billing', 'href' => '#'],
+            ['label' => 'Billing', 'icon' => 'billing', 'href' => route('admin.billing.index'), 'active' => request()->routeIs('admin.billing.*')],
             ['label' => 'Reports', 'icon' => 'reports', 'href' => '#'],
             ['label' => 'Activity Logs', 'icon' => 'activity', 'href' => '#'],
         ]],
         ['label' => 'Communication', 'items' => [
-            ['label' => 'Chat', 'icon' => 'chat', 'href' => '#'],
+            ['label' => 'Chat', 'icon' => 'chat', 'href' => route('admin.chat.index'), 'active' => request()->routeIs('admin.chat.index')],
             ['label' => 'Messages', 'icon' => 'mail', 'href' => route('admin.messages.index'), 'active' => request()->routeIs('admin.messages.*')],
             ['label' => 'Intercom', 'icon' => 'phone', 'href' => '#'],
             ['label' => 'Notifications', 'icon' => 'requests', 'href' => '#'],

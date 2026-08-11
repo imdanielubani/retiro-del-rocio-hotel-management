@@ -37,8 +37,16 @@
                                     <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ optional($membership->ends_at)->format('l, M j, Y') ?: '—' }}</td>
                                 </tr>
                                 <tr>
+                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Plan price</td>
+                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $membership->priceLabel() }} / {{ $membership->periodShort() }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">VAT (7.5%)</td>
+                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $membership->vatLabel() }}</td>
+                                </tr>
+                                <tr>
                                     <td style="padding:12px 16px;color:#6b7280;">Amount paid</td>
-                                    <td style="padding:12px 16px;font-weight:bold;color:#16a34a;">{{ $membership->priceLabel() }} / {{ $membership->periodShort() }}</td>
+                                    <td style="padding:12px 16px;font-weight:bold;color:#16a34a;">{{ $membership->totalWithVatLabel() }} / {{ $membership->periodShort() }}</td>
                                 </tr>
                             </table>
 

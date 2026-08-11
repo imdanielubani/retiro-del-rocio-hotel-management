@@ -60,12 +60,12 @@ class Movie extends Model
 
     public function posterUrl(): string
     {
-        return \App\Models\SiteContent::imageUrl($this->poster_image ?: 'images/image 5.jpg');
+        return SiteContent::imageUrl($this->poster_image ?: 'images/image 5.jpg');
     }
 
     public function backdropUrl(): string
     {
-        return \App\Models\SiteContent::imageUrl($this->backdrop_image ?: $this->poster_image ?: 'images/image 5.jpg');
+        return SiteContent::imageUrl($this->backdrop_image ?: $this->poster_image ?: 'images/image 5.jpg');
     }
 
     /**
@@ -110,5 +110,27 @@ class Movie extends Model
     public function classificationLabel(): string
     {
         return $this->classification === 'coming_soon' ? 'Coming Soon' : 'Now Showing';
+    }
+
+    /** The payload the guest tablet's Cinema screen renders. */
+    public function toGuestArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'slug' => $this->slug,
+            'title' => $this->title,
+            'genre' => $this->genre,
+            'duration' => $this->duration,
+            'rating' => $this->rating,
+            'synopsis' => $this->synopsis,
+            'poster_url' => $this->posterUrl(),
+            'backdrop_url' => $this->backdropUrl(),
+            'room_price' => (int) $this->room_price,
+            'room_price_label' => 'NGN '.number_format((int) $this->room_price),
+            'classification' => $this->classification,
+            'classification_label' => $this->classificationLabel(),
+            'showtimes' => $this->showtimeList(),
+            'is_featured' => (bool) $this->is_featured,
+        ];
     }
 }

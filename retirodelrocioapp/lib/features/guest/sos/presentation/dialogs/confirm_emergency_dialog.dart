@@ -62,8 +62,11 @@ class _ConfirmEmergencyDialog extends StatelessWidget {
                   width: 1.6,
                 ),
               ),
-              child: const Icon(Icons.warning_amber_rounded,
-                  size: 40, color: Colors.white),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                size: 40,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 24),
             Text(

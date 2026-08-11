@@ -200,7 +200,7 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3.5 text-[13px] text-[#374151]">{{ $dur ? $dur.' min' : '—' }}</td>
-                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->totalLabel() }}</td>
+                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold" style="background: {{ $pBg }}; color: {{ $pColor }};">{{ $b->paymentLabel() }}</span>
                                 </td>
@@ -235,7 +235,7 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <p class="text-[14px] font-medium text-[#1e1e1e]">{{ $b->customer_name ?: '—' }}</p>
-                            <p class="text-[14px] font-bold text-[#1e1e1e]">{{ $b->totalLabel() }}</p>
+                            <p class="text-[14px] font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</p>
                         </div>
                         <div class="flex items-center justify-between text-[12px] text-[#6b7280]">
                             <span>{{ $b->primaryService() }}{{ $cat ? ' · '.$cat['name'] : '' }}</span>

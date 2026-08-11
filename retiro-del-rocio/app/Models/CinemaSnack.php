@@ -31,6 +31,18 @@ class CinemaSnack extends Model
 
     public function imageUrl(): string
     {
-        return \App\Models\SiteContent::imageUrl($this->image ?: 'images/popcorn.png');
+        return SiteContent::imageUrl($this->image ?: 'images/popcorn.png');
+    }
+
+    /** The payload the guest tablet's Cinema screen renders. */
+    public function toGuestArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'price' => (int) $this->price,
+            'price_label' => 'NGN '.number_format((int) $this->price),
+            'image_url' => $this->imageUrl(),
+        ];
     }
 }

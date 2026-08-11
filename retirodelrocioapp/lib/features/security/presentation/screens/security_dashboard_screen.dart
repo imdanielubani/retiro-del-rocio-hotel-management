@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -11,14 +10,21 @@ import 'package:retirodelrocioapp/features/security/application/security_provide
 import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
+import 'package:retirodelrocioapp/features/security/domain/security_visitor.dart';
+import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
+import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/dialogs/sos_alert_overlay.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/incident_response_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/visitor_verification_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/incident_card.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_stat_card.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_widgets.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The security officer's home dashboard (Figma 204:3089 / 257:1133).
@@ -59,10 +65,12 @@ class _SecurityDashboardScreenState
     if (mounted) Navigator.of(context).pop();
   }
 
-  void _comingSoon(String title) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)));
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SecurityNotificationScreen(session: widget.session),
+      ),
+    );
   }
 
   void _onNav(SecurityNavItem item) {
@@ -82,8 +90,39 @@ class _SecurityDashboardScreenState
           ),
         );
       case SecurityNavItem.chat:
-        _comingSoon('Chat');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
+        );
+      case SecurityNavItem.intercom:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityIntercomScreen(session: widget.session),
+          ),
+        );
     }
+  }
+
+  /// Tapping "Verify Pass" on a request hands the officer straight to the gate
+  /// screen with that visitor's code already looked up — the same place the nav
+  /// rail's Verified Pass goes, just arriving on the visitor instead of a blank
+  /// keypad. Refresh on the way back so a granted pass is reflected here.
+  Future<void> _verifyRequest(VisitorPassRequest request) async {
+    final code = (request.onlineCode ?? '').isNotEmpty
+        ? request.onlineCode
+        : request.offlineCode;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VisitorVerificationScreen(
+          session: widget.session,
+          initialCode: code,
+        ),
+      ),
+    );
+
+    if (mounted) ref.invalidate(securityOverviewProvider(_token));
   }
 
   Future<void> _respond(int incidentId) => _run(
@@ -159,7 +198,9 @@ class _SecurityDashboardScreenState
         context,
         incident: incident,
         officerName: officerName,
-        token: _token,
+        activeIncidents: securityOverviewProvider(
+          _token,
+        ).select((async) => async.whenData((o) => o.incidents)),
         onAcknowledge: () =>
             ref.read(securityActionsProvider(_token)).respond(incident.id),
         onCallRoom: () => ScaffoldMessenger.of(context).showSnackBar(
@@ -185,6 +226,14 @@ class _SecurityDashboardScreenState
   Widget build(BuildContext context) {
     // Keep the live socket alive for as long as the dashboard is on screen.
     ref.watch(securityRealtimeProvider(_token));
+    ref.watch(securityNotificationsRealtimeProvider(_token));
+    // Rings the chime and toasts a new notification wherever the officer is —
+    // owned here (the root security screen, always mounted) same as the SOS
+    // announcer below.
+    ref.watch(securityNotificationChimeProvider(_token));
+    ref.watch(staffChatChimeProvider(_token));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
+    watchStaffIntercomCall(context, ref, widget.session);
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on
     // first load and on every refresh (socket or poll); the guards inside make it
@@ -195,6 +244,9 @@ class _SecurityDashboardScreenState
 
     final overviewAsync = ref.watch(securityOverviewProvider(_token));
     final weather = ref.watch(weatherProvider).value;
+    final unreadNotifications = ref.watch(
+      securityUnreadNotificationsProvider(_token),
+    );
 
     // Prefer the session's name until the first fetch resolves the officer.
     final overview = overviewAsync.value;
@@ -233,9 +285,13 @@ class _SecurityDashboardScreenState
                                 overview?.officerRole ?? 'Security Office',
                             weather: weather,
                             hasAlert: (overview?.activeIncidents ?? 0) > 0,
+                            hasUnreadNotifications: unreadNotifications > 0,
+                            onNotifications: _openNotifications,
                           ),
                           const SizedBox(height: 20),
-                          _header(),
+                          _header(
+                            stale: overviewAsync.hasError && overview != null,
+                          ),
                           const SizedBox(height: 20),
                           Expanded(
                             child: overviewAsync.when(
@@ -265,32 +321,79 @@ class _SecurityDashboardScreenState
     );
   }
 
-  Widget _header() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+  Widget _header({bool stale = false}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          'Security',
-          style: AppTypography.style(color: AppColors.gold, fontSize: 12),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'Dashboard',
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 36,
-            fontWeight: FontWeight.w700,
-            height: 1.1,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Security',
+                style: AppTypography.style(color: AppColors.gold, fontSize: 12),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Dashboard',
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                ),
+              ),
+            ],
           ),
         ),
+        if (stale) _staleChip(),
       ],
+    );
+  }
+
+  /// Shown when the last refresh failed but older data is still on screen.
+  ///
+  /// Without this the dashboard is indistinguishable from a quiet night: the
+  /// sections fall back to "No pending pass requests" and an officer has no way
+  /// to tell that the list is simply out of date. During an incident that
+  /// distinction is the whole point of the screen.
+  Widget _staleChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF0000).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: const Color(0xFFFF0000).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 14,
+            color: const Color(0xFFFF0000).withValues(alpha: 0.9),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Not updating — check the connection',
+            style: AppTypography.style(
+              color: const Color(0xFFFF0000).withValues(alpha: 0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _content(SecurityOverview data) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      // Both columns run the full height so each can own its own scroll.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(flex: 2, child: _leftColumn(data)),
         const SizedBox(width: 24),
@@ -299,93 +402,119 @@ class _SecurityDashboardScreenState
     );
   }
 
+  /// The counters and open incidents stay put; Visitors Today takes the rest of
+  /// the column and scrolls on its own, so a busy gate never pushes the incident
+  /// count off the screen an officer is watching.
   Widget _leftColumn(SecurityOverview data) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: SecurityStatCard(
-                  label: 'ACTIVE INCIDENTS',
-                  value: data.activeIncidents,
-                  accent: const Color(0xFFFF0000),
-                  pulsing: data.activeIncidents > 0,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: SecurityStatCard(
+                label: 'ACTIVE INCIDENTS',
+                value: data.activeIncidents,
+                accent: const Color(0xFFFF0000),
+                pulsing: data.activeIncidents > 0,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: SecurityStatCard(
+                label: 'VISITORS TODAY',
+                value: data.visitorsToday,
+                accent: const Color(0xFF00FF00),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: SecurityStatCard(
+                label: 'VERIFIED PASS CODE',
+                value: data.verifiedPasses,
+                accent: AppColors.gold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _sectionLabel('OPEN INCIDENTS'),
+        const SizedBox(height: 15),
+        // Incidents take only the room they need, but are capped so a pile-up
+        // scrolls within itself rather than swallowing the visitor list.
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 300),
+          child: data.incidents.isEmpty
+              ? const OpenIncidentsEmpty()
+              : ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: data.incidents.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 15),
+                  itemBuilder: (_, i) {
+                    final incident = data.incidents[i];
+                    return IncidentCard(
+                      incident: incident,
+                      busy: _busyIncidentId == incident.id,
+                      onRespond: () => _respond(incident.id),
+                      onResolve: () => _resolve(incident.id),
+                    );
+                  },
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: SecurityStatCard(
-                  label: 'VISITORS TODAY',
-                  value: data.visitorsToday,
-                  accent: const Color(0xFF00FF00),
+        ),
+        const SizedBox(height: 24),
+        _sectionLabel('VISITORS TODAY'),
+        const SizedBox(height: 15),
+        Expanded(
+          child: data.visitors.isEmpty
+              ? const SingleChildScrollView(
+                  child: SectionEmpty(
+                    icon: Icons.badge_outlined,
+                    message: 'No visitors checked in today',
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: data.visitors.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 18),
+                  itemBuilder: (_, i) => VisitorRow(visitor: data.visitors[i]),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: SecurityStatCard(
-                  label: 'VERIFIED PASS CODE',
-                  value: data.verifiedPasses,
-                  accent: AppColors.gold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _sectionLabel('OPEN INCIDENTS'),
-          const SizedBox(height: 15),
-          if (data.incidents.isEmpty)
-            const OpenIncidentsEmpty()
-          else
-            for (final incident in data.incidents) ...[
-              IncidentCard(
-                incident: incident,
-                busy: _busyIncidentId == incident.id,
-                onRespond: () => _respond(incident.id),
-                onResolve: () => _resolve(incident.id),
-              ),
-              const SizedBox(height: 15),
-            ],
-          const SizedBox(height: 9),
-          _sectionLabel('VISITORS TODAY'),
-          const SizedBox(height: 15),
-          if (data.visitors.isEmpty)
-            const SectionEmpty(
-              icon: Icons.badge_outlined,
-              message: 'No visitors checked in today',
-            )
-          else
-            for (final visitor in data.visitors) ...[
-              VisitorRow(visitor: visitor),
-              const SizedBox(height: 18),
-            ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 
+  /// The requests column: its heading stays pinned while the cards scroll.
   Widget _rightColumn(SecurityOverview data) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionLabel('VISITOR PASS REQUESTS'),
-          const SizedBox(height: 15),
-          if (data.passRequests.isEmpty)
-            const SectionEmpty(
-              icon: Icons.qr_code_2_rounded,
-              message: 'No pending pass requests',
-            )
-          else
-            for (final request in data.passRequests) ...[
-              VisitorPassRequestCard(request: request),
-              const SizedBox(height: 17),
-            ],
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionLabel('VISITOR PASS REQUESTS'),
+        const SizedBox(height: 15),
+        Expanded(
+          child: data.passRequests.isEmpty
+              ? const SingleChildScrollView(
+                  child: SectionEmpty(
+                    icon: Icons.qr_code_2_rounded,
+                    message: 'No pending pass requests',
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: data.passRequests.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 17),
+                  itemBuilder: (_, i) {
+                    final request = data.passRequests[i];
+                    return VisitorPassRequestCard(
+                      request: request,
+                      onVerify: request.isVerified
+                          ? null
+                          : () => _verifyRequest(request),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 

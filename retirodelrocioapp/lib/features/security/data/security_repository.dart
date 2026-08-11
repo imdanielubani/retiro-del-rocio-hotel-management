@@ -1,14 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:retirodelrocioapp/core/config/api_config.dart';
+import 'package:retirodelrocioapp/core/error/messaged_exception.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_incident.dart';
 import 'package:retirodelrocioapp/features/security/domain/security_overview.dart';
 import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
 
 /// Raised when a security action could not be completed, carrying a
 /// user-facing [message].
-class SecurityException implements Exception {
+class SecurityException implements MessagedException {
   SecurityException(this.message);
+  @override
   final String message;
   @override
   String toString() => message;
@@ -148,6 +150,10 @@ class SecurityRepository {
   /// Turn the visitor away — the pass is denied and its codes stop working.
   Future<VisitorPassRecord> denyVisitor(String token, int passId) =>
       _visitorAction(token, passId, 'deny', 'Could not deny access.');
+
+  /// Mark a verified visitor as having left the property.
+  Future<VisitorPassRecord> exitVisitor(String token, int passId) =>
+      _visitorAction(token, passId, 'exit', 'Could not check out this visitor.');
 
   Future<VisitorPassRecord> _visitorAction(
     String token,

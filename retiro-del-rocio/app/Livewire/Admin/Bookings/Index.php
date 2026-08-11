@@ -8,7 +8,12 @@ use App\Mail\BookingCancelled;
 use App\Mail\BookingReservation;
 use App\Models\Booking;
 use App\Models\Room;
+use App\Models\RoomUnit;
+use App\Models\StayExtensionPayment;
+use App\Services\PaystackRefundService;
+use App\Services\VisitorPassProvisioner;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -37,6 +42,9 @@ class Index extends Component
     public int $cGuests = 1;
 
     public string $cStatus = 'paid';
+
+    // How the booking was taken: walk_in (default for a desk booking) | phone.
+    public string $cSource = 'walk_in';
 
     public $cAmount = '';
 
@@ -85,9 +93,10 @@ class Index extends Component
 
     public function openCreate(): void
     {
-        $this->reset(['cName', 'cEmail', 'cPhone', 'cRoomId', 'cCheckIn', 'cCheckOut', 'cGuests', 'cStatus', 'cAmount']);
+        $this->reset(['cName', 'cEmail', 'cPhone', 'cRoomId', 'cCheckIn', 'cCheckOut', 'cGuests', 'cStatus', 'cSource', 'cAmount']);
         $this->cGuests = 1;
         $this->cStatus = 'paid';
+        $this->cSource = 'walk_in';
         $this->cCheckIn = now()->toDateString();
         $this->cCheckOut = now()->addDay()->toDateString();
         $this->resetValidation();
@@ -139,6 +148,7 @@ class Index extends Component
             'cCheckOut' => ['required', 'date', 'after:cCheckIn'],
             'cGuests' => ['required', 'integer', 'min:1', 'max:30'],
             'cStatus' => ['required', Rule::in(['paid', 'pending'])],
+            'cSource' => ['required', Rule::in(['walk_in', 'phone'])],
             'cAmount' => ['nullable', 'numeric', 'min:0'],
         ], [], [
             'cName' => 'guest name', 'cRoomId' => 'room', 'cCheckIn' => 'check-in', 'cCheckOut' => 'check-out',
@@ -165,6 +175,7 @@ class Index extends Component
             'customer_email' => $data['cEmail'] ?: null,
             'customer_phone' => $data['cPhone'] ?: null,
             'status' => $data['cStatus'],
+            'source' => $data['cSource'],
             'payment_method' => 'manual',
             'paid_at' => $data['cStatus'] === 'paid' ? now() : null,
         ]);
@@ -231,16 +242,38 @@ class Index extends Component
         }
     }
 
-    public function issueRefund(int $id): void
+    public function issueRefund(int $id, PaystackRefundService $paystack): void
     {
         $booking = Booking::find($id);
         if (! $booking) {
             return;
         }
-        $booking->refund_amount = max(0, (int) $this->refundAmount);
-        $booking->refund_method = $this->refundMethod;
-        $booking->refund_status = 'completed';
-        $booking->save();
+
+        $amount = max(0, (int) $this->refundAmount);
+
+        // A card reversal is an actual money movement — send it to Paystack. Only
+        // mark the refund completed once Paystack accepts it; otherwise leave it
+        // pending so the desk can retry rather than telling the guest it is done.
+        if ($this->refundMethod === 'card_reversal') {
+            $result = $paystack->refund($booking, $amount);
+            if (! $result['ok']) {
+                $booking->forceFill([
+                    'refund_amount' => $amount,
+                    'refund_method' => $this->refundMethod,
+                    'refund_status' => 'pending',
+                ])->save();
+
+                $this->dispatch('toast', type: 'error', message: $result['message']);
+
+                return;
+            }
+        }
+
+        $booking->forceFill([
+            'refund_amount' => $amount,
+            'refund_method' => $this->refundMethod,
+            'refund_status' => 'completed',
+        ])->save();
 
         $this->dispatch('toast', type: 'success', message: 'Refund of '.$booking->refundLabel().' issued for '.$booking->cancellationCode().'.');
     }
@@ -365,7 +398,7 @@ class Index extends Component
     protected function freeUnit(Booking $booking): void
     {
         // Goes through the model, so the room's tablet is notified immediately.
-        \App\Models\RoomUnit::release($booking->room_unit_id, $booking->id);
+        RoomUnit::release($booking->room_unit_id, $booking->id);
     }
 
     // ---- New status actions (design) ----
@@ -404,12 +437,15 @@ class Index extends Component
         }
 
         // Freeing the room and closing the booking are one act — never half done.
-        \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+        DB::transaction(function () use ($booking) {
             $this->freeUnit($booking);
             $booking->status = 'checked_out';
             $booking->checked_out_at = now(); // the real departure, not the policy time
             $booking->save();
         });
+
+        // The host has gone — their visitors' gate codes go with them.
+        app(VisitorPassProvisioner::class)->closeOutBooking($booking->id);
 
         $this->dispatch('toast', type: 'success', message: $booking->bookingCode().' checked out — room is now available.');
     }
@@ -442,6 +478,9 @@ class Index extends Component
     {
         return Booking::query()
             ->with('room')
+            // Flag extended stays without an N+1: count/sum the paid extensions.
+            ->withCount(['stayExtensionPayments as extension_count' => fn ($q) => $q->where('status', StayExtensionPayment::SUCCESS)])
+            ->withSum(['stayExtensionPayments as extension_nights_sum' => fn ($q) => $q->where('status', StayExtensionPayment::SUCCESS)], 'nights')
             ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('reference', 'like', "%{$this->search}%")
                 ->orWhere('customer_name', 'like', "%{$this->search}%")

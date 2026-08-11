@@ -8,9 +8,9 @@ use Illuminate\Support\Str;
 class CinemaBooking extends Model
 {
     protected $fillable = [
-        'code', 'reference', 'movie_id', 'movie_title', 'show_date', 'show_time',
+        'booking_id', 'code', 'reference', 'movie_id', 'movie_title', 'show_date', 'show_time',
         'room', 'guests', 'seats', 'adult_tickets', 'child_tickets', 'snacks',
-        'subtotal', 'fee', 'taxes', 'amount',
+        'subtotal', 'fee', 'taxes', 'vat', 'amount',
         'customer_name', 'customer_email', 'customer_phone',
         'status', 'payment_status', 'payment_method', 'paid_at',
     ];
@@ -25,6 +25,7 @@ class CinemaBooking extends Model
         'subtotal' => 'integer',
         'fee' => 'integer',
         'taxes' => 'integer',
+        'vat' => 'integer',
         'amount' => 'integer',
         'paid_at' => 'datetime',
     ];
@@ -32,6 +33,12 @@ class CinemaBooking extends Model
     public function movie()
     {
         return $this->belongsTo(Movie::class);
+    }
+
+    /** The room booking this ticket was charged against, for a tablet booking. */
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class);
     }
 
     /** Ticket ID, e.g. CIN-482913-RDR */
@@ -44,9 +51,72 @@ class CinemaBooking extends Model
         return $code;
     }
 
+    /**
+     * The payload the guest tablet's confirmation screen renders. Labelled
+     * "NGN" rather than "₦", matching the rest of the guest tablet.
+     */
+    public function toGuestConfirmationArray(): array
+    {
+        $totalWithVat = (int) $this->amount + (int) $this->vat;
+
+        return [
+            'id' => $this->id,
+            'code' => $this->code,
+            'reference' => $this->reference,
+            'movie_title' => $this->movie_title,
+            'show_date' => optional($this->show_date)->toDateString(),
+            'show_time' => $this->show_time,
+            'room' => $this->room,
+            'guests' => (int) $this->guests,
+            'total' => $totalWithVat,
+            'total_label' => 'NGN '.number_format($totalWithVat),
+            'payment_method' => $this->payment_method,
+        ];
+    }
+
+    /**
+     * The payload the guest tablet's "My Bookings" list renders — one row
+     * per confirmed/used ticket, past or upcoming. Same "NGN" labelling as
+     * {@see toGuestConfirmationArray}.
+     */
+    public function toGuestAppointmentArray(): array
+    {
+        $totalWithVat = (int) $this->amount + (int) $this->vat;
+
+        return [
+            'id' => $this->id,
+            'code' => $this->code,
+            'reference' => $this->reference,
+            'movie_title' => $this->movie_title ?: 'Cinema booking',
+            'show_date' => optional($this->show_date)->toDateString(),
+            'show_date_label' => optional($this->show_date)->format('D, M j, Y'),
+            'show_time' => $this->show_time,
+            'room' => $this->room,
+            'guests' => (int) $this->guests,
+            'snacks_label' => $this->snacksLabel(),
+            'status' => $this->status,
+            'status_label' => $this->statusLabel(),
+            'charged_to_room' => $this->payment_method === 'room_charge',
+            'payment_method_label' => $this->payment_method === 'room_charge' ? 'Charged to Room' : 'Paid Online',
+            'total_label' => 'NGN '.number_format($totalWithVat),
+        ];
+    }
+
     public function amountLabel(): string
     {
         return '₦'.number_format($this->amount);
+    }
+
+    /** VAT (7.5%) charged on top of the booking total at payment time. */
+    public function vatLabel(): string
+    {
+        return '₦'.number_format((int) $this->vat);
+    }
+
+    /** What the guest actually paid: the booking amount plus its VAT. */
+    public function totalWithVatLabel(): string
+    {
+        return '₦'.number_format((int) $this->amount + (int) $this->vat);
     }
 
     public function subtotalLabel(): string

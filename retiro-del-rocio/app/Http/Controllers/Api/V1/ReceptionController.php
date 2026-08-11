@@ -1,0 +1,1011 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Models\BillPayment;
+use App\Models\Booking;
+use App\Models\Driver;
+use App\Models\HousekeepingNotification;
+use App\Models\HousekeepingRequest;
+use App\Models\ReceptionNotification;
+use App\Models\RoomUnit;
+use App\Models\SosAlert;
+use App\Models\User;
+use App\Models\VisitorPass;
+use App\Models\WorkOrder;
+use App\Services\CloudinaryService;
+use App\Services\VisitorPassProvisioner;
+use App\Support\ComputesBookingBill;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+/**
+ * Reception tablet dashboard (Figma 299:322 / 345:14699). Authenticated by the
+ * receptionist's staff JWT — the JWT middleware binds the user, and every
+ * endpoint re-checks the `reception` role so a token from another station can't
+ * work the front desk.
+ *
+ * Hotel-wide, like the security dashboard: reception watches every room, not one.
+ */
+class ReceptionController extends Controller
+{
+    use ComputesBookingBill;
+
+    /**
+     * GET /reception/overview — everything the dashboard renders in one call: the
+     * headline counters, today's arrivals still to be checked in, departures due
+     * today or overdue (still checked in, whatever their checkout date), open
+     * alerts and the room-status tally.
+     */
+    public function overview(Request $request): JsonResponse
+    {
+        $receptionist = $this->receptionist($request);
+
+        $today = today();
+
+        // Everyone arriving / departing today, so the lists match their counters
+        // rather than emptying out as the desk works through them. Those still to
+        // be handled sort first (and carry the action button on the tablet);
+        // already-processed ones stay on the list showing their status.
+        $arrivals = Booking::with('roomUnit')
+            ->whereDate('check_in', $today)
+            ->whereIn('status', ['paid', 'checked_in'])
+            ->orderByRaw("CASE status WHEN 'paid' THEN 0 ELSE 1 END")
+            ->orderBy('check_in')
+            ->get();
+
+        // Every currently checked-in guest is a departure the desk will
+        // eventually have to act on — overdue and due-today ones most
+        // urgently, but a guest due out next week is still worth seeing here
+        // rather than only appearing the morning they're due (and a stay
+        // extension pushing their date out simply moves them down the list
+        // instead of vanishing them from it). Already-checked-out guests stay
+        // scoped to today, so the list doesn't balloon with all-time history.
+        $departures = Booking::with('roomUnit')
+            ->where(fn ($q) => $q
+                ->where('status', 'checked_in')
+                ->orWhere(fn ($q2) => $q2->where('status', 'checked_out')->whereDate('check_out', $today)))
+            ->orderByRaw("CASE status WHEN 'checked_in' THEN 0 ELSE 1 END")
+            ->orderBy('check_out')
+            ->get();
+
+        // Alerts is fed from the live SOS incidents reception should be aware of;
+        // an empty list simply renders the panel's empty state. The same open
+        // incidents also drive the priority SOS overlay and the dashboard's live
+        // awareness, so they are shipped in their full incident shape too.
+        $incidents = SosAlert::open()
+            ->with('acknowledgedBy:id,name')
+            ->latest('raised_at')
+            ->limit(20)
+            ->get();
+
+        // Overdue checkouts are pushed into the same Alerts panel as SOS, not
+        // left as a passive badge on the departures list — the desk shouldn't
+        // have to notice a stale date on their own. Reused straight off
+        // $departures (already the right rows, already sorted worst-first) so
+        // there's no extra query. SOS always sorts first — a real emergency
+        // outranks an operational reminder.
+        $overdueBookings = $departures->filter(
+            fn (Booking $booking) => $booking->isOverdueForCheckout()
+        );
+
+        // Guest-raised housekeeping asks and maintenance faults belong on the
+        // same live Alerts panel as SOS and overdue checkouts — the desk
+        // shouldn't have to go dig them out of the separate notifications
+        // inbox. The reception-initiated checkout inspection isn't a guest
+        // ask, so it's excluded here exactly like it is from the guest's own
+        // history (see GuestServiceRequestController::index()).
+        $housekeepingRequests = HousekeepingRequest::with('roomUnit')
+            ->where('status', HousekeepingRequest::PENDING)
+            ->where('type', '!=', HousekeepingRequest::CHECKOUT_INSPECTION)
+            ->latest('created_at')
+            ->limit(20)
+            ->get();
+
+        $maintenanceRequests = WorkOrder::with('roomUnit')
+            ->where('status', '!=', WorkOrder::DONE)
+            ->latest('created_at')
+            ->limit(20)
+            ->get();
+
+        $roomBoard = $this->roomBoard();
+
+        return response()->json(['data' => [
+            'receptionist' => [
+                'name' => $receptionist->name,
+                'role' => 'Reception',
+            ],
+            'stats' => [
+                // Everyone scheduled to arrive today, whether or not they are in yet.
+                'arrivals_today' => Booking::whereDate('check_in', $today)
+                    ->whereIn('status', ['paid', 'checked_in'])->count(),
+                // An action actually completed today, keyed off the recorded
+                // moment — arrivals_today's completed-action counterpart.
+                'check_ins_today' => Booking::whereDate('checked_in_at', $today)->count(),
+                // Everyone scheduled to leave today, whether or not they have
+                // actually checked out yet — mirrors arrivals_today rather than
+                // check_ins_today, since the desk needs to know who's due out
+                // today to plan the room turnover, not just who has already
+                // left. A still-checked-in guest due today counts here even
+                // before they hand back the key; once they check out the row
+                // simply flips status without leaving this count.
+                'departures_today' => Booking::whereIn('status', ['checked_in', 'checked_out'])
+                    ->whereDate('check_out', $today)->count(),
+                // Visitors admitted at the gate today (verified passes).
+                'visitor_pass_check_ins' => VisitorPass::where('status', VisitorPass::VERIFIED)
+                    ->whereDate('verified_at', $today)->count(),
+                // Still checked in past their departure deadline — a full day
+                // gone, or just past the hotel's checkout time on their own
+                // checkout day. Reused off $overdueBookings (already the same
+                // rows, same rule) so the count can never drift from what the
+                // Alerts panel actually lists.
+                'overdue_departures' => $overdueBookings->count(),
+            ],
+            'arrivals' => $arrivals->map->toReceptionArrivalArray()->values(),
+            'departures' => $departures->map->toReceptionDepartureArray()->values(),
+            'alerts' => $incidents->map->toReceptionAlertArray()
+                ->concat($overdueBookings->map->toReceptionAlertArray())
+                ->concat($maintenanceRequests->map->toReceptionAlertArray())
+                ->concat($housekeepingRequests->map->toReceptionAlertArray())
+                ->values(),
+            'incidents' => $incidents->map->toSecurityArray()->values(),
+            'room_status' => [
+                'occupied' => $roomBoard->where('board_status', 'occupied')->count(),
+                'dirty' => $roomBoard->where('board_status', 'dirty')->count(),
+                'maintenance' => $roomBoard->where('board_status', 'maintenance')->count(),
+            ],
+        ]]);
+    }
+
+    /**
+     * GET /reception/room-status — the hotel-wide Room Status board: every
+     * room's occupancy (from its booking), housekeeping's cleanliness flag,
+     * and whether maintenance has an open fault against it. Read-only —
+     * reception watches housekeeping and maintenance work here, it doesn't
+     * change either.
+     */
+    public function roomStatus(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $rooms = $this->roomBoard();
+
+        return response()->json(['data' => [
+            'stats' => [
+                'total' => $rooms->count(),
+                'occupied' => $rooms->where('board_status', 'occupied')->count(),
+                'maintenance' => $rooms->where('board_status', 'maintenance')->count(),
+                'preparing' => $rooms->where('board_status', 'preparing')->count(),
+                'dirty' => $rooms->where('board_status', 'dirty')->count(),
+            ],
+            'rooms' => $rooms,
+        ]]);
+    }
+
+    /**
+     * Every room, its occupancy, housekeeping status, and whether maintenance
+     * has an open fault against it — the shared source of truth behind both
+     * the overview dashboard's room-status tile and the dedicated Room
+     * Status board, so the two can never drift apart.
+     */
+    private function roomBoard(): Collection
+    {
+        $rooms = RoomUnit::with(['room', 'booking'])->get();
+
+        $openWorkOrderRoomIds = WorkOrder::where('status', '!=', WorkOrder::DONE)
+            ->whereNotNull('room_unit_id')
+            ->pluck('room_unit_id')
+            ->unique();
+
+        return $rooms->map(fn (RoomUnit $unit) => $unit->toReceptionRoomArray(
+            $openWorkOrderRoomIds->contains($unit->id),
+        ))->values();
+    }
+
+    /**
+     * GET /reception/bookings/{booking}/rooms — the room-assignment step.
+     *
+     * Returns the unit the booking is (or will be) assigned to, plus every other
+     * free unit in the hotel the desk can move the guest to — grouped by room so
+     * the whole available inventory is visible, not just the booked room type.
+     * Moving to a different room type does not reprice the stay: the booking's
+     * charge is left unchanged (a separate admin/billing decision).
+     */
+    public function roomOptions(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $assigned = $booking->room_unit_id
+            ? RoomUnit::with('devices')->find($booking->room_unit_id)
+            : $booking->autoAssignRoomUnit()?->loadMissing('devices');
+
+        $available = RoomUnit::where('status', 'available')
+            ->when($booking->room_unit_id, fn ($q) => $q->where('id', '!=', $booking->room_unit_id))
+            ->with(['room', 'devices'])
+            ->orderBy('room_id')
+            ->orderByRaw('LENGTH(number), number')
+            ->get();
+
+        return response()->json(['data' => [
+            'assigned' => $assigned ? $this->unitOption($assigned, $booking) : null,
+            'available' => $available->map(fn ($u) => $this->unitOption($u, $booking))->values(),
+        ]]);
+    }
+
+    private function unitOption(RoomUnit $unit, Booking $booking): array
+    {
+        $room = $unit->relationLoaded('room') ? $unit->room : $unit->room()->first();
+        $room ??= $booking->room;
+
+        // Whether this unit has an in-room tablet — mirrors the admin dashboard's
+        // check-in step, so the desk knows the guest's details will appear on the
+        // room's device the moment they are admitted.
+        $hasTablet = ($unit->relationLoaded('devices') ? $unit->devices : $unit->devices())
+            ->count() > 0;
+
+        return [
+            'id' => $unit->id,
+            'number' => $unit->number,
+            'room_name' => $room?->name ?? $booking->room_name,
+            'price_label' => $room ? 'NGN '.number_format((int) $room->price).'/night' : null,
+            'has_tablet' => $hasTablet,
+        ];
+    }
+
+    /**
+     * POST /reception/bookings/{booking}/check-in — admit an arriving guest.
+     *
+     * Carries the identity captured on the tablet: the document type and number,
+     * an optional scan (uploaded to Cloudinary here, so its credentials stay
+     * server-side and the admin can view the file later), and the room unit the
+     * desk chose. Occupying the room and checking the booking in are one act — an
+     * error between them would leave a room occupied by a guest who was never
+     * checked in. Idempotent: a second submit returns the existing confirmation.
+     */
+    public function checkIn(Request $request, Booking $booking, CloudinaryService $cloudinary): JsonResponse
+    {
+        $this->receptionist($request);
+
+        if ($booking->status === 'checked_in') {
+            return response()->json(['data' => $booking->fresh()->toCheckinConfirmationArray()]);
+        }
+
+        abort_unless($booking->status === 'paid', 409, 'This booking is not ready for check-in.');
+
+        $data = $request->validate([
+            'document_type' => ['nullable', 'in:passport,nin,work_id,drivers_license,voter_card'],
+            'document_number' => ['nullable', 'string', 'max:60'],
+            'document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:8192'],
+            'room_unit_id' => ['nullable', 'integer'],
+        ]);
+
+        // The chosen room must be a free unit (or the one already held for this
+        // booking) — never someone else's occupied room. Any room type is
+        // allowed: the desk can place the guest anywhere that is open.
+        $unit = null;
+        if (! empty($data['room_unit_id'])) {
+            $unit = RoomUnit::where('id', $data['room_unit_id'])
+                ->where(fn ($q) => $q->where('status', 'available')->orWhere('id', $booking->room_unit_id))
+                ->with('room')
+                ->first();
+            abort_unless($unit, 422, 'That room is not available.');
+        }
+
+        // Upload the scan before the transaction — a network call has no place
+        // inside a DB lock, and a failed upload must not fail the check-in.
+        $upload = $request->hasFile('document')
+            ? $cloudinary->upload($request->file('document'))
+            : null;
+
+        DB::transaction(function () use ($booking, $unit, $data, $upload) {
+            $target = $unit ?? $booking->autoAssignRoomUnit();
+            if ($target) {
+                // Free any previously held unit before occupying the new one.
+                if ($booking->room_unit_id && $booking->room_unit_id !== $target->id) {
+                    RoomUnit::release($booking->room_unit_id);
+                }
+                $target->update(['status' => 'occupied', 'booking_id' => $booking->id]);
+                $booking->room_unit_id = $target->id;
+
+                // If the guest was moved to a room of a different type, keep the
+                // booking's room reference consistent. The charge is deliberately
+                // left unchanged — repricing is a separate admin/billing decision.
+                $targetRoom = $target->relationLoaded('room') ? $target->room : $target->room()->first();
+                if ($targetRoom && $targetRoom->id !== $booking->room_id) {
+                    $booking->room_id = $targetRoom->id;
+                    $booking->room_name = $targetRoom->name;
+                }
+            }
+
+            $booking->forceFill([
+                'id_document_type' => $data['document_type'] ?? $booking->id_document_type,
+                'id_document_number' => $data['document_number'] ?? $booking->id_document_number,
+                'id_document_public_id' => $upload['public_id'] ?? $booking->id_document_public_id,
+                'id_document_url' => $upload['url'] ?? $booking->id_document_url,
+                'identity_verified_at' => ($data['document_number'] ?? null) || $upload ? now() : $booking->identity_verified_at,
+                'status' => 'checked_in',
+                'checked_in_at' => now(),
+                'checked_out_at' => null,
+            ]);
+            $booking->ensureCheckinConfirmation();
+            $booking->save();
+        });
+
+        return response()->json(['data' => $booking->fresh()->toCheckinConfirmationArray()]);
+    }
+
+    /**
+     * GET /reception/bookings/{booking}/departure-readiness — everything the
+     * desk should see before checking a guest out: the outstanding balance
+     * (a hard block), whether housekeeping has completed the pre-checkout
+     * room inspection reception asked for (also a hard block — see
+     * {@see requestInspection}), any of the guest's housekeeping requests or
+     * maintenance faults still open (a heads-up, not a block — the guest
+     * can still leave), and any visitor passes still active against this
+     * stay (informational — checkout closes them automatically).
+     */
+    public function departureReadiness(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $due = $this->billQuote($booking)['due'];
+        $inspection = $this->latestInspectionRequest($booking);
+
+        $openRequests = HousekeepingRequest::where('booking_id', $booking->id)
+            ->where('type', '!=', HousekeepingRequest::CHECKOUT_INSPECTION)
+            ->where('status', HousekeepingRequest::PENDING)
+            ->latest()
+            ->get();
+
+        $openWorkOrders = WorkOrder::where('booking_id', $booking->id)
+            ->where('status', '!=', WorkOrder::DONE)
+            ->latest()
+            ->get();
+
+        $activePasses = VisitorPass::where('booking_id', $booking->id)
+            ->where(fn ($q) => $q
+                ->where('status', VisitorPass::PENDING)
+                ->orWhere(fn ($q2) => $q2->where('status', VisitorPass::VERIFIED)->whereNull('exited_at')))
+            ->get();
+
+        $inspectionStatus = match (true) {
+            $inspection === null => 'not_requested',
+            $inspection->isPending() => 'pending',
+            default => 'completed',
+        };
+
+        return response()->json(['data' => [
+            'due' => $due,
+            'due_label' => 'NGN '.number_format($due),
+            'inspection_status' => $inspectionStatus,
+            'can_check_out' => $due <= 0 && $inspectionStatus === 'completed',
+            'open_requests' => $openRequests->map->toHousekeepingArray()->values(),
+            'open_work_orders' => $openWorkOrders->map->toMaintenanceArray()->values(),
+            'active_visitor_passes' => $activePasses->map->toReceptionVisitorArray()->values(),
+        ]]);
+    }
+
+    /**
+     * POST /reception/bookings/{booking}/settle-bill — the desk records that
+     * a guest has already paid their outstanding room-charge balance in
+     * person, by however they actually paid — cash, card, or bank transfer,
+     * picked on the tablet before this fires — so checkout isn't blocked by
+     * a balance that was, in reality, already settled outside the app.
+     * Records a real {@see BillPayment} for the exact outstanding amount —
+     * the same ledger a Paystack pre-settlement writes to — so the Bills
+     * module and the admin Payments table both reflect it, with the real
+     * method the guest paid with. Idempotent: settling an already-clear
+     * balance is a no-op (and doesn't require a method, since nothing is
+     * actually recorded).
+     */
+    public function settleBill(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $quote = $this->billQuote($booking);
+        if ($quote['due'] > 0) {
+            $data = $request->validate([
+                'payment_method' => ['required', 'in:'.implode(',', BillPayment::DESK_METHODS)],
+            ], [
+                'payment_method.required' => 'Choose how the guest paid before marking this as paid.',
+            ]);
+
+            BillPayment::create([
+                'booking_id' => $booking->id,
+                'reference' => 'BILL-DESK-'.$booking->id.'-'.Str::upper(Str::random(6)),
+                'amount' => $quote['amount_due'],
+                'vat' => $quote['vat_due'],
+                'status' => BillPayment::SUCCESS,
+                'payment_method' => $data['payment_method'],
+                'paid_at' => now(),
+            ]);
+            $this->markRoomChargesSettled($booking);
+        }
+
+        $due = $this->billQuote($booking)['due'];
+
+        return response()->json(['data' => [
+            'due' => $due,
+            'due_label' => 'NGN '.number_format($due),
+        ]]);
+    }
+
+    /**
+     * POST /reception/bookings/{booking}/request-inspection — ask
+     * housekeeping to inspect the room before this guest is allowed to check
+     * out. Raises the same kind of request as a guest's own housekeeping
+     * asks (see {@see HousekeepingRequest::CHECKOUT_INSPECTION}), so it
+     * shows up on housekeeping's existing Requests queue and notification
+     * feed with no separate hand-off — housekeeping marks it complete the
+     * same way they clear any other request. Idempotent: a second call while
+     * one is already open returns the existing request rather than raising a
+     * duplicate.
+     */
+    public function requestInspection(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        abort_unless($booking->status === 'checked_in', 409, 'This booking is not checked in.');
+        abort_unless($booking->room_unit_id, 422, 'This booking has no room assigned.');
+
+        $inspection = $this->latestInspectionRequest($booking);
+        if ($inspection === null || ! $inspection->isPending()) {
+            $inspection = HousekeepingRequest::create([
+                'room_unit_id' => $booking->room_unit_id,
+                'booking_id' => $booking->id,
+                'type' => HousekeepingRequest::CHECKOUT_INSPECTION,
+                'notes' => "Reception is checking out {$booking->customer_name} — please inspect before they leave.",
+            ]);
+
+            HousekeepingNotification::notify(
+                'guest',
+                'Checkout Inspection Needed',
+                "{$booking->customer_name}'s room needs inspecting before they check out.",
+                $booking,
+            );
+        }
+
+        return response()->json(['data' => [
+            'inspection_status' => $inspection->isPending() ? 'pending' : 'completed',
+        ]]);
+    }
+
+    /** The most recent checkout-inspection request raised against this booking, if any. */
+    private function latestInspectionRequest(Booking $booking): ?HousekeepingRequest
+    {
+        return HousekeepingRequest::where('booking_id', $booking->id)
+            ->where('type', HousekeepingRequest::CHECKOUT_INSPECTION)
+            ->latest()
+            ->first();
+    }
+
+    /**
+     * POST /reception/bookings/{booking}/check-out — close out a departing guest.
+     *
+     * Freeing the room and closing the booking stand or fall together. Idempotent
+     * in the same way as check-in.
+     *
+     * Blocked until housekeeping has completed the pre-checkout inspection
+     * reception requested (see {@see requestInspection}) — a real sign-off
+     * from the tablet that actually walked the room, not reception
+     * self-attesting. The audit columns on the booking are filled in from
+     * whoever on housekeeping completed that request.
+     */
+    public function checkOut(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        if ($booking->status === 'checked_out') {
+            return response()->json(['data' => $booking->fresh()->toReceptionDepartureArray()]);
+        }
+
+        abort_unless($booking->status === 'checked_in', 409, 'This booking is not checked in.');
+
+        // The guest must settle their room-charge bill before checking out —
+        // the same real balance their own tablet's My Bills screen, and the
+        // desk's own Bills module, show them.
+        $due = $this->billQuote($booking)['due'];
+        if ($due > 0) {
+            return response()->json([
+                'message' => 'This guest has an outstanding balance of NGN '.number_format($due).'. Settle the bill before checking out.',
+                'due' => $due,
+                'due_label' => 'NGN '.number_format($due),
+            ], 409);
+        }
+
+        $inspection = $this->latestInspectionRequest($booking);
+        if ($inspection === null || $inspection->isPending()) {
+            return response()->json([
+                'message' => 'Housekeeping must inspect and clear the room before checking out.',
+            ], 409);
+        }
+
+        DB::transaction(function () use ($booking, $inspection) {
+            $unitId = $booking->room_unit_id;
+            RoomUnit::release($unitId);
+            // The guest has just left — the room needs a turnover clean before
+            // it can be sold again, regardless of what housekeeping last left
+            // it as. Housekeeping's own tablet picks this up from here:
+            // dirty → preparing → clean.
+            if ($unitId) {
+                RoomUnit::where('id', $unitId)->update([
+                    'housekeeping_status' => 'dirty',
+                    'housekeeping_status_at' => now(),
+                ]);
+            }
+            $booking->forceFill([
+                'status' => 'checked_out',
+                'checked_out_at' => now(),
+                'checkout_inspected_by' => $inspection->completed_by,
+                'checkout_inspected_at' => $inspection->completed_at,
+            ])->save();
+        });
+
+        // The host has gone — their visitors' gate codes go with them.
+        app(VisitorPassProvisioner::class)->closeOutBooking($booking->id);
+
+        return response()->json(['data' => $booking->fresh()->toReceptionDepartureArray()]);
+    }
+
+    /* ---------------- Vehicle pickup ---------------- */
+
+    /**
+     * GET /reception/pickups — every guest vehicle pickup, newest first, so the
+     * desk can see who is arriving by car and assign a driver. Optional
+     * `?status=` narrows by pickup stage (unassigned | assigned | completed).
+     */
+    public function pickups(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $status = $request->query('status');
+
+        $pickups = Booking::with('pickupDriver')
+            ->whereNotNull('pickup_vehicle')->where('pickup_vehicle', '!=', '')
+            ->whereIn('status', ['paid', 'checked_in', 'checked_out'])
+            ->when(
+                in_array($status, ['unassigned', 'assigned', 'completed'], true),
+                fn ($q) => $q->where('pickup_status', $status),
+            )
+            ->orderByRaw("CASE pickup_status WHEN 'unassigned' THEN 0 WHEN 'assigned' THEN 1 ELSE 2 END")
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
+        return response()->json(['data' => $pickups->map->toReceptionPickupArray()->values()]);
+    }
+
+    /**
+     * GET /reception/drivers — the assignable driver roster (available only) for
+     * the pickup assignment dropdown.
+     */
+    public function drivers(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $drivers = Driver::available()->orderBy('sort_order')->orderBy('name')->get();
+
+        return response()->json(['data' => $drivers->map->toRosterArray()->values()]);
+    }
+
+    /**
+     * POST /reception/bookings/{booking}/assign-driver — assign or reassign the
+     * driver for a guest's vehicle pickup. A null `driver_id` clears it.
+     */
+    public function assignDriver(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        abort_unless($booking->isPickup(), 422, 'This booking has no vehicle pickup.');
+
+        $data = $request->validate([
+            'driver_id' => ['nullable', 'integer', 'exists:drivers,id'],
+        ]);
+
+        $driver = ! empty($data['driver_id'])
+            ? Driver::available()->find($data['driver_id'])
+            : null;
+
+        // A driver_id was given but the driver is off-duty or gone.
+        abort_if(! empty($data['driver_id']) && ! $driver, 422, 'That driver is not available.');
+
+        $booking->assignPickupDriver($driver);
+
+        return response()->json(['data' => $booking->fresh()->load('pickupDriver')->toReceptionPickupArray()]);
+    }
+
+    /**
+     * POST /reception/bookings/{booking}/pickup-complete — mark the guest as
+     * collected once the driver has picked them up.
+     */
+    public function completePickup(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        abort_unless($booking->isPickup(), 422, 'This booking has no vehicle pickup.');
+        abort_unless($booking->pickup_status === 'assigned', 409, 'Assign a driver before completing the pickup.');
+
+        $booking->markPickupCompleted();
+
+        return response()->json(['data' => $booking->fresh()->load('pickupDriver')->toReceptionPickupArray()]);
+    }
+
+    /* ---------------- SOS incidents ---------------- */
+
+    /**
+     * GET /reception/incidents — the SOS Alert Logs: every emergency ever raised,
+     * most recent first, with its full timeline. Optionally narrowed by
+     * `?status=` (active | acknowledged | resolved | cancelled | open).
+     *
+     * SOS alerts are hotel-wide, so reception sees the same incidents security
+     * does and can respond to them — the front desk is often the closest staffed
+     * station to a guest in trouble.
+     */
+    public function incidents(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $status = $request->query('status');
+
+        $incidents = SosAlert::query()
+            ->with(['acknowledgedBy:id,name', 'resolvedBy:id,name'])
+            ->when($status === 'open', fn ($q) => $q->open())
+            ->when(
+                in_array($status, [SosAlert::ACTIVE, SosAlert::ACKNOWLEDGED, SosAlert::RESOLVED, SosAlert::CANCELLED], true),
+                fn ($q) => $q->where('status', $status),
+            )
+            ->latest('raised_at')
+            ->limit(100)
+            ->get();
+
+        return response()->json(['data' => $incidents->map->toLogArray()->values()]);
+    }
+
+    /**
+     * POST /reception/incidents/{alert}/respond — the receptionist acknowledges an
+     * incoming SOS: the guest tablet flips to "help is on the way", and the alert
+     * moves off the ACTIVE state. A second tap (or one from security) is a no-op.
+     */
+    public function respond(Request $request, SosAlert $alert): JsonResponse
+    {
+        $receptionist = $this->receptionist($request);
+
+        $alert->acknowledge($receptionist);
+
+        return response()->json(['data' => $alert->fresh()->toSecurityArray()]);
+    }
+
+    /**
+     * POST /reception/incidents/{alert}/resolve — the incident is dealt with. Once
+     * resolved it stays resolved; a later tap is a no-op.
+     */
+    public function resolve(Request $request, SosAlert $alert): JsonResponse
+    {
+        $receptionist = $this->receptionist($request);
+
+        $alert->resolve($receptionist);
+
+        return response()->json(['data' => $alert->fresh()->toSecurityArray()]);
+    }
+
+    /**
+     * GET /reception/bookings — every room booking, newest first, optionally
+     * narrowed by `?status=` and `?search=`. This is the front desk's read-only
+     * view of the same reservations the admin dashboard manages.
+     */
+    public function bookings(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $status = $request->query('status');
+        $search = trim((string) $request->query('search', ''));
+
+        $bookings = Booking::with('roomUnit')
+            ->when(
+                in_array($status, ['pending', 'paid', 'checked_in', 'checked_out', 'cancelled'], true),
+                fn ($q) => $q->where('status', $status),
+            )
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('customer_name', 'like', "%{$search}%")
+                ->orWhere('room_name', 'like', "%{$search}%")
+                ->orWhere('id', 'like', "%{$search}%")))
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
+        return response()->json(['data' => $bookings->map->toReceptionBookingRowArray()->values()]);
+    }
+
+    /* ---------------- Bills ---------------- */
+
+    /**
+     * GET /reception/bills — every checked-in guest's outstanding room-charge
+     * balance, so the desk can see who owes what without opening each guest's
+     * folio. Optional `?search=` narrows by guest name or room number. Guests
+     * carrying a balance sort first — that's who the desk needs to chase.
+     */
+    public function bills(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $search = trim((string) $request->query('search', ''));
+
+        $bookings = Booking::with('roomUnit')
+            ->where('status', 'checked_in')
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('customer_name', 'like', "%{$search}%")
+                ->orWhere('room_name', 'like', "%{$search}%")))
+            ->get();
+
+        $rows = $bookings->map(function (Booking $booking) {
+            $q = $this->billQuote($booking);
+
+            return [
+                'booking_id' => $booking->id,
+                'guest_name' => $booking->customer_name,
+                'room_label' => $booking->roomUnit?->number
+                    ? 'Room '.$booking->roomUnit->number
+                    : ($booking->room_name ?: '—'),
+                'check_out_label' => optional($booking->departureAt())->format('M j, Y'),
+                'total_due' => $q['due'],
+                'total_due_label' => 'NGN '.number_format($q['due']),
+                'has_balance' => $q['due'] > 0,
+            ];
+        })->sortByDesc('total_due')->values();
+
+        return response()->json(['data' => [
+            'summary' => [
+                'total_outstanding' => (int) $rows->sum('total_due'),
+                'total_outstanding_label' => 'NGN '.number_format($rows->sum('total_due')),
+                'guests_with_balance' => $rows->where('has_balance', true)->count(),
+            ],
+            'bills' => $rows,
+        ]]);
+    }
+
+    /**
+     * GET /reception/bookings/{booking}/bill — one checked-in guest's itemised
+     * folio, the same real numbers the guest tablet's My Bills screen shows
+     * them, for the desk to review or settle in person.
+     */
+    public function bookingBill(Request $request, Booking $booking): JsonResponse
+    {
+        $this->receptionist($request);
+
+        abort_unless($booking->status === 'checked_in', 404, 'This booking is not checked in.');
+
+        $booking->loadMissing('roomUnit.room');
+        $room = $booking->roomUnit?->room ?? $booking->room;
+
+        $breakdown = $this->billBreakdown($booking);
+
+        return response()->json(['data' => [
+            'reservation' => [
+                'guest_name' => $booking->customer_name,
+                'room_name' => $room?->name ?? $booking->room_name,
+                'unit_label' => $booking->roomUnit?->number ? 'Room '.$booking->roomUnit->number : null,
+                'check_in_label' => optional($booking->arrivalAt())->format('M j, Y'),
+                'check_out_label' => optional($booking->departureAt())->format('M j, Y'),
+            ],
+            'categories' => $breakdown['categories'],
+            'summary' => [
+                'lines' => $breakdown['summary_lines'],
+                'total_due' => $breakdown['due'],
+                'total_due_label' => 'NGN '.number_format($breakdown['due']),
+            ],
+        ]]);
+    }
+
+    /**
+     * GET /reception/guests — the hotel's guests, aggregated from their bookings.
+     *
+     * There is no Guest table: a guest is a distinct person (by email, else
+     * phone, else name) with one or more bookings. Each row rolls up how many
+     * stays they have had and whether they are currently in-house.
+     */
+    public function guests(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $search = trim((string) $request->query('search', ''));
+
+        $bookings = Booking::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('customer_name', 'like', "%{$search}%")
+                ->orWhere('customer_email', 'like', "%{$search}%")
+                ->orWhere('customer_phone', 'like', "%{$search}%")))
+            ->orderByDesc('check_in')
+            ->get();
+
+        $guests = $bookings
+            ->groupBy(fn (Booking $b) => $b->guestKey())
+            ->map(function ($group) {
+                $latest = $group->first(); // ordered newest-first
+                $stays = $group->whereIn('status', ['paid', 'checked_in', 'checked_out']);
+                $activeBooking = $group->firstWhere('status', 'checked_in');
+
+                return [
+                    'key' => $latest->guestKey(),
+                    'name' => $latest->customer_name,
+                    'email' => $latest->customer_email,
+                    'phone' => $latest->customer_phone,
+                    'stays' => $stays->count(),
+                    'last_stay_label' => optional($latest->check_in)->format('M j, Y'),
+                    'in_house' => $activeBooking !== null,
+                    // Lets the list check the guest out in one tap, no need to
+                    // open their profile first.
+                    'active_booking_id' => $activeBooking?->id,
+                    // Kept only for the sort just below — stripped before the
+                    // response goes out, the tablet has no use for it.
+                    'latest_check_in' => $latest->check_in,
+                ];
+            })
+            // Whoever is in-house right now first — the desk's most actionable
+            // view — then everyone else newest booking first, so a guest who
+            // just reserved doesn't get buried alphabetically behind years of
+            // history.
+            ->sort(fn ($a, $b) => match (true) {
+                $a['in_house'] !== $b['in_house'] => $a['in_house'] ? -1 : 1,
+                default => $b['latest_check_in'] <=> $a['latest_check_in'],
+            })
+            ->map(fn ($g) => collect($g)->except('latest_check_in')->all())
+            ->values();
+
+        return response()->json(['data' => $guests]);
+    }
+
+    /**
+     * GET /reception/guests/profile?key= — one guest's full record: their contact
+     * details, lifetime stats, stay history and preferences derived from that
+     * history (there is nothing to fabricate — a "preference" is just what the
+     * guest has actually done before).
+     */
+    public function guestProfile(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $key = (string) $request->query('key', '');
+        abort_if($key === '', 422, 'A guest key is required.');
+
+        $bookings = Booking::with('roomUnit')
+            ->orderByDesc('check_in')
+            ->get()
+            ->filter(fn (Booking $b) => $b->guestKey() === $key)
+            ->values();
+
+        abort_if($bookings->isEmpty(), 404, 'Guest not found.');
+
+        $latest = $bookings->first();
+        $stays = $bookings->whereIn('status', ['paid', 'checked_in', 'checked_out']);
+        $activeBooking = $bookings->firstWhere('status', 'checked_in');
+
+        // Favourite room and usual party size are simply the most frequent ones.
+        $favouriteRoom = $stays->groupBy('room_name')->map->count()->sortDesc()->keys()->first();
+        $usualParty = $stays->pluck('guests')->filter()
+            ->countBy()->sortDesc()->keys()->first();
+
+        return response()->json(['data' => [
+            'key' => $key,
+            'name' => $latest->customer_name,
+            'email' => $latest->customer_email,
+            'phone' => $latest->customer_phone,
+            'in_house' => $activeBooking !== null,
+            // The booking to check out when the guest is in-house — lets the desk
+            // check them out from their profile even if their departure isn't
+            // "today" (an extended stay, or one due later that's leaving early).
+            'active_booking_id' => $activeBooking?->id,
+            'stats' => [
+                'total_stays' => $stays->count(),
+                'total_nights' => (int) $stays->sum('nights'),
+                'total_spend_label' => '₦'.number_format((int) $stays->sum('amount')),
+                'first_seen_label' => optional($bookings->last()->check_in)->format('M Y'),
+            ],
+            'preferences' => [
+                'favourite_room' => $favouriteRoom,
+                'usual_party_size' => $usualParty !== null ? (int) $usualParty : null,
+                'uses_airport_pickup' => $bookings->contains(fn (Booking $b) => ! empty($b->pickup_vehicle)),
+            ],
+            'history' => $bookings->map->toReceptionBookingRowArray()->values(),
+        ]]);
+    }
+
+    /* ---------------- Visitor Pass ---------------- */
+
+    /**
+     * GET /reception/visitors — every visitor pass, most recently invited
+     * first, so the desk can see who is expected as well as who has already
+     * arrived. Unlike security's gate queue this is not scoped to today —
+     * reception needs to see visitors coming later too. Optional `?status=`
+     * narrows by pass status; `?search=` narrows by visitor, host or room.
+     */
+    public function visitors(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $status = $request->query('status');
+        $search = trim((string) $request->query('search', ''));
+
+        $passes = VisitorPass::query()
+            ->when(
+                in_array($status, [
+                    VisitorPass::PENDING, VisitorPass::VERIFIED, VisitorPass::DENIED,
+                    VisitorPass::CANCELLED, VisitorPass::EXPIRED,
+                ], true),
+                fn ($q) => $q->where('status', $status),
+            )
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('visitor_name', 'like', "%{$search}%")
+                ->orWhere('host_name', 'like', "%{$search}%")
+                ->orWhere('room_number', 'like', "%{$search}%")
+                ->orWhere('suite_name', 'like', "%{$search}%")))
+            ->orderByDesc('created_at')
+            ->limit(150)
+            ->get();
+
+        return response()->json(['data' => [
+            'summary' => [
+                'expected' => VisitorPass::where('status', VisitorPass::PENDING)->count(),
+                'inside' => VisitorPass::where('status', VisitorPass::VERIFIED)->whereNull('exited_at')->count(),
+                'today' => VisitorPass::whereDate('created_at', today())->count(),
+            ],
+            'visitors' => $passes->map->toReceptionVisitorArray()->values(),
+        ]]);
+    }
+
+    /* ---------------- Notifications ---------------- */
+
+    /**
+     * GET /reception/notifications — the front desk's notification feed,
+     * newest first. Reception is one shared station, so the feed (and its
+     * read state) is shared across whoever is signed in, not scoped to a
+     * single receptionist.
+     */
+    public function notifications(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $notifications = ReceptionNotification::with('booking.roomUnit')->latest()->limit(100)->get();
+
+        return response()->json(['data' => $notifications->map->toReceptionArray()->values()]);
+    }
+
+    /** POST /reception/notifications/{notification}/read — mark one as read. */
+    public function markNotificationRead(Request $request, int $notification): JsonResponse
+    {
+        $this->receptionist($request);
+
+        $record = ReceptionNotification::find($notification);
+        abort_unless($record, 404, 'Notification not found.');
+
+        if (! $record->read_at) {
+            $record->update(['read_at' => now()]);
+        }
+
+        return response()->json(['data' => $record->toReceptionArray()]);
+    }
+
+    /** POST /reception/notifications/read-all — "Mark all read". */
+    public function markAllNotificationsRead(Request $request): JsonResponse
+    {
+        $this->receptionist($request);
+
+        ReceptionNotification::whereNull('read_at')->update(['read_at' => now()]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** The authenticated staffer, who must hold the `reception` role. */
+    private function receptionist(Request $request): User
+    {
+        $user = $request->user();
+
+        abort_unless($user instanceof User, 401, 'Unauthenticated.');
+        abort_unless($user->hasRole('reception'), 403, 'Reception access only.');
+
+        return $user;
+    }
+}

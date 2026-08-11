@@ -8,22 +8,32 @@ class SecurityVisitor {
   const SecurityVisitor({
     required this.id,
     required this.name,
+    this.reference,
     this.suiteName,
     this.roomNumber,
     this.passCode,
     this.arrivalLabel,
     this.isInside = false,
     this.isVerified = true,
+    this.isExited = false,
   });
 
   final int id;
   final String name;
+
+  /// Human pass reference, e.g. "VP-2401-103".
+  final String? reference;
   final String? suiteName;
   final String? roomNumber;
   final String? passCode;
   final String? arrivalLabel;
   final bool isInside;
   final bool isVerified;
+
+  /// True once a verified visitor has been checked out — distinct from
+  /// simply not being inside yet, which is what a still-pending visitor
+  /// shows too.
+  final bool isExited;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -34,12 +44,14 @@ class SecurityVisitor {
   factory SecurityVisitor.fromJson(Map<String, dynamic> json) => SecurityVisitor(
         id: (json['id'] as num?)?.toInt() ?? 0,
         name: json['name'] as String? ?? 'Visitor',
+        reference: json['reference'] as String?,
         suiteName: json['suite_name'] as String?,
         roomNumber: json['room_number'] as String?,
         passCode: json['pass_code'] as String?,
         arrivalLabel: json['arrival_label'] as String?,
         isInside: json['is_inside'] as bool? ?? false,
         isVerified: json['is_verified'] as bool? ?? true,
+        isExited: json['is_exited'] as bool? ?? false,
       );
 }
 
@@ -50,6 +62,7 @@ class VisitorPassRequest {
   const VisitorPassRequest({
     required this.id,
     required this.name,
+    this.reference,
     this.suiteName,
     this.roomNumber,
     this.passCode,
@@ -64,6 +77,9 @@ class VisitorPassRequest {
 
   final int id;
   final String name;
+
+  /// Human pass reference shown beside the code, e.g. "VP-2401-101".
+  final String? reference;
   final String? suiteName;
   final String? roomNumber;
   final String? passCode;
@@ -85,6 +101,7 @@ class VisitorPassRequest {
       VisitorPassRequest(
         id: (json['id'] as num?)?.toInt() ?? 0,
         name: json['name'] as String? ?? 'Visitor',
+        reference: json['reference'] as String?,
         suiteName: json['suite_name'] as String?,
         roomNumber: json['room_number'] as String?,
         passCode: json['pass_code'] as String?,

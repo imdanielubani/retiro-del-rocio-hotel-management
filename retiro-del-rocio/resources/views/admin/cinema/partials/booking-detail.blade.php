@@ -30,7 +30,9 @@
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Private Room</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->roomLabel() }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Guests</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->guestsLabel() }}</p></div>
                     <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3 col-span-2"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Snacks</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->snacksLabel() }}</p></div>
-                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3 col-span-2"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Total paid</p><p class="mt-0.5 text-[16px] font-bold text-[#1e1e1e]">{{ $selected->amountLabel() }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Subtotal</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->amountLabel() }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">VAT (7.5%)</p><p class="mt-0.5 text-[13px] font-semibold text-[#1e1e1e]">{{ $selected->vatLabel() }}</p></div>
+                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3 col-span-2"><p class="text-[11px] uppercase tracking-wide text-[#9ca3af]">Total paid</p><p class="mt-0.5 text-[16px] font-bold text-[#1e1e1e]">{{ $selected->totalWithVatLabel() }}</p></div>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2 border-t border-[#e5e7eb] px-6 py-4">

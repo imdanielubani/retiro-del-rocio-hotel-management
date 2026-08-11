@@ -134,7 +134,7 @@
                                 </td>
                                 <td class="px-5 py-4 text-[14px] font-bold text-[#1e1e1e]">{{ $b->pickupAmountLabel() }}</td>
                                 <td class="px-5 py-4"><span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $b->paymentStatusBadge() }}">{{ $b->paymentStatusLabel() }}</span></td>
-                                <td class="px-5 py-4"><span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span></td>
+                                <td class="px-5 py-4"><span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $b->transportStatusBadge() }}">{{ $b->transportStatusLabel() }}</span></td>
                                 <td class="px-5 py-4 text-right">
                                     @include('admin.vehicles._booking-actions', ['b' => $b])
                                 </td>
@@ -157,7 +157,7 @@
                             @include('admin.vehicles._booking-actions', ['b' => $b])
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $b->statusBadge() }}">{{ $b->statusLabel() }}</span>
+                            <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $b->transportStatusBadge() }}">{{ $b->transportStatusLabel() }}</span>
                             <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $b->paymentStatusBadge() }}">{{ $b->paymentStatusLabel() }}</span>
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-[13px]">
@@ -192,7 +192,7 @@
                         <h2 class="text-[20px] font-bold text-[#1e1e1e]">{{ $selected->transportCode() }}</h2>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="inline-flex rounded-full px-3 py-1 text-[12px] font-semibold {{ $selected->statusBadge() }}">{{ $selected->statusLabel() }}</span>
+                        <span class="inline-flex rounded-full px-3 py-1 text-[12px] font-semibold {{ $selected->transportStatusBadge() }}">{{ $selected->transportStatusLabel() }}</span>
                         <button type="button" wire:click="closeModal" class="flex size-8 items-center justify-center rounded-lg text-[#6b7280] transition hover:bg-[#f3f4f6]">
                             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
                         </button>
@@ -269,6 +269,47 @@
                         </span>
                         <span class="text-[18px] font-bold">{{ $selected->pickupAmountLabel() }}</span>
                     </div>
+
+                    {{-- Driver assignment (confirmed pickups only) --}}
+                    @php $isConfirmed = in_array($selected->status, ['paid', 'checked_in', 'checked_out']); @endphp
+                    @if ($isConfirmed)
+                        @php
+                            // Include the currently-assigned driver in the options even if
+                            // they are now off-duty, so the selection still shows.
+                            $options = $drivers;
+                            if ($selected->pickupDriver && ! $drivers->contains('id', $selected->pickupDriver->id)) {
+                                $options = $drivers->concat([$selected->pickupDriver]);
+                            }
+                        @endphp
+                        <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-4">
+                            <div class="flex items-center justify-between">
+                                <p class="text-[10px] font-semibold uppercase tracking-[1px] text-[#9ca3af]">Driver</p>
+                                <span class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold {{ $selected->pickup_status === 'completed' ? 'bg-[#dcfce7] text-[#16a34a]' : ($selected->pickup_status === 'assigned' ? 'bg-[#ede9fe] text-[#7c3aed]' : 'bg-[#fef3c7] text-[#d97706]') }}">{{ $selected->pickupStatusLabel() }}</span>
+                            </div>
+                            @if ($selected->pickupDriver)
+                                <p class="mt-2 text-[14px] font-bold text-[#1e1e1e]">{{ $selected->pickupDriver->name }}</p>
+                                <p class="text-[12px] text-[#6b7280]">{{ collect([$selected->pickupDriver->phone, $selected->pickupDriver->vehicle_details])->filter()->implode(' · ') ?: 'No contact details' }}</p>
+                            @endif
+
+                            <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <select wire:model="assignDriverId" class="h-10 flex-1 rounded-lg border border-[#e5e7eb] bg-white px-3 text-[13px] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
+                                    <option value="">— Unassigned —</option>
+                                    @foreach ($options as $drv)
+                                        <option value="{{ $drv->id }}">{{ $drv->name }}{{ $drv->isAvailable() ? '' : ' (off duty)' }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" wire:click="saveDriver" wire:loading.attr="disabled" wire:target="saveDriver"
+                                        class="h-10 rounded-lg bg-[#f38c00] px-4 text-[13px] font-bold text-white transition hover:bg-[#dd7f00] disabled:opacity-60">Save driver</button>
+                            </div>
+                            @if ($selected->pickup_status === 'assigned')
+                                <button type="button" wire:click="markPickedUp({{ $selected->id }})"
+                                        class="mt-2 w-full rounded-lg border border-[#16a34a]/30 bg-[#16a34a]/5 px-4 py-2 text-[13px] font-semibold text-[#16a34a] transition hover:bg-[#16a34a]/10">Mark as picked up</button>
+                            @endif
+                            @if ($drivers->isEmpty() && ! $selected->pickupDriver)
+                                <p class="mt-2 text-[12px] text-[#9ca3af]">No available drivers — add one under Vehicle Pickups → Drivers.</p>
+                            @endif
+                        </div>
+                    @endif
 
                     {{-- Footer actions (pending only) --}}
                     @if ($selected->status === 'pending')

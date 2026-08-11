@@ -12,9 +12,34 @@ import 'package:flutter/services.dart';
 /// pulses the tablet with haptics alongside the sound. Every call is guarded —
 /// a device with no audio must never take the alert overlay down with it.
 class SosAlarm {
-  final AudioPlayer _player = AudioPlayer(playerId: 'sos-alarm');
+  /// No fixed `playerId` — see `NotificationChime`'s own doc for why: a
+  /// hardcoded id makes every instance share one native player, which
+  /// silently breaks playback the moment a second instance exists. Only one
+  /// `SosAlarm` is alive at a time today, but there's no reason to leave the
+  /// same trap in a second sound class.
+  final AudioPlayer _player = AudioPlayer();
   Timer? _haptics;
   bool _started = false;
+
+  /// The default [AudioContextAndroid] requests [AndroidAudioFocus.gain] —
+  /// exclusive, indefinite focus intended for music/video — before every
+  /// playback. That negotiation can silently stall or be denied, which is
+  /// exactly the kind of failure an emergency siren cannot afford (see
+  /// `NotificationChime`, which hit the same bug). `usageType: alarm` routes
+  /// this to the device's alarm stream — the one stream that bypasses ringer
+  /// mode and Do Not Disturb — and `audioFocus: none` skips the negotiation
+  /// entirely, so the siren starts immediately every time.
+  static final audioContext = AudioContext(
+    android: const AudioContextAndroid(
+      contentType: AndroidContentType.sonification,
+      usageType: AndroidUsageType.alarm,
+      audioFocus: AndroidAudioFocus.none,
+    ),
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: const {AVAudioSessionOptions.mixWithOthers},
+    ),
+  );
 
   /// Start the siren (idempotent).
   Future<void> start() async {
@@ -23,8 +48,7 @@ class SosAlarm {
 
     try {
       await _player.setReleaseMode(ReleaseMode.loop);
-      await _player.setVolume(1);
-      await _player.play(BytesSource(_sirenWav()), volume: 1);
+      await _player.play(BytesSource(_sirenWav()), volume: 1, ctx: audioContext);
     } catch (error) {
       debugPrint('SosAlarm: audio failed — $error');
     }

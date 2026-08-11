@@ -23,6 +23,8 @@ class VisitorPassRecord {
     this.phone,
     this.submittedLabel,
     this.createdAt,
+    this.isInside = false,
+    this.arrivalLabel,
   });
 
   final int id;
@@ -49,6 +51,12 @@ class VisitorPassRecord {
   /// Pre-formatted "10:32PM" submitted time from the server.
   final String? submittedLabel;
   final DateTime? createdAt;
+
+  /// True for a verified visitor who has not yet been checked out.
+  final bool isInside;
+
+  /// Pre-formatted "10:32PM" the visitor was admitted at the gate.
+  final String? arrivalLabel;
 
   bool get isPending => status == VisitorPassStatus.pending;
   bool get isVerified => status == VisitorPassStatus.verified;
@@ -91,6 +99,8 @@ class VisitorPassRecord {
       submittedLabel: json['submitted_label'] as String?,
       createdAt:
           DateTime.tryParse(json['created_at'] as String? ?? '')?.toLocal(),
+      isInside: json['is_inside'] as bool? ?? false,
+      arrivalLabel: json['arrival_label'] as String?,
     );
   }
 }

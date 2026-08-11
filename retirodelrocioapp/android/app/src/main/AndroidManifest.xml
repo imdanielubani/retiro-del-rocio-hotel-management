@@ -3,6 +3,22 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Required to scan the setup QR code during device pairing. -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Required for the Intercom's real Agora voice call. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <!-- Android 12+ (API 31+) split the old BLUETOOTH permission into
+         runtime-checked ones. Agora's SDK probes for a connected Bluetooth
+         headset as part of choosing an audio route on every call, even on
+         devices that never pair one — without these, that internal check
+         can silently fail on API 31+ and break audio routing entirely,
+         while everything else (join/leave, connection state) looks fine. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <application
         android:label="Retiro Del Rocio"
         android:name="${applicationName}"

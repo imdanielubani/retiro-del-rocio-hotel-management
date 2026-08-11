@@ -55,25 +55,25 @@ class VisitorPass {
   }
 
   factory VisitorPass.fromJson(Map<String, dynamic> json) => VisitorPass(
-        id: (json['id'] as num).toInt(),
-        reference: json['reference'] as String? ?? '',
-        status: switch (json['status'] as String?) {
-          'verified' => VisitorPassStatus.verified,
-          'denied' => VisitorPassStatus.denied,
-          'cancelled' => VisitorPassStatus.cancelled,
-          'expired' => VisitorPassStatus.expired,
-          _ => VisitorPassStatus.pending,
-        },
-        visitorName: (json['visitor_name'] as String?)?.trim().isNotEmpty == true
-            ? json['visitor_name'] as String
-            : 'Visitor',
-        code: json['code'] as String? ?? '——————',
-        onlineCode: json['online_code'] as String?,
-        offlineCode:
-            json['offline_code'] as String? ?? json['code'] as String?,
-        visitorEmail: json['visitor_email'] as String?,
-        visitorPhone: json['visitor_phone'] as String?,
-        createdAt:
-            DateTime.tryParse(json['created_at'] as String? ?? '')?.toLocal(),
-      );
+    id: (json['id'] as num).toInt(),
+    reference: json['reference'] as String? ?? '',
+    status: switch (json['status'] as String?) {
+      'verified' => VisitorPassStatus.verified,
+      'denied' => VisitorPassStatus.denied,
+      'cancelled' => VisitorPassStatus.cancelled,
+      'expired' => VisitorPassStatus.expired,
+      _ => VisitorPassStatus.pending,
+    },
+    visitorName: (json['visitor_name'] as String?)?.trim().isNotEmpty == true
+        ? json['visitor_name'] as String
+        : 'Visitor',
+    code: json['code'] as String? ?? '——————',
+    onlineCode: json['online_code'] as String?,
+    offlineCode: json['offline_code'] as String? ?? json['code'] as String?,
+    visitorEmail: json['visitor_email'] as String?,
+    visitorPhone: json['visitor_phone'] as String?,
+    createdAt: DateTime.tryParse(
+      json['created_at'] as String? ?? '',
+    )?.toLocal(),
+  );
 }

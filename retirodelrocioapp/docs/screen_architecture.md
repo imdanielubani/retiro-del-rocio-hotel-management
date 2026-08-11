@@ -109,7 +109,7 @@ Dashboard + top tabs: **Dashboard · Reservations · Rooms · Guests · Billing 
 - Dashboard (arrivals, departures, occupancy, alerts)
 - Reservations: list, detail, New/walk-in reservation, Modify, Cancel
 - Check-in flow: guest details → ID scan → room assignment → key/TTLock issue → payment/deposit
-- Check-out flow: folio review → charges → payment → feedback
+- Check-out flow: folio review → charges → payment → feedback 
 - Rooms: Room rack / availability grid, Room detail & status
 - Guests: Guest list, Guest profile, Guest history/preferences
 - Billing: Folio, Post charge, Split/transfer, Payment, Refund, Invoice/reprint
@@ -215,7 +215,6 @@ Tabs: **My Tasks · Rooms · Requests · Supplies · More**.
 - Guest requests (towels, amenities, DND, make-up room)
 - Linen & minibar restock, Supplies request
 - Inspection screen, Lost & found report, Maintenance handoff
-- Schedule / shift
 
 ### Dialogs
 Mark clean confirm · Report issue to maintenance · Request supplies · DND override.
@@ -237,7 +236,7 @@ Global. Success: room marked clean/inspected. Empty: no assigned rooms.
 # 6. Maintenance Tablet
 
 ### Main Navigation
-Tabs: **Work Orders · Assets · Requests · Schedule · More**.
+Tabs: **Work Orders · Assets · Requests**.
 
 ### Screens
 - Work-order board (New → Accepted → In-progress → Done)

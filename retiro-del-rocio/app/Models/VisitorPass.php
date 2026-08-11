@@ -261,6 +261,7 @@ class VisitorPass extends Model
     public function ttlockLabel(): string
     {
         return match ($this->ttlock_status) {
+            'pending' => 'Issuing…',
             'active' => 'Online',
             'offline' => 'Offline',
             'failed' => 'Failed',
@@ -347,29 +348,54 @@ class VisitorPass extends Model
             'phone' => $this->visitor_phone,
             'submitted_label' => optional($this->created_at)->format('h:iA'),
             'created_at' => optional($this->created_at)->toIso8601String(),
+            // Lets the tablet offer "Check Out" only for a visitor who is
+            // actually inside — verified, and not already marked as left.
+            'is_inside' => $this->isInside(),
+            'arrival_label' => optional($this->verified_at)->format('h:iA'),
         ];
     }
 
-    /** A verified visitor row for the dashboard's "Visitors Today" list. */
+    /**
+     * A visitor row for the dashboard's "Visitors Today" list.
+     *
+     * Covers the expected as well as the arrived: a pass still pending is a
+     * visitor who is simply "Not Inside" yet, which is the state Figma 257:1295
+     * draws. So neither the verified chip nor the presence pill may be assumed.
+     */
     public function toVisitorRowArray(): array
     {
         return [
             'id' => $this->id,
             'name' => $this->visitor_name,
+            // The row identifies the visit by its case number (Figma 257:1275),
+            // not by a code that is already spent by the time they are inside.
+            'reference' => $this->caseNumber(),
             'suite_name' => $this->suite_name,
             'room_number' => $this->room_number,
             'pass_code' => $this->online_code ?: $this->code,
-            'arrival_label' => optional($this->verified_at)->format('h:iA'),
+            // When they walked in, or when they were invited if they have not.
+            'arrival_label' => optional($this->verified_at ?? $this->created_at)->format('h:iA'),
             'is_inside' => $this->isInside(),
-            'is_verified' => true,
+            'is_verified' => $this->status === self::VERIFIED,
+            // Distinguishes "checked out" from "never arrived" — both read as
+            // `is_inside: false`, but the tablet must not show a departed
+            // visitor as merely "Not Inside".
+            'is_exited' => $this->status === self::VERIFIED && $this->exited_at !== null,
         ];
     }
 
-    /** A pending pass for the dashboard's "Visitor Pass Requests" column. */
+    /**
+     * A pass for the dashboard's "Visitor Pass Requests" column.
+     *
+     * The column is a feed of the gate's recent work, not a pending-only queue
+     * (Figma 257:1336 shows verified entries sitting alongside pending ones), so
+     * `is_verified` reflects the real status rather than being assumed.
+     */
     public function toPassRequestArray(): array
     {
         return [
             'id' => $this->id,
+            'reference' => $this->caseNumber(),
             'name' => $this->visitor_name,
             'suite_name' => $this->suite_name,
             'room_number' => $this->room_number,
@@ -379,7 +405,58 @@ class VisitorPass extends Model
             'email' => $this->visitor_email,
             'whatsapp' => $this->visitor_phone,
             'submitted_label' => optional($this->created_at)->format('h:iA'),
-            'is_verified' => false,
+            'arrival_label' => optional($this->verified_at)->format('h:iA'),
+            'is_verified' => $this->status === self::VERIFIED,
+        ];
+    }
+
+    /**
+     * A visitor row for the guest tablet's My Stay "Guests" card — the people
+     * this guest has invited, with a friendly, guest-facing status.
+     */
+    public function toStayVisitorArray(): array
+    {
+        $status = $this->adminStatus();
+
+        return [
+            'id' => $this->id,
+            'name' => $this->visitor_name,
+            'initials' => $this->initials(),
+            'status' => $status,
+            'status_label' => match ($status) {
+                'pending' => 'Invited',
+                'inside' => 'Inside',
+                'exited' => 'Checked out',
+                'denied' => 'Denied',
+                'cancelled' => 'Cancelled',
+                'expired' => 'Expired',
+                default => ucfirst($status),
+            },
+        ];
+    }
+
+    /**
+     * A visitor row for the reception tablet's Visitor Pass screen — every
+     * visitor invited, arrived or otherwise, read-only (reception doesn't
+     * grant or deny gate access; that stays with security).
+     */
+    public function toReceptionVisitorArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'reference' => $this->caseNumber(),
+            'visitor_name' => $this->visitor_name,
+            'initials' => $this->initials(),
+            'host_name' => $this->host_name,
+            'room_number' => $this->room_number,
+            'suite_name' => $this->suite_name,
+            'email' => $this->visitor_email,
+            'phone' => $this->visitor_phone,
+            'status' => $this->adminStatus(),
+            'status_label' => $this->adminStatusLabel(),
+            'invited_label' => optional($this->created_at)->format('M j, h:iA'),
+            'arrival_label' => optional($this->verified_at)->format('h:iA'),
+            'is_inside' => $this->isInside(),
         ];
     }
 

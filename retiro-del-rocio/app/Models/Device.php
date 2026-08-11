@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeviceMode;
 use App\Enums\DeviceStatus;
+use App\Http\Middleware\TouchLastSeen;
 use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
@@ -55,7 +56,7 @@ class Device extends Model implements Authenticatable
     }
 
     /* --------------------------------------------------------------------- */
-    /* Relationships                                                          */
+    /* Relationships */
     /* --------------------------------------------------------------------- */
 
     public function type()
@@ -74,6 +75,34 @@ class Device extends Model implements Authenticatable
         return $this->belongsTo(RoomUnit::class);
     }
 
+    /**
+     * The stay currently in progress in this tablet's room, or null when the room
+     * is empty (or between a check-out and the next check-in).
+     *
+     * This is the privacy boundary for everything the in-room tablet shows. A
+     * tablet is bolted to a room and outlives the people in it, so scoping guest
+     * data to the *room* would hand each new guest the last one's records — and
+     * their visitors' names, emails and phone numbers with them. Everything a
+     * guest can read is scoped to the booking this returns, so a check-out draws
+     * a hard line: the rows stay in the database for the register and the audit
+     * trail, they simply stop being readable from the room.
+     *
+     * Always read from the database, never from a loaded relation: a device model
+     * can outlive the check-out that matters (a queued job, an Octane worker, a
+     * second call in the same process), and a stale relation here would hand the
+     * new guest exactly the records this is meant to withhold.
+     */
+    public function currentBooking(): ?Booking
+    {
+        if (! $this->room_unit_id) {
+            return null;
+        }
+
+        $booking = RoomUnit::with('booking')->find($this->room_unit_id)?->booking;
+
+        return $booking && $booking->status === 'checked_in' ? $booking : null;
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -90,7 +119,7 @@ class Device extends Model implements Authenticatable
     }
 
     /* --------------------------------------------------------------------- */
-    /* Scopes                                                                 */
+    /* Scopes */
     /* --------------------------------------------------------------------- */
 
     public function scopeOfType(Builder $query, string $slug): Builder
@@ -144,7 +173,7 @@ class Device extends Model implements Authenticatable
     }
 
     /* --------------------------------------------------------------------- */
-    /* Helpers                                                                */
+    /* Helpers */
     /* --------------------------------------------------------------------- */
 
     public function isOnline(): bool
@@ -180,6 +209,18 @@ class Device extends Model implements Authenticatable
         }
 
         return $this->last_seen_at->lt(now()->subSeconds(config('devices.heartbeat_timeout')));
+    }
+
+    /**
+     * True when this device has hit an authenticated API endpoint within the
+     * heartbeat window — the "online" dot on a chat conversation. Touched on
+     * every authenticated request by {@see TouchLastSeen},
+     * not just an explicit `/tablets/heartbeat` call, so a tablet that's simply
+     * being used (polling its own screens) already counts as present.
+     */
+    public function isRecentlyActive(): bool
+    {
+        return ! $this->isStale();
     }
 
     public function batteryIsLow(): bool

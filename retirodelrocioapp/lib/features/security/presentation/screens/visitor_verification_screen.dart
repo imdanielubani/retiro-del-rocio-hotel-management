@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
-import 'package:retirodelrocioapp/core/widgets/coming_soon_screen.dart';
 import 'package:retirodelrocioapp/features/authentication/application/auth_providers.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/logout_confirm_dialog.dart';
@@ -10,10 +9,15 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/s
 import 'package:retirodelrocioapp/features/security/application/security_providers.dart';
 import 'package:retirodelrocioapp/features/security/data/security_repository.dart';
 import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.dart';
+import 'package:retirodelrocioapp/features/security/notifications/application/security_notification_providers.dart';
+import 'package:retirodelrocioapp/features/security/notifications/presentation/screens/security_notification_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_chat_screen.dart';
+import 'package:retirodelrocioapp/features/security/presentation/screens/security_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_nav_rail.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/security_top_bar.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_code_keypad.dart';
 import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor_verification_row.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 const Color _green = Color(0xFF22C55E);
@@ -34,9 +38,19 @@ enum _ListFilter { all, pending, verified }
 /// that logs the entry. The list follows the same 20-second poll as the rest of
 /// the security tablet, so a pass a guest just issued appears on its own.
 class VisitorVerificationScreen extends ConsumerStatefulWidget {
-  const VisitorVerificationScreen({super.key, required this.session});
+  const VisitorVerificationScreen({
+    super.key,
+    required this.session,
+    this.initialCode,
+  });
 
   final StaffSession session;
+
+  /// Pre-loaded when the officer arrives here by tapping "Verify Pass" on a
+  /// dashboard request: the visitor is already standing at the gate and their
+  /// code is already known, so re-keying six digits off the card would only
+  /// invite a typo. Left null when they walk up to the keypad cold.
+  final String? initialCode;
 
   @override
   ConsumerState<VisitorVerificationScreen> createState() =>
@@ -53,8 +67,24 @@ class _VisitorVerificationScreenState
 
   int? _expandedId;
   _ListFilter _filter = _ListFilter.all;
+  int? _checkingOutId;
 
   String get _token => widget.session.token;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Arrived from a dashboard request — show the code already filled in and
+    // look it up, so the officer lands on the visitor's details ready to grant.
+    final code = widget.initialCode;
+    if (code != null && code.length == 6) {
+      _code = code;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _verify(code);
+      });
+    }
+  }
 
   Future<void> _logout() async {
     final confirmed = await showLogoutConfirmDialog(context);
@@ -76,10 +106,27 @@ class _VisitorVerificationScreenState
       case SecurityNavItem.chat:
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const ComingSoonScreen(title: 'Chat'),
+            builder: (_) => SecurityChatScreen(session: widget.session),
+          ),
+        );
+      case SecurityNavItem.intercom:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SecurityIntercomScreen(session: widget.session),
           ),
         );
     }
+  }
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SecurityNotificationScreen(
+          session: widget.session,
+          current: SecurityNavItem.verifiedPass,
+        ),
+      ),
+    );
   }
 
   // --- Keypad ---------------------------------------------------------------
@@ -174,6 +221,19 @@ class _VisitorVerificationScreenState
     }
   }
 
+  Future<void> _checkOut(VisitorPassRecord pass) async {
+    setState(() => _checkingOutId = pass.id);
+    try {
+      await ref.read(securityActionsProvider(_token)).exitVisitor(pass.id);
+    } on SecurityException catch (e) {
+      _showFailure(e.message);
+    } catch (_) {
+      _showFailure('Could not check out this visitor.');
+    } finally {
+      if (mounted) setState(() => _checkingOutId = null);
+    }
+  }
+
   void _reset() {
     setState(() {
       _code = '';
@@ -200,10 +260,16 @@ class _VisitorVerificationScreenState
   @override
   Widget build(BuildContext context) {
     ref.watch(securityRealtimeProvider(_token));
+    ref.watch(securityNotificationsRealtimeProvider(_token));
+    ref.watch(securityNotificationChimeProvider(_token));
+    watchStaffIntercomCall(context, ref, widget.session);
     final passes =
         ref.watch(securityVisitorsProvider(_token)).value ?? const [];
     final overview = ref.watch(securityOverviewProvider(_token)).value;
     final weather = ref.watch(weatherProvider).value;
+    final unreadNotifications = ref.watch(
+      securityUnreadNotificationsProvider(_token),
+    );
 
     return SessionGuard(
       child: Scaffold(
@@ -235,6 +301,8 @@ class _VisitorVerificationScreenState
                                 overview?.officerRole ?? 'Security Office',
                             weather: weather,
                             hasAlert: (overview?.activeIncidents ?? 0) > 0,
+                            hasUnreadNotifications: unreadNotifications > 0,
+                            onNotifications: _openNotifications,
                           ),
                           const SizedBox(height: 20),
                           _header(),
@@ -358,6 +426,8 @@ class _VisitorVerificationScreenState
                             ? null
                             : pass.id,
                       ),
+                      onCheckOut: () => _checkOut(pass),
+                      checkingOut: _checkingOutId == pass.id,
                     );
                   },
                 ),
@@ -749,8 +819,15 @@ class _VisitorVerificationScreenState
     ].whereType<String>().join('  ·  ');
   }
 
+  /// Label left, value hard against the right edge.
+  ///
+  /// A `Spacer` and a `Flexible` both carry flex 1, so they split the leftover
+  /// width in half: the value was being ellipsized with space to spare, and the
+  /// rows sat at different right edges because the gap moved with the value.
+  /// `Expanded` on the value alone lines every row up.
   Widget _matchRow(String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -759,8 +836,8 @@ class _VisitorVerificationScreenState
             fontSize: 12,
           ),
         ),
-        const Spacer(),
-        Flexible(
+        const SizedBox(width: 12),
+        Expanded(
           child: Text(
             value,
             maxLines: 1,

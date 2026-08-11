@@ -180,9 +180,7 @@ class Bookings extends Component
         }
 
         $subtotal = (int) $movie->room_price;
-        $fee = 2000;
-        $taxes = (int) round($subtotal * 0.075);
-        $amount = $subtotal + $fee + $taxes;
+        $amount = $subtotal;
 
         $b = CinemaBooking::create([
             'code' => CinemaBooking::makeCode(),
@@ -196,8 +194,8 @@ class Bookings extends Component
             'seats' => [],
             'snacks' => [],
             'subtotal' => $subtotal,
-            'fee' => $fee,
-            'taxes' => $taxes,
+            'fee' => 0,
+            'taxes' => 0,
             'amount' => $amount,
             'customer_name' => $data['cName'],
             'customer_email' => $data['cEmail'],

@@ -54,8 +54,16 @@
                                     </tr>
                                 @endif
                                 <tr>
+                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">Subtotal</td>
+                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $booking->amountLabel() }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px 16px;color:#6b7280;border-bottom:1px solid #f1f1ee;">VAT (7.5%)</td>
+                                    <td style="padding:12px 16px;border-bottom:1px solid #f1f1ee;">{{ $booking->vatLabel() }}</td>
+                                </tr>
+                                <tr>
                                     <td style="padding:12px 16px;color:#6b7280;">Total paid</td>
-                                    <td style="padding:12px 16px;font-weight:bold;color:#16a34a;">{{ $booking->amountLabel() }}</td>
+                                    <td style="padding:12px 16px;font-weight:bold;color:#16a34a;">{{ $booking->totalWithVatLabel() }}</td>
                                 </tr>
                             </table>
 

@@ -93,7 +93,11 @@ class _SosButtonState extends State<SosButton>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.warning_amber_rounded, size: 44, color: Colors.white),
+              const Icon(
+                Icons.warning_amber_rounded,
+                size: 44,
+                color: Colors.white,
+              ),
               const SizedBox(height: 6),
               Text(
                 'SOS',

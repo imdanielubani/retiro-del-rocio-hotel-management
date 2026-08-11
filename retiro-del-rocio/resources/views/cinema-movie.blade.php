@@ -256,9 +256,9 @@
                             </template>
                         </div>
                     </template>
-                    <div class="flex flex-col gap-2.5 border-t border-white/10 pt-4 text-body text-white/80">
-                        <div class="flex justify-between"><span class="font-medium text-[#f38c00]">Convenience Fee</span><span class="font-medium text-white" x-text="money(fee)"></span></div>
-                        <div class="flex justify-between"><span class="font-medium text-[#f38c00]">Taxes</span><span class="font-medium text-white" x-text="money(taxes)"></span></div>
+                    <div class="flex items-center justify-between border-t border-white/15 pt-4 text-body text-white/80">
+                        <span>VAT (7.5%)</span>
+                        <span class="font-medium text-white" x-text="money(vat)"></span>
                     </div>
                     <div class="flex items-center justify-between border-t border-white/15 pt-4">
                         <span class="text-body-lg font-medium text-[#f38c00]">TOTAL</span>

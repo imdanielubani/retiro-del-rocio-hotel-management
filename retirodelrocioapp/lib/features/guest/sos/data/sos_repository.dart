@@ -15,18 +15,23 @@ class SosException implements Exception {
 /// scopes every call to this room.
 class SosRepository {
   SosRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 8),
               receiveTimeout: const Duration(seconds: 8),
-            ));
+            ),
+          );
 
   final Dio _dio;
 
-  Options _auth(String deviceToken) => Options(headers: {
-        'Authorization': 'Bearer $deviceToken',
-        'Accept': 'application/json',
-      });
+  Options _auth(String deviceToken) => Options(
+    headers: {
+      'Authorization': 'Bearer $deviceToken',
+      'Accept': 'application/json',
+    },
+  );
 
   /// The open alert for this room, if any. Called at launch so a tablet that
   /// restarted mid-emergency comes back showing "Help is on the way".
@@ -85,7 +90,9 @@ class SosRepository {
 
   String _messageFrom(DioException error) {
     final data = error.response?.data;
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
     if (error.type == DioExceptionType.connectionError ||

@@ -114,7 +114,7 @@
                                 <td class="px-4 py-3.5"><p class="max-w-[180px] truncate text-[13px] text-[#374151]">{{ $b->movie_title }}</p><p class="text-[11px] text-[#9ca3af]">{{ $b->guestsLabel() }}</p></td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#374151]">{{ $b->roomLabel() }}</td>
                                 <td class="px-4 py-3.5 text-[12px] text-[#374151]">{{ optional($b->show_date)->format('M j, Y') }}<span class="block text-[11px] text-[#9ca3af]">{{ $b->show_time }}</span></td>
-                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</td>
+                                <td class="px-4 py-3.5 text-[13px] font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</td>
                                 <td class="px-4 py-3.5"><span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" style="background: {{ $pB }}; color: {{ $pC }};">{{ $b->paymentLabel() }}</span></td>
                                 <td class="px-4 py-3.5"><span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold" style="background: {{ $sB }}; color: {{ $sC }};">{{ $b->statusLabel() }}</span></td>
                                 <td class="px-4 py-3.5 text-right">@include('admin.cinema.partials.booking-menu', ['b' => $b])</td>
@@ -136,7 +136,7 @@
                                 <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold" style="background: {{ $sB }}; color: {{ $sC }};">{{ $b->statusLabel() }}</span>
                             </div>
                         </div>
-                        <div class="flex items-center justify-between"><p class="text-[14px] font-medium text-[#1e1e1e]">{{ $b->customer_name ?: '—' }}</p><p class="text-[14px] font-bold text-[#1e1e1e]">{{ $b->amountLabel() }}</p></div>
+                        <div class="flex items-center justify-between"><p class="text-[14px] font-medium text-[#1e1e1e]">{{ $b->customer_name ?: '—' }}</p><p class="text-[14px] font-bold text-[#1e1e1e]">{{ $b->totalWithVatLabel() }}</p></div>
                         <p class="truncate text-[12px] text-[#6b7280]">{{ $b->movie_title }} · {{ $b->roomLabel() }}</p>
                         <div class="flex items-center justify-between text-[12px] text-[#6b7280]"><span>{{ optional($b->show_date)->format('M j') }} · {{ $b->show_time }}</span><span>{{ $b->guestsLabel() }}</span></div>
                         <div class="flex justify-end pt-1">@include('admin.cinema.partials.booking-menu', ['b' => $b])</div>

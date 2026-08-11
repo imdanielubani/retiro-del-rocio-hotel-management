@@ -30,11 +30,20 @@ class VisitorVerificationRow extends StatelessWidget {
     required this.pass,
     required this.expanded,
     required this.onTap,
+    this.onCheckOut,
+    this.checkingOut = false,
   });
 
   final VisitorPassRecord pass;
   final bool expanded;
   final VoidCallback onTap;
+
+  /// Checks this visitor out — only offered while they are actually inside
+  /// (verified, not already checked out) and the row is expanded.
+  final VoidCallback? onCheckOut;
+
+  /// True while this row's check-out request is in flight.
+  final bool checkingOut;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +82,10 @@ class VisitorVerificationRow extends StatelessWidget {
                 Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 12),
                 _contactDetails(),
+              ],
+              if (expanded && pass.isVerified && pass.isInside && onCheckOut != null) ...[
+                const SizedBox(height: 14),
+                _checkOutButton(),
               ],
             ],
           ),
@@ -127,6 +140,10 @@ class VisitorVerificationRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             _badge(accent),
+            if (pass.isVerified && pass.isInside) ...[
+              const SizedBox(width: 6),
+              _insideTag(),
+            ],
           ],
         ),
         const SizedBox(height: 5),
@@ -140,25 +157,38 @@ class VisitorVerificationRow extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Row(
+        // A Wrap, not a Row: the code is read digit by digit at the gate, so it
+        // must never be squeezed to fit the reference alongside it. On a narrow
+        // list the reference drops to the next line instead.
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 2,
           children: [
-            Text(
-              pass.hasOnlineCode ? 'Online Code — ' : 'Offline Code — ',
-              style: AppTypography.style(
-                color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 12,
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: pass.hasOnlineCode ? 'Online Code — ' : 'Offline Code — ',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 12,
+                    ),
+                  ),
+                  TextSpan(
+                    text: pass.code,
+                    style: AppTypography.style(
+                      color: accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                    ).copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
               ),
             ),
-            Text(
-              pass.code,
-              style: AppTypography.style(
-                color: accent,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-              ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-            ),
-            const SizedBox(width: 10),
             Text(
               pass.reference,
               style: AppTypography.style(
@@ -208,6 +238,67 @@ class VisitorVerificationRow extends StatelessWidget {
     );
   }
 
+  Widget _insideTag() {
+    const green = Color(0xFF22C55E);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: green.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'Inside',
+        style: AppTypography.style(
+          color: green,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _checkOutButton() {
+    const red = Color(0xFFEF4444);
+    return Material(
+      color: red.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: checkingOut ? null : onCheckOut,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: red.withValues(alpha: 0.35), width: 0.8),
+          ),
+          child: checkingOut
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: red),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.logout_rounded, size: 15, color: red),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Check Out Visitor',
+                      style: AppTypography.style(
+                        color: red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
   Widget _contactDetails() {
     return Column(
       children: [
@@ -225,8 +316,16 @@ class VisitorVerificationRow extends StatelessWidget {
     );
   }
 
+  /// Label left, value hard against the right edge.
+  ///
+  /// A `Spacer` plus a `Flexible` both carry flex 1, so they halve the leftover
+  /// width between them: the value gets only half the room it should and starts
+  /// ellipsizing — and, because the gap grows with the value, no two rows line
+  /// up. `Expanded` on the value alone gives it every remaining pixel and puts
+  /// each row's right edge in the same place.
   Widget _detailRow(String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -235,8 +334,8 @@ class VisitorVerificationRow extends StatelessWidget {
             fontSize: 12,
           ),
         ),
-        const Spacer(),
-        Flexible(
+        const SizedBox(width: 12),
+        Expanded(
           child: Text(
             value,
             maxLines: 1,

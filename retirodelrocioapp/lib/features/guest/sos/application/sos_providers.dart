@@ -15,8 +15,10 @@ final sosRepositoryProvider = Provider<SosRepository>((ref) => SosRepository());
 /// Re-polled every 15 seconds so the guest still sees security acknowledge the
 /// alert even if the realtime socket dropped — the same belt-and-braces rule as
 /// room status. During an emergency, stale state is not acceptable.
-final activeSosAlertProvider =
-    FutureProvider.family<SosAlert?, String>((ref, deviceToken) async {
+final activeSosAlertProvider = FutureProvider.family<SosAlert?, String>((
+  ref,
+  deviceToken,
+) async {
   final repo = ref.watch(sosRepositoryProvider);
 
   final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
@@ -32,22 +34,24 @@ final activeSosAlertProvider =
 /// broadcaster, or a dropped socket, the poll still carries the screen.
 final activeSosRealtimeProvider =
     FutureProvider.family<void, ProvisionedDevice>((ref, device) async {
-  final roomUnitId = device.roomUnitId;
-  if (roomUnitId == null) return; // not bound to a room
+      final roomUnitId = device.roomUnitId;
+      if (roomUnitId == null) return; // not bound to a room
 
-  final config = (await ref.watch(appConfigProvider.future)).realtime;
-  if (config == null) {
-    debugPrint('activeSosRealtime: no broadcaster configured — polling only.');
-    return;
-  }
+      final config = (await ref.watch(appConfigProvider.future)).realtime;
+      if (config == null) {
+        debugPrint(
+          'activeSosRealtime: no broadcaster configured — polling only.',
+        );
+        return;
+      }
 
-  final channel = SosChannel(config: config, channel: 'rooms.$roomUnitId');
-  channel.connect(
-    onChanged: () => ref.invalidate(activeSosAlertProvider(device.token)),
-  );
+      final channel = SosChannel(config: config, channel: 'rooms.$roomUnitId');
+      channel.connect(
+        onChanged: () => ref.invalidate(activeSosAlertProvider(device.token)),
+      );
 
-  ref.onDispose(channel.dispose);
-});
+      ref.onDispose(channel.dispose);
+    });
 
 /// Raise and stand down the emergency. Both refresh [activeSosAlertProvider], so
 /// the screen renders from one source of truth — the server — rather than from
@@ -65,8 +69,9 @@ class SosActions {
   }
 
   Future<SosAlert> cancel(int alertId) async {
-    final alert =
-        await _ref.read(sosRepositoryProvider).cancel(_deviceToken, alertId);
+    final alert = await _ref
+        .read(sosRepositoryProvider)
+        .cancel(_deviceToken, alertId);
     _ref.invalidate(activeSosAlertProvider(_deviceToken));
     return alert;
   }
