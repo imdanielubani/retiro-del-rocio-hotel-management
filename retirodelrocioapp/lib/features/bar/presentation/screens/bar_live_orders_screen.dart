@@ -173,7 +173,7 @@ class _BarLiveOrdersScreenState extends ConsumerState<BarLiveOrdersScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 280,
-          mainAxisExtent: 112,
+          mainAxisExtent: 100,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),

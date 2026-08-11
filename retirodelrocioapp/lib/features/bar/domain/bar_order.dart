@@ -18,6 +18,7 @@ class BarOrder {
     required this.isVip,
     required this.guestName,
     required this.source,
+    required this.hasFood,
     required this.items,
     required this.itemsLabel,
     required this.itemCount,
@@ -46,6 +47,10 @@ class BarOrder {
 
   /// `pos` (rung up on this tablet) or `guest_tablet` (placed from a room).
   final String source;
+
+  /// Whether this order includes any Kitchen (food) item — a drinks-only
+  /// order has no preparing stage, it goes straight from New to Served.
+  final bool hasFood;
 
   final List<BarOrderItem> items;
   final String itemsLabel;
@@ -82,6 +87,7 @@ class BarOrder {
     isVip: json['is_vip'] as bool? ?? false,
     guestName: json['guest_name'] as String?,
     source: json['source'] as String? ?? 'guest_tablet',
+    hasFood: json['has_food'] as bool? ?? false,
     items: ((json['items'] as List?) ?? const [])
         .map((i) => BarOrderItem.fromJson((i as Map).cast()))
         .toList(),

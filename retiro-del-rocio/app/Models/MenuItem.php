@@ -53,6 +53,12 @@ class MenuItem extends Model
             ?? ucfirst(str_replace('-', ' ', $this->category));
     }
 
+    /** 'food' or 'drink' — the department its category belongs to. */
+    public function department(): string
+    {
+        return MenuCategory::where('slug', $this->category)->value('department') ?? 'drink';
+    }
+
     public function prepLabel(): ?string
     {
         return $this->prep_minutes ? $this->prep_minutes.' mins' : null;
@@ -73,6 +79,7 @@ class MenuItem extends Model
             'description' => $this->description,
             'category' => $this->category,
             'category_label' => $this->categoryLabel(),
+            'department' => $this->department(),
             'price' => (int) $this->price,
             'price_label' => 'NGN '.number_format((int) $this->price),
             'prep_minutes' => $this->prep_minutes,

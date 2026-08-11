@@ -44,6 +44,11 @@ class BarPosScreen extends ConsumerStatefulWidget {
 class _BarPosScreenState extends ConsumerState<BarPosScreen> {
   String _search = '';
   String _category = '';
+
+  /// 'drink' or 'food' — which side of the POS the waiter is browsing.
+  /// Food items still get rung up and flow to the Kitchen exactly like a
+  /// drink flows to the Bar & Lounge board, via the same `has_food` flag.
+  String _department = 'drink';
   final List<_CartLine> _cart = [];
   bool _checkingOut = false;
 
@@ -171,10 +176,16 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
         .where((m) => m.isActive)
         .toList();
 
-    final categories = menu.map((m) => m.category).toSet().toList()..sort();
-    final categoryLabels = {for (final m in menu) m.category: m.categoryLabel};
+    final inDepartment = menu
+        .where((m) => m.department == _department)
+        .toList();
+    final categories = inDepartment.map((m) => m.category).toSet().toList()
+      ..sort();
+    final categoryLabels = {
+      for (final m in inDepartment) m.category: m.categoryLabel,
+    };
 
-    final filtered = menu.where((m) {
+    final filtered = inDepartment.where((m) {
       final matchesCategory = _category.isEmpty || m.category == _category;
       final matchesSearch =
           _search.isEmpty ||
@@ -186,11 +197,12 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
       session: widget.session,
       title: widget.tabLabel ?? 'Point of Sale',
       onBack: () => Navigator.of(context).pop(),
+      showTopBar: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 760;
           final menuPane = _menuPane(
-            menu,
+            inDepartment,
             categories,
             categoryLabels,
             filtered,
@@ -229,8 +241,12 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _departmentToggle(),
+        const SizedBox(height: 10),
         BarSearchField(
-          hintText: 'Search drinks…',
+          hintText: _department == 'food'
+              ? 'Search kitchen menu…'
+              : 'Search drinks…',
           onChanged: (v) => setState(() => _search = v),
         ),
         const SizedBox(height: 10),
@@ -257,14 +273,18 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
         const SizedBox(height: 12),
         Expanded(
           child: menu.isEmpty
-              ? const BarEmptyState(
-                  icon: Icons.local_bar_outlined,
-                  message: 'No drinks are available right now.',
+              ? BarEmptyState(
+                  icon: _department == 'food'
+                      ? Icons.restaurant_menu_rounded
+                      : Icons.local_bar_outlined,
+                  message: _department == 'food'
+                      ? 'No kitchen items are available right now.'
+                      : 'No drinks are available right now.',
                 )
               : filtered.isEmpty
               ? const BarEmptyState(
                   icon: Icons.search_off_rounded,
-                  message: 'No drinks match.',
+                  message: 'Nothing matches.',
                 )
               : GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -284,6 +304,69 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _departmentToggle() {
+    Widget tab(String dept, String label, IconData icon) {
+      final selected = _department == dept;
+      return Expanded(
+        child: Material(
+          color: selected ? AppColors.gold : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => setState(() {
+              _department = dept;
+              _category = '';
+            }),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: selected
+                        ? const Color(0xFF0A0F1E)
+                        : Colors.white.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: AppTypography.style(
+                      color: selected
+                          ? const Color(0xFF0A0F1E)
+                          : Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        children: [
+          tab('drink', 'Drinks', Icons.local_bar_rounded),
+          tab('food', 'Kitchen', Icons.restaurant_menu_rounded),
+        ],
+      ),
     );
   }
 
@@ -370,7 +453,9 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
                                 alignment: Alignment.center,
                                 child: line.item.imageUrl == null
                                     ? Icon(
-                                        Icons.local_bar_rounded,
+                                        line.item.isFood
+                                            ? Icons.restaurant_menu_rounded
+                                            : Icons.local_bar_rounded,
                                         size: 16,
                                         color: Colors.white.withValues(
                                           alpha: 0.25,
@@ -580,7 +665,9 @@ class _MenuTile extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.05),
                               alignment: Alignment.center,
                               child: Icon(
-                                item.isAlcoholic
+                                item.isFood
+                                    ? Icons.restaurant_menu_rounded
+                                    : item.isAlcoholic
                                     ? Icons.local_bar_rounded
                                     : Icons.local_drink_rounded,
                                 size: 26,
@@ -903,6 +990,60 @@ class _StepButton extends StatelessWidget {
   }
 }
 
+/// The Table/Seat vs. Walk-in Customer toggle on the checkout sheet.
+class _SaleTypeChip extends StatelessWidget {
+  const _SaleTypeChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected
+                    ? const Color(0xFF0A0F1E)
+                    : Colors.white.withValues(alpha: 0.6),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: AppTypography.style(
+                  color: selected
+                      ? const Color(0xFF0A0F1E)
+                      : Colors.white.withValues(alpha: 0.6),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CheckoutDetailsSheet extends StatefulWidget {
   const _CheckoutDetailsSheet();
 
@@ -914,6 +1055,7 @@ class _CheckoutDetailsSheetState extends State<_CheckoutDetailsSheet> {
   final _tableController = TextEditingController();
   final _guestController = TextEditingController();
   bool _isVip = false;
+  bool _isWalkIn = false;
 
   @override
   void dispose() {
@@ -944,12 +1086,39 @@ class _CheckoutDetailsSheetState extends State<_CheckoutDetailsSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              _field('Table / Seat', _tableController, hint: 'e.g. Table 4'),
-              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SaleTypeChip(
+                      label: 'Table / Seat',
+                      icon: Icons.table_bar_rounded,
+                      selected: !_isWalkIn,
+                      onTap: () => setState(() => _isWalkIn = false),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _SaleTypeChip(
+                      label: 'Walk-in Customer',
+                      icon: Icons.person_rounded,
+                      selected: _isWalkIn,
+                      onTap: () => setState(() {
+                        _isWalkIn = true;
+                        _tableController.clear();
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (!_isWalkIn) ...[
+                _field('Table / Seat', _tableController, hint: 'e.g. Table 4'),
+                const SizedBox(height: 12),
+              ],
               _field(
                 'Guest name (optional)',
                 _guestController,
-                hint: 'e.g. Walk-in',
+                hint: _isWalkIn ? 'e.g. Walk-in Customer' : 'e.g. Walk-in',
               ),
               const SizedBox(height: 12),
               SwitchListTile(
@@ -972,11 +1141,11 @@ class _CheckoutDetailsSheetState extends State<_CheckoutDetailsSheet> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
                     onTap: () => Navigator.of(context).pop((
-                      _tableController.text.trim().isEmpty
+                      _isWalkIn || _tableController.text.trim().isEmpty
                           ? null
                           : _tableController.text.trim(),
                       _guestController.text.trim().isEmpty
-                          ? null
+                          ? (_isWalkIn ? 'Walk-in Customer' : null)
                           : _guestController.text.trim(),
                       _isVip,
                     )),

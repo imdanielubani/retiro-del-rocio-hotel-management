@@ -8,11 +8,16 @@ import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/l
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/bar/application/bar_providers.dart';
 import 'package:retirodelrocioapp/features/bar/notifications/application/bar_notification_providers.dart';
+import 'package:retirodelrocioapp/features/bar/notifications/presentation/screens/bar_notification_screen.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_chat_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_history_screen.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_live_orders_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_menu_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_tabs_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_top_bar.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 enum BarTabItem { liveOrders, tabs, menu, history }
@@ -42,16 +47,42 @@ class _BarShellState extends ConsumerState<BarShell> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BarNotificationScreen(session: widget.session),
+      ),
+    );
+  }
+
+  void _openChat() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => BarChatScreen(session: widget.session)),
+    );
+  }
+
+  void _openIntercom() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BarIntercomScreen(session: widget.session),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(barRealtimeProvider(_token));
     ref.watch(barNotificationChimeProvider(_token));
+    ref.watch(staffChatChimeProvider(_token));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
+    watchStaffIntercomCall(context, ref, widget.session);
 
     final overview = ref.watch(barOverviewProvider(_token)).value;
     final weather = ref.watch(weatherProvider).value;
     final unreadNotifications = ref.watch(
       barUnreadNotificationsProvider(_token),
     );
+    final hasUnreadChat = ref.watch(staffChatHasUnreadProvider(_token));
 
     return SessionGuard(
       child: Scaffold(
@@ -72,6 +103,10 @@ class _BarShellState extends ConsumerState<BarShell> {
                       weather: weather,
                       hasAlert: (overview?.newCount ?? 0) > 0,
                       hasUnreadNotifications: unreadNotifications > 0,
+                      onNotifications: _openNotifications,
+                      onChat: _openChat,
+                      onIntercom: _openIntercom,
+                      hasUnreadChat: hasUnreadChat,
                     ),
                   ),
                   Expanded(

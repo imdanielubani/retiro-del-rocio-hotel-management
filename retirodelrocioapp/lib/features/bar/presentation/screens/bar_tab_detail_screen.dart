@@ -6,7 +6,11 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/bar/application/bar_providers.dart';
 import 'package:retirodelrocioapp/features/bar/data/bar_repository.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_tab.dart';
+import 'package:retirodelrocioapp/features/bar/notifications/application/bar_notification_providers.dart';
+import 'package:retirodelrocioapp/features/bar/notifications/presentation/screens/bar_notification_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/dialogs/close_tab_confirm_dialog.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_chat_screen.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_pos_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_order_card.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_scaffold.dart';
@@ -101,15 +105,44 @@ class _BarTabDetailScreenState extends ConsumerState<BarTabDetailScreen> {
     }
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BarNotificationScreen(session: widget.session),
+      ),
+    );
+  }
+
+  void _openChat() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => BarChatScreen(session: widget.session)),
+    );
+  }
+
+  void _openIntercom() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BarIntercomScreen(session: widget.session),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tabAsync = ref.watch(barTabDetailProvider((_token, widget.tabId)));
     final tab = tabAsync.value;
+    final unreadNotifications = ref.watch(
+      barUnreadNotificationsProvider(_token),
+    );
 
     return BarScaffold(
       session: widget.session,
       title: tab?.tableLabel ?? 'Tab Detail',
       onBack: () => Navigator.of(context).pop(),
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
+      onChat: _openChat,
+      onIntercom: _openIntercom,
       trailing: tab == null
           ? null
           : _VipToggleButton(

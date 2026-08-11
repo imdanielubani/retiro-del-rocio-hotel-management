@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 class StaffMessage extends Model
 {
     /** Every station that can take part in a staff chat channel. */
-    public const ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'admin'];
+    public const ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar', 'admin'];
 
     protected $fillable = [
         'channel_key', 'sender_role', 'sender_name', 'body', 'read_at',

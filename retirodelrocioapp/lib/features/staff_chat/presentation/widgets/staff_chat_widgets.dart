@@ -9,6 +9,7 @@ IconData staffChatRoleIcon(String role) => switch (role) {
   'housekeeping' => Icons.cleaning_services_rounded,
   'maintenance' => Icons.build_rounded,
   'security' => Icons.shield_rounded,
+  'bar' => Icons.local_bar_rounded,
   'admin' => Icons.admin_panel_settings_rounded,
   _ => Icons.groups_rounded,
 };

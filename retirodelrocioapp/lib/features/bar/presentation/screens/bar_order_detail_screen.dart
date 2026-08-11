@@ -6,8 +6,12 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/bar/application/bar_providers.dart';
 import 'package:retirodelrocioapp/features/bar/data/bar_repository.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_order.dart';
+import 'package:retirodelrocioapp/features/bar/notifications/application/bar_notification_providers.dart';
+import 'package:retirodelrocioapp/features/bar/notifications/presentation/screens/bar_notification_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/dialogs/mark_served_dialog.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/dialogs/void_item_dialog.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_chat_screen.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_intercom_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/assign_bartender_sheet.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_scaffold.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_widgets.dart';
@@ -92,17 +96,46 @@ class _BarOrderDetailScreenState extends ConsumerState<BarOrderDetailScreen> {
     }
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BarNotificationScreen(session: widget.session),
+      ),
+    );
+  }
+
+  void _openChat() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => BarChatScreen(session: widget.session)),
+    );
+  }
+
+  void _openIntercom() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BarIntercomScreen(session: widget.session),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final orderAsync = ref.watch(
       barOrderDetailProvider((_token, widget.orderId)),
     );
     final order = orderAsync.value;
+    final unreadNotifications = ref.watch(
+      barUnreadNotificationsProvider(_token),
+    );
 
     return BarScaffold(
       session: widget.session,
       title: 'Order Detail',
       onBack: () => Navigator.of(context).pop(),
+      hasUnreadNotifications: unreadNotifications > 0,
+      onNotifications: _openNotifications,
+      onChat: _openChat,
+      onIntercom: _openIntercom,
       body: order == null
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.gold),
@@ -288,13 +321,14 @@ class _BarOrderDetailScreenState extends ConsumerState<BarOrderDetailScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          if (order.boardColumn == 'new')
+          if (order.boardColumn == 'new' && order.hasFood)
             _primaryButton(
               'Start Preparing',
               Icons.local_fire_department_rounded,
               _busy ? null : _startPreparing,
             )
-          else if (order.boardColumn == 'preparing')
+          else if (order.boardColumn == 'new' ||
+              order.boardColumn == 'preparing')
             ServeButton(
               needsAgeCheck: order.needsAgeCheck,
               onTap: _busy ? () {} : () => _serve(order),

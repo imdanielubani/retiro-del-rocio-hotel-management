@@ -43,6 +43,14 @@ final staffChatThreadProvider =
       return repo.messages(key.$1, key.$2);
     });
 
+/// True while any station's channel has an unread message — drives the dot
+/// on the Chat icon in a tablet's top bar, the same way each module's own
+/// notification bell lights up.
+final staffChatHasUnreadProvider = Provider.family<bool, String>((ref, token) {
+  final channels = ref.watch(staffChatChannelsProvider(token)).value;
+  return channels?.any((c) => c.unreadCount > 0) ?? false;
+});
+
 /// Rings the chime and toasts any channel whose unread count just went up —
 /// watched from every station's scaffold (and its dashboard, which uses its
 /// own inline layout rather than the scaffold) so a staffer hears a new

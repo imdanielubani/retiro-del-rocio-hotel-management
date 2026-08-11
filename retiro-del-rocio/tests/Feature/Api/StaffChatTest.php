@@ -35,11 +35,11 @@ class StaffChatTest extends TestCase
         $data = $this->withToken($this->tokenFor('maintenance'))
             ->getJson('/api/v1/staff/chat/channels')
             ->assertOk()
-            ->assertJsonCount(4, 'data')
+            ->assertJsonCount(5, 'data')
             ->json('data');
 
         $this->assertEqualsCanonicalizing(
-            ['reception', 'housekeeping', 'security', 'admin'],
+            ['reception', 'housekeeping', 'security', 'bar', 'admin'],
             array_column($data, 'role'),
         );
     }

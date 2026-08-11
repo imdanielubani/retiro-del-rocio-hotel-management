@@ -6,6 +6,8 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/s
 import 'package:retirodelrocioapp/features/bar/notifications/application/bar_notification_providers.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_page_header.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_top_bar.dart';
+import 'package:retirodelrocioapp/features/staff_chat/application/staff_chat_providers.dart';
+import 'package:retirodelrocioapp/features/staff_intercom/presentation/widgets/staff_intercom_call_gate.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
 /// The frosted Bar Tablet shell shared by every screen pushed on top of
@@ -25,6 +27,9 @@ class BarScaffold extends ConsumerWidget {
     this.hasAlert = false,
     this.hasUnreadNotifications = false,
     this.onNotifications,
+    this.onChat,
+    this.onIntercom,
+    this.showTopBar = true,
   });
 
   final StaffSession session;
@@ -40,13 +45,24 @@ class BarScaffold extends ConsumerWidget {
   final bool hasAlert;
   final bool hasUnreadNotifications;
   final VoidCallback? onNotifications;
+  final VoidCallback? onChat;
+  final VoidCallback? onIntercom;
+
+  /// The Point of Sale screen hides the top bar entirely to maximise room
+  /// for the menu/cart grid — every other screen keeps it.
+  final bool showTopBar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weather = ref.watch(weatherProvider).value;
-    // Keeps the new-order chime alive on every Bar screen that uses this
-    // shell, not just the bottom-tab dashboard.
+    // Keeps the new-order chime, staff-chat chime and incoming-call ringer
+    // alive on every Bar screen that uses this shell, not just the
+    // bottom-tab dashboard.
     ref.watch(barNotificationChimeProvider(session.token));
+    ref.watch(staffChatChimeProvider(session.token));
+    ref.watch(staffChatRealtimeProvider((session.token, session.role)));
+    watchStaffIntercomCall(context, ref, session);
+    final hasUnreadChat = ref.watch(staffChatHasUnreadProvider(session.token));
 
     return SessionGuard(
       child: Scaffold(
@@ -62,15 +78,20 @@ class BarScaffold extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    BarTopBar(
-                      name: session.name,
-                      role: subtitle,
-                      weather: weather,
-                      hasAlert: hasAlert,
-                      hasUnreadNotifications: hasUnreadNotifications,
-                      onNotifications: onNotifications,
-                    ),
-                    const SizedBox(height: 20),
+                    if (showTopBar) ...[
+                      BarTopBar(
+                        name: session.name,
+                        role: subtitle,
+                        weather: weather,
+                        hasAlert: hasAlert,
+                        hasUnreadNotifications: hasUnreadNotifications,
+                        onNotifications: onNotifications,
+                        onChat: onChat,
+                        onIntercom: onIntercom,
+                        hasUnreadChat: hasUnreadChat,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     BarPageHeader(
                       title: title,
                       subtitle: subtitle,

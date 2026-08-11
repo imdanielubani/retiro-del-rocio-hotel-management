@@ -48,6 +48,19 @@ class BarTabletTest extends TestCase
         ], $overrides));
     }
 
+    private function food(array $overrides = []): MenuItem
+    {
+        return MenuItem::create(array_merge([
+            'name' => 'Jollof Rice',
+            'slug' => 'jollof-'.Str::random(6),
+            'category' => 'mains',
+            'price' => 5000,
+            'is_active' => true,
+            'is_alcoholic' => false,
+            'sort_order' => 1,
+        ], $overrides));
+    }
+
     /** A guest device token + active booking, for placing a guest-tablet drink order. */
     private function guestToken(): string
     {
@@ -290,5 +303,85 @@ class BarTabletTest extends TestCase
             ->assertJsonPath('data.category', 'drinks');
 
         $this->assertFalse($drink->fresh()->is_active);
+    }
+
+    public function test_the_bar_pos_menu_includes_kitchen_food_items_for_the_waiter_to_ring_up(): void
+    {
+        $this->drink(['name' => 'Fresh Chapman']);
+        $this->food(['name' => 'Jollof Rice']);
+        $token = $this->bartenderToken();
+
+        $names = $this->withToken($token)->getJson('/api/v1/bar/menu')
+            ->assertOk()
+            ->json('data.*.name');
+
+        $this->assertContains('Fresh Chapman', $names);
+        $this->assertContains('Jollof Rice', $names);
+    }
+
+    public function test_a_waiter_can_ring_up_a_food_item_and_it_flows_to_the_kitchen(): void
+    {
+        $food = $this->food(['price' => 5000]);
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $food->id, 'qty' => 1]],
+        ])->assertCreated();
+
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+        $this->assertTrue((bool) $order->has_food);
+        $this->assertFalse((bool) $order->has_drinks);
+        // Same scope the admin Kitchen Orders screen (and, later, the Kitchen Tablet) reads from.
+        $this->assertSame(1, DiningOrder::forKitchen()->count());
+    }
+
+    public function test_a_drinks_only_order_has_no_preparing_stage_and_goes_straight_to_served(): void
+    {
+        $drink = $this->drink();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $order = $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->json('data.orders.0');
+
+        $this->assertFalse($order['has_food']);
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order['id']}/prepare")
+            ->assertStatus(422);
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order['id']}/serve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'delivered');
+    }
+
+    public function test_a_mixed_food_and_drink_order_still_supports_the_preparing_stage(): void
+    {
+        $drink = $this->drink();
+        $food = $this->food();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $order = $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [
+                ['menu_item_id' => $drink->id, 'qty' => 1],
+                ['menu_item_id' => $food->id, 'qty' => 1],
+            ],
+        ])->json('data.orders.0');
+
+        $this->assertTrue($order['has_food']);
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order['id']}/prepare")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'preparing');
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order['id']}/serve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'delivered');
     }
 }

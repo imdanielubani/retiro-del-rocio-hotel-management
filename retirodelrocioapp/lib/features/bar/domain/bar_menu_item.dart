@@ -12,6 +12,7 @@ class BarMenuItem {
     required this.description,
     required this.category,
     required this.categoryLabel,
+    required this.department,
     required this.price,
     required this.priceLabel,
     required this.isAlcoholic,
@@ -25,11 +26,16 @@ class BarMenuItem {
   final String? description;
   final String category;
   final String categoryLabel;
+
+  /// 'food' or 'drink' — which side of the POS this item belongs on.
+  final String department;
   final int price;
   final String priceLabel;
   final bool isAlcoholic;
   final bool isActive;
   final String? imageUrl;
+
+  bool get isFood => department == 'food';
 
   factory BarMenuItem.fromJson(Map<String, dynamic> json) => BarMenuItem(
     id: (json['id'] as num?)?.toInt() ?? 0,
@@ -38,6 +44,7 @@ class BarMenuItem {
     description: json['description'] as String?,
     category: json['category'] as String? ?? 'drinks',
     categoryLabel: json['category_label'] as String? ?? 'Drinks',
+    department: json['department'] as String? ?? 'drink',
     price: (json['price'] as num?)?.toInt() ?? 0,
     priceLabel: json['price_label'] as String? ?? 'NGN 0',
     isAlcoholic: json['is_alcoholic'] as bool? ?? false,

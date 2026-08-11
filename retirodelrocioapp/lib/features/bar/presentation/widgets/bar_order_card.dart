@@ -59,7 +59,7 @@ class BarOrderCard extends StatelessWidget {
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 15),
               Row(
                 children: [
                   Icon(

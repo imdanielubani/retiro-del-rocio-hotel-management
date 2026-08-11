@@ -13,13 +13,13 @@ use Throwable;
 
 /**
  * Admin → Chat — the admin/manager's own channel with each staff station
- * (Reception, Housekeeping, Maintenance, Security), sharing the exact same
- * {@see StaffMessage} table every tablet's Chat screen reads and writes.
+ * (Reception, Housekeeping, Maintenance, Security, Bar), sharing the exact
+ * same {@see StaffMessage} table every tablet's Chat screen reads and writes.
  */
 class Index extends Component
 {
     /** The stations the admin dashboard can message. */
-    private const ROLES = ['reception', 'housekeeping', 'maintenance', 'security'];
+    private const ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar'];
 
     public string $selectedRole = '';
 

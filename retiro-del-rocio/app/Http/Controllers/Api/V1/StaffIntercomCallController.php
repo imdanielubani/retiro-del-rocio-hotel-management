@@ -24,7 +24,7 @@ use Illuminate\Http\Request;
  */
 class StaffIntercomCallController extends Controller
 {
-    private const TABLET_ROLES = ['reception', 'housekeeping', 'maintenance', 'security'];
+    private const TABLET_ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar'];
 
     /** POST /staff/intercom/calls — call another station. */
     public function store(Request $request): JsonResponse

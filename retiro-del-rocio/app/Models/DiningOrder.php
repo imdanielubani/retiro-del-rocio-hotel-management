@@ -202,9 +202,17 @@ class DiningOrder extends Model
 
     /* --------- Bar Tablet POS --------- */
 
-    /** New/confirmed → preparing. Idempotent. */
+    /**
+     * New/confirmed → preparing. Idempotent. A drinks-only order (no food
+     * item) has no preparing stage — a drink isn't cooked, it goes straight
+     * from New to Served — so this only applies once {@see $has_food} is true.
+     */
     public function markPreparing(): bool
     {
+        if (! $this->has_food) {
+            return false;
+        }
+
         if (! in_array($this->status, ['pending', 'confirmed'], true)) {
             return false;
         }
@@ -328,6 +336,7 @@ class DiningOrder extends Model
             'is_vip' => (bool) $tab?->is_vip,
             'guest_name' => $tab?->guest_name ?: $this->customer_name,
             'source' => $this->bar_tab_id ? 'pos' : 'guest_tablet',
+            'has_food' => (bool) $this->has_food,
             'items' => collect($this->items ?? [])->map(fn (array $i) => [
                 'menu_item_id' => $i['menu_item_id'] ?? null,
                 'name' => $i['name'] ?? '',

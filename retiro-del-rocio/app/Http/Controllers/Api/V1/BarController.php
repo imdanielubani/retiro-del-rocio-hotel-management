@@ -89,6 +89,7 @@ class BarController extends Controller
     {
         $this->bartender($request);
         abort_unless($order->has_drinks, 404);
+        abort_unless($order->has_food, 422, 'Drink-only orders move straight from New to Served — there is no preparing stage.');
 
         $order->markPreparing();
 
@@ -224,7 +225,7 @@ class BarController extends Controller
 
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'],
-            'items.*.menu_item_id' => ['required', 'integer'],
+            'items.*.menu_item_id' => ['required', 'integer', 'exists:menu_items,id'],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:20'],
             'items.*.note' => ['nullable', 'string', 'max:255'],
         ]);
@@ -282,14 +283,17 @@ class BarController extends Controller
     /* ---------------- Menu ---------------- */
 
     /**
-     * GET /bar/menu — every drink, active or not (unlike the guest endpoint,
-     * staff need to see and toggle hidden items too).
+     * GET /bar/menu — every drink AND kitchen food item, active or not
+     * (unlike the guest endpoint, staff need to see and toggle hidden items
+     * too). The waiter's POS rings up both — food items still flow to the
+     * Kitchen via the same `has_food` flag `DiningOrderPricer` already sets,
+     * ready for the Kitchen Tablet once that's built.
      */
     public function menu(Request $request): JsonResponse
     {
         $this->bartender($request);
 
-        $items = MenuItem::drinks()->ordered()->get();
+        $items = MenuItem::ordered()->get();
 
         return response()->json(['data' => $items->map->toGuestArray()->values()]);
     }
@@ -299,7 +303,7 @@ class BarController extends Controller
     {
         $this->bartender($request);
 
-        $item = MenuItem::drinks()->findOrFail($id);
+        $item = MenuItem::findOrFail($id);
         $item->update(['is_active' => ! $item->is_active]);
 
         return response()->json(['data' => $item->toGuestArray()]);

@@ -19,6 +19,9 @@ class BarTopBar extends StatelessWidget {
     this.hasAlert = false,
     this.hasUnreadNotifications = false,
     this.onNotifications,
+    this.onChat,
+    this.onIntercom,
+    this.hasUnreadChat = false,
   });
 
   final String name;
@@ -30,6 +33,15 @@ class BarTopBar extends StatelessWidget {
   final bool hasAlert;
   final bool hasUnreadNotifications;
   final VoidCallback? onNotifications;
+
+  /// Opens Staff Chat / Intercom. Left null where a screen hasn't wired
+  /// them up, in which case the icon is inert.
+  final VoidCallback? onChat;
+  final VoidCallback? onIntercom;
+
+  /// Lights the Chat icon's dot gold, the same way an unread notification
+  /// lights the bell's.
+  final bool hasUnreadChat;
 
   String get _initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -53,6 +65,14 @@ class BarTopBar extends StatelessWidget {
           const SizedBox(width: 16),
           _WeatherClockPill(weather: weather),
           const SizedBox(width: 15),
+          _iconButton(
+            Icons.chat_bubble_outline_rounded,
+            onChat,
+            showDot: hasUnreadChat,
+          ),
+          const SizedBox(width: 10),
+          _iconButton(Icons.call_outlined, onIntercom),
+          const SizedBox(width: 10),
           _bell(),
           const SizedBox(width: 15),
           _avatar(),
@@ -136,6 +156,50 @@ class BarTopBar extends StatelessWidget {
           style: AppTypography.style(color: Colors.white, fontSize: 15),
         ),
       ],
+    );
+  }
+
+  Widget _iconButton(
+    IconData icon,
+    VoidCallback? onTap, {
+    bool showDot = false,
+  }) {
+    return SizedBox(
+      width: 35,
+      height: 35,
+      child: Stack(
+        children: [
+          Material(
+            color: Colors.white.withValues(alpha: 0.12),
+            shape: CircleBorder(
+              side: BorderSide(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 0.8,
+              ),
+            ),
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: Center(child: Icon(icon, size: 16, color: Colors.white)),
+            ),
+          ),
+          if (showDot)
+            Positioned(
+              right: 6,
+              top: 5,
+              child: SizedBox(
+                width: 6,
+                height: 6,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
