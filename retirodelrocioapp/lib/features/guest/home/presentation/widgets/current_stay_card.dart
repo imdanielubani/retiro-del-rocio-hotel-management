@@ -31,9 +31,11 @@ class CurrentStayCard extends StatelessWidget {
     final from = _guest.checkIn;
     final to = _guest.checkOut;
     if (from == null || to == null) return 0;
-    final nights = DateTime(to.year, to.month, to.day)
-        .difference(DateTime(from.year, from.month, from.day))
-        .inDays;
+    final nights = DateTime(
+      to.year,
+      to.month,
+      to.day,
+    ).difference(DateTime(from.year, from.month, from.day)).inDays;
     return nights > 0 ? nights : 0;
   }
 
@@ -42,9 +44,11 @@ class CurrentStayCard extends StatelessWidget {
     final from = _guest.checkIn;
     if (from == null) return 0;
     final now = DateTime.now();
-    final elapsed = DateTime(now.year, now.month, now.day)
-        .difference(DateTime(from.year, from.month, from.day))
-        .inDays;
+    final elapsed = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).difference(DateTime(from.year, from.month, from.day)).inDays;
     return elapsed.clamp(0, _nights);
   }
 
@@ -243,8 +247,11 @@ class CurrentStayCard extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.calendar_month_rounded,
-                  size: 16, color: Color(0xFF0A0F1E)),
+              const Icon(
+                Icons.calendar_month_rounded,
+                size: 16,
+                color: Color(0xFF0A0F1E),
+              ),
               const SizedBox(width: 8),
               Text(
                 'Extend Stay',

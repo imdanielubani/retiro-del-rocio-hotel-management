@@ -3,7 +3,11 @@ import 'package:flutter/foundation.dart';
 /// One itemised charge line inside a [BillCategory] (e.g. "Room Rate").
 @immutable
 class BillLineItem {
-  const BillLineItem({required this.label, this.sub, required this.amountLabel});
+  const BillLineItem({
+    required this.label,
+    this.sub,
+    required this.amountLabel,
+  });
 
   final String label;
   final String? sub;
@@ -57,10 +61,11 @@ class BillSummaryLine {
   final String label;
   final String amountLabel;
 
-  factory BillSummaryLine.fromJson(Map<String, dynamic> json) => BillSummaryLine(
-    label: json['label'] as String? ?? '',
-    amountLabel: json['amount_label'] as String? ?? 'NGN 0',
-  );
+  factory BillSummaryLine.fromJson(Map<String, dynamic> json) =>
+      BillSummaryLine(
+        label: json['label'] as String? ?? '',
+        amountLabel: json['amount_label'] as String? ?? 'NGN 0',
+      );
 }
 
 /// The checkout countdown card at the bottom of the Bill Summary.
@@ -74,10 +79,11 @@ class BillCheckoutReminder {
   final String? checkOutLabel;
   final String daysRemainingLabel;
 
-  factory BillCheckoutReminder.fromJson(Map<String, dynamic> json) => BillCheckoutReminder(
-    checkOutLabel: json['check_out_label'] as String?,
-    daysRemainingLabel: json['days_remaining_label'] as String? ?? '',
-  );
+  factory BillCheckoutReminder.fromJson(Map<String, dynamic> json) =>
+      BillCheckoutReminder(
+        checkOutLabel: json['check_out_label'] as String?,
+        daysRemainingLabel: json['days_remaining_label'] as String? ?? '',
+      );
 }
 
 /// The checked-in guest's itemised folio (`GET /tablets/my-bills`).
@@ -107,7 +113,10 @@ class Bill {
     categories: [],
     summaryLines: [],
     totalDueLabel: 'NGN 0',
-    checkoutReminder: BillCheckoutReminder(checkOutLabel: null, daysRemainingLabel: ''),
+    checkoutReminder: BillCheckoutReminder(
+      checkOutLabel: null,
+      daysRemainingLabel: '',
+    ),
     canPay: false,
   );
 
@@ -120,7 +129,8 @@ class Bill {
     summaryLines: (((json['summary'] as Map?)?['lines'] as List?) ?? const [])
         .map((l) => BillSummaryLine.fromJson((l as Map).cast()))
         .toList(),
-    totalDueLabel: (json['summary'] as Map?)?['total_due_label'] as String? ?? 'NGN 0',
+    totalDueLabel:
+        (json['summary'] as Map?)?['total_due_label'] as String? ?? 'NGN 0',
     checkoutReminder: BillCheckoutReminder.fromJson(
       ((json['checkout_reminder'] as Map?) ?? const {}).cast(),
     ),
@@ -144,25 +154,30 @@ class BillPaymentQuote {
   final String callbackUrl;
   final String totalLabel;
 
-  factory BillPaymentQuote.fromJson(Map<String, dynamic> json) => BillPaymentQuote(
-    authorizationUrl: json['authorization_url'] as String? ?? '',
-    reference: json['reference'] as String? ?? '',
-    callbackUrl: json['callback_url'] as String? ?? '',
-    totalLabel: json['total_label'] as String? ?? 'NGN 0',
-  );
+  factory BillPaymentQuote.fromJson(Map<String, dynamic> json) =>
+      BillPaymentQuote(
+        authorizationUrl: json['authorization_url'] as String? ?? '',
+        reference: json['reference'] as String? ?? '',
+        callbackUrl: json['callback_url'] as String? ?? '',
+        totalLabel: json['total_label'] as String? ?? 'NGN 0',
+      );
 }
 
 /// The confirmed payment, returned once the Paystack charge is verified —
 /// drives the "Bill Confirmed!" success screen.
 @immutable
 class BillPaymentConfirmation {
-  const BillPaymentConfirmation({required this.reference, required this.totalLabel});
+  const BillPaymentConfirmation({
+    required this.reference,
+    required this.totalLabel,
+  });
 
   final String reference;
   final String totalLabel;
 
-  factory BillPaymentConfirmation.fromJson(Map<String, dynamic> json) => BillPaymentConfirmation(
-    reference: json['reference'] as String? ?? '',
-    totalLabel: json['total_label'] as String? ?? 'NGN 0',
-  );
+  factory BillPaymentConfirmation.fromJson(Map<String, dynamic> json) =>
+      BillPaymentConfirmation(
+        reference: json['reference'] as String? ?? '',
+        totalLabel: json['total_label'] as String? ?? 'NGN 0',
+      );
 }

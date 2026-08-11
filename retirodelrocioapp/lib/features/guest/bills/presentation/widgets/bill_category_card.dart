@@ -120,7 +120,10 @@ class _BillCategoryCardState extends State<BillCategoryCard> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
               child: Column(
                 children: [
-                  Container(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+                  Container(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
                   const SizedBox(height: 14),
                   for (var i = 0; i < category.items.length; i++) ...[
                     if (i > 0) const SizedBox(height: 12),

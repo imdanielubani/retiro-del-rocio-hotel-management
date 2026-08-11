@@ -7,6 +7,7 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/data/guest_notification_repository.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/domain/guest_notification.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -104,6 +105,14 @@ class _GuestNotificationScreenState
     );
   }
 
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = widget.status;
@@ -132,6 +141,7 @@ class _GuestNotificationScreenState
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: () {},
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                     hasUnreadNotifications: unreadCount > 0,
                   ),
                   const SizedBox(height: 20),
@@ -218,7 +228,10 @@ class _GuestNotificationScreenState
     return Material(
       color: Colors.white.withValues(alpha: 0.06),
       shape: CircleBorder(
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: InkWell(
         onTap: () => Navigator.of(context).maybePop(),

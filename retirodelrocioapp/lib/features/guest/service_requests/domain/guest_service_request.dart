@@ -26,20 +26,28 @@ const Map<String, IconData> _housekeepingIconsByKey = {
 /// shows up here without an app update.
 @immutable
 class HousekeepingRequestTypeOption {
-  const HousekeepingRequestTypeOption({required this.key, required this.label, required this.icon});
+  const HousekeepingRequestTypeOption({
+    required this.key,
+    required this.label,
+    required this.icon,
+  });
 
   final String key;
   final String label;
   final IconData icon;
 
-  factory HousekeepingRequestTypeOption.fromJson(Map<String, dynamic> json) => HousekeepingRequestTypeOption(
-    key: json['key'] as String? ?? 'other',
-    label: json['label'] as String? ?? 'Other',
-    icon: _housekeepingIconsByKey[json['icon'] as String?] ?? Icons.cleaning_services_rounded,
-  );
+  factory HousekeepingRequestTypeOption.fromJson(Map<String, dynamic> json) =>
+      HousekeepingRequestTypeOption(
+        key: json['key'] as String? ?? 'other',
+        label: json['label'] as String? ?? 'Other',
+        icon:
+            _housekeepingIconsByKey[json['icon'] as String?] ??
+            Icons.cleaning_services_rounded,
+      );
 
   @override
-  bool operator ==(Object other) => other is HousekeepingRequestTypeOption && other.key == key;
+  bool operator ==(Object other) =>
+      other is HousekeepingRequestTypeOption && other.key == key;
 
   @override
   int get hashCode => key.hashCode;
@@ -86,14 +94,15 @@ class GuestServiceRequest {
 
   bool get isHousekeeping => category == 'housekeeping';
 
-  factory GuestServiceRequest.fromJson(Map<String, dynamic> json) => GuestServiceRequest(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    category: json['category'] as String? ?? 'housekeeping',
-    title: json['title'] as String? ?? 'Request',
-    detail: json['detail'] as String?,
-    status: json['status'] as String? ?? 'pending',
-    statusLabel: json['status_label'] as String? ?? 'Pending',
-    isOpen: json['is_open'] as bool? ?? true,
-    time: DateTime.tryParse(json['created_at'] as String? ?? ''),
-  );
+  factory GuestServiceRequest.fromJson(Map<String, dynamic> json) =>
+      GuestServiceRequest(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        category: json['category'] as String? ?? 'housekeeping',
+        title: json['title'] as String? ?? 'Request',
+        detail: json['detail'] as String?,
+        status: json['status'] as String? ?? 'pending',
+        statusLabel: json['status_label'] as String? ?? 'Pending',
+        isOpen: json['is_open'] as bool? ?? true,
+        time: DateTime.tryParse(json['created_at'] as String? ?? ''),
+      );
 }

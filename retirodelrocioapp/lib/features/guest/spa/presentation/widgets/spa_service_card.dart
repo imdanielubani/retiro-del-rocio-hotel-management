@@ -47,15 +47,16 @@ class SpaServiceCard extends StatelessWidget {
               width: selected ? 1.6 : 1.2,
             ),
             boxShadow: const [
-              BoxShadow(color: Color(0x4D000000), blurRadius: 16, offset: Offset(0, 4)),
+              BoxShadow(
+                color: Color(0x4D000000),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _image(),
-              _info(),
-            ],
+            children: [_image(), _info()],
           ),
         ),
       ),
@@ -74,8 +75,11 @@ class SpaServiceCard extends StatelessWidget {
                   url,
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => _imageFallback(),
-                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) =>
-                      frame == null && !wasSynchronouslyLoaded ? _imageFallback() : child,
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) =>
+                          frame == null && !wasSynchronouslyLoaded
+                          ? _imageFallback()
+                          : child,
                 )
               : _imageFallback(),
           DecoratedBox(
@@ -149,7 +153,10 @@ class SpaServiceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.15),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.2),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.8),
+          width: 1.2,
+        ),
       ),
       child: selected
           ? const Icon(Icons.check_rounded, size: 15, color: Colors.black)
@@ -179,7 +186,11 @@ class SpaServiceCard extends StatelessWidget {
           Row(
             children: [
               if (service.durationLabel != null) ...[
-                Icon(Icons.schedule_rounded, size: 11, color: Colors.white.withValues(alpha: 0.4)),
+                Icon(
+                  Icons.schedule_rounded,
+                  size: 11,
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
                 const SizedBox(width: 6),
                 Text(
                   service.durationLabel!,

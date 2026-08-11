@@ -14,6 +14,7 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/paystack_checkout_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -59,6 +60,14 @@ class _GuestDiningScreenState extends ConsumerState<GuestDiningScreen> {
           device: widget.device,
           status: widget.status,
         ),
+      ),
+    );
+  }
+
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
       ),
     );
   }
@@ -258,6 +267,7 @@ class _GuestDiningScreenState extends ConsumerState<GuestDiningScreen> {
                     weather: weather,
                     onNotifications: _openNotifications,
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),
@@ -350,7 +360,7 @@ class _GuestDiningScreenState extends ConsumerState<GuestDiningScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'In Suite Dining',
+                'Restaurant & Bar',
                 style: AppTypography.style(
                   color: Colors.white,
                   fontSize: 36,
@@ -574,7 +584,7 @@ class _GuestDiningScreenState extends ConsumerState<GuestDiningScreen> {
         runSpacing: 20,
         children: [
           for (final item in items)
-            SizedBox(width: 260, child: _dishCard(item)),
+            SizedBox(width: 292, child: _dishCard(item)),
         ],
       ),
     );

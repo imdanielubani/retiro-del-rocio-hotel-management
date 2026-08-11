@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/guest/cinema/domain/cinema_service.da
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -34,6 +35,14 @@ class GuestCinemaBookingsScreen extends ConsumerWidget {
     );
   }
 
+  void _openEmergency(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: device, status: status),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bookingsAsync = ref.watch(cinemaBookingsProvider(_token));
@@ -56,15 +65,14 @@ class GuestCinemaBookingsScreen extends ConsumerWidget {
                 children: [
                   GuestTopBar(
                     suiteName: status.suiteName ?? 'Suite',
-                    roomNumber:
-                        status.roomNumber ?? device.roomNumber ?? '—',
+                    roomNumber: status.roomNumber ?? device.roomNumber ?? '—',
                     guestName: guest?.name ?? 'Guest',
                     weather: weather,
                     onNotifications: () => _openNotifications(context),
                     onProfile: () {},
+                    onEmergency: () => _openEmergency(context),
                     hasUnreadNotifications:
-                        ref.watch(guestUnreadNotificationsProvider(_token)) >
-                        0,
+                        ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),
                   const SizedBox(height: 20),
                   _header(context),
@@ -328,7 +336,8 @@ class _BookingCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         [
-                          if (booking.showDateLabel != null) booking.showDateLabel,
+                          if (booking.showDateLabel != null)
+                            booking.showDateLabel,
                           booking.showTime,
                           if (booking.room != null) booking.room,
                         ].whereType<String>().join(' • '),

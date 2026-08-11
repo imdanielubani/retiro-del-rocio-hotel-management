@@ -18,6 +18,7 @@ class GuestTopBar extends StatelessWidget {
     required this.weather,
     required this.onNotifications,
     required this.onProfile,
+    required this.onEmergency,
     this.hasUnreadNotifications = false,
   });
 
@@ -27,6 +28,10 @@ class GuestTopBar extends StatelessWidget {
   final Weather? weather;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
+
+  /// Opens Emergency SOS — present on every guest screen via this shared
+  /// top bar, not just the home dashboard, so help is always one tap away.
+  final VoidCallback onEmergency;
 
   /// Lights up the gold dot on the bell — real unread state, not decoration.
   final bool hasUnreadNotifications;
@@ -51,6 +56,8 @@ class GuestTopBar extends StatelessWidget {
           Expanded(child: _identity()),
           const SizedBox(width: 16),
           _WeatherClockPill(weather: weather),
+          const SizedBox(width: 15),
+          _emergencyButton(),
           const SizedBox(width: 15),
           _notificationsButton(),
           const SizedBox(width: 15),
@@ -173,6 +180,29 @@ class GuestTopBar extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  /// A compact red twin of the notification bell — present on every screen
+  /// via this shared top bar, so Emergency SOS is always reachable.
+  Widget _emergencyButton() {
+    const red = Color(0xFFFF0000);
+    return SizedBox(
+      width: 35,
+      height: 35,
+      child: Material(
+        color: red.withValues(alpha: 0.12),
+        shape: CircleBorder(
+          side: BorderSide(color: red.withValues(alpha: 0.35), width: 0.8),
+        ),
+        child: InkWell(
+          onTap: onEmergency,
+          customBorder: const CircleBorder(),
+          child: const Center(
+            child: Icon(Icons.warning_amber_rounded, size: 16, color: red),
+          ),
+        ),
+      ),
     );
   }
 

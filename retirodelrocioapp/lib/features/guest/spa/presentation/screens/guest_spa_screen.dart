@@ -14,6 +14,7 @@ import 'package:retirodelrocioapp/features/guest/spa/domain/spa_service.dart';
 import 'package:retirodelrocioapp/features/guest/spa/presentation/screens/guest_spa_appointments_screen.dart';
 import 'package:retirodelrocioapp/features/guest/spa/presentation/widgets/spa_dialogs.dart';
 import 'package:retirodelrocioapp/features/guest/spa/presentation/widgets/spa_service_card.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -59,6 +60,14 @@ class _GuestSpaScreenState extends ConsumerState<GuestSpaScreen> {
           device: widget.device,
           status: widget.status,
         ),
+      ),
+    );
+  }
+
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
       ),
     );
   }
@@ -190,6 +199,7 @@ class _GuestSpaScreenState extends ConsumerState<GuestSpaScreen> {
                     weather: weather,
                     onNotifications: _openNotifications,
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),

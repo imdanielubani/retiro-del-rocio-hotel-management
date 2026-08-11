@@ -12,6 +12,7 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/paystack_checkout_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -20,7 +21,11 @@ import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 /// categories with nothing booked yet — plus an optional Paystack
 /// pre-settlement of the outstanding balance ahead of checkout.
 class GuestBillsScreen extends ConsumerStatefulWidget {
-  const GuestBillsScreen({super.key, required this.device, required this.status});
+  const GuestBillsScreen({
+    super.key,
+    required this.device,
+    required this.status,
+  });
 
   final ProvisionedDevice device;
   final RoomStatus status;
@@ -38,7 +43,9 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
     if (_paying) return;
     setState(() => _paying = true);
     try {
-      final quote = await ref.read(billActionsProvider(_token)).initializePaystack();
+      final quote = await ref
+          .read(billActionsProvider(_token))
+          .initializePaystack();
       if (!mounted) return;
 
       final paid = await showPaystackCheckout(
@@ -48,7 +55,9 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
       );
       if (!paid || !mounted) return;
 
-      await ref.read(billActionsProvider(_token)).confirmPaystack(quote.reference);
+      await ref
+          .read(billActionsProvider(_token))
+          .confirmPaystack(quote.reference);
       if (!mounted) return;
 
       ref.invalidate(billProvider(_token));
@@ -64,7 +73,9 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openNotifications() {
@@ -74,6 +85,14 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
           device: widget.device,
           status: widget.status,
         ),
+      ),
+    );
+  }
+
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
       ),
     );
   }
@@ -108,6 +127,7 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
                     weather: weather,
                     onNotifications: _openNotifications,
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),
@@ -120,7 +140,9 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
                       loading: () => bill.categories.isNotEmpty
                           ? _content(bill)
                           : const Center(
-                              child: CircularProgressIndicator(color: AppColors.gold),
+                              child: CircularProgressIndicator(
+                                color: AppColors.gold,
+                              ),
                             ),
                       error: (_, _) => bill.categories.isNotEmpty
                           ? _content(bill)
@@ -462,7 +484,10 @@ class _GuestBillsScreenState extends ConsumerState<GuestBillsScreen> {
               onTap: () => ref.invalidate(billProvider(_token)),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Text(
                   'Retry',
                   style: AppTypography.style(

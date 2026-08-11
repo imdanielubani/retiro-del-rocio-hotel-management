@@ -13,6 +13,7 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/paystack_checkout_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -57,6 +58,14 @@ class _GuestCinemaScreenState extends ConsumerState<GuestCinemaScreen> {
           device: widget.device,
           status: widget.status,
         ),
+      ),
+    );
+  }
+
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
       ),
     );
   }
@@ -220,6 +229,7 @@ class _GuestCinemaScreenState extends ConsumerState<GuestCinemaScreen> {
                     weather: weather,
                     onNotifications: _openNotifications,
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),

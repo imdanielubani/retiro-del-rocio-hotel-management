@@ -56,7 +56,8 @@ class Movie {
     roomPrice: (json['room_price'] as num?)?.toInt() ?? 0,
     roomPriceLabel: json['room_price_label'] as String? ?? 'NGN 0',
     classification: json['classification'] as String? ?? 'now_showing',
-    classificationLabel: json['classification_label'] as String? ?? 'Now Showing',
+    classificationLabel:
+        json['classification_label'] as String? ?? 'Now Showing',
     showtimes: ((json['showtimes'] as List?) ?? const [])
         .map((t) => t as String)
         .toList(),

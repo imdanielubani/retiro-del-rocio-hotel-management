@@ -27,7 +27,10 @@ class ServiceRequestCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,9 +48,14 @@ class ServiceRequestCard extends StatelessWidget {
       width: 40,
       height: 40,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        shape: BoxShape.circle,
+      ),
       child: Icon(
-        request.isHousekeeping ? Icons.cleaning_services_rounded : Icons.build_rounded,
+        request.isHousekeeping
+            ? Icons.cleaning_services_rounded
+            : Icons.build_rounded,
         size: 18,
         color: color,
       ),
@@ -66,7 +74,11 @@ class ServiceRequestCard extends StatelessWidget {
                 request.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -76,7 +88,11 @@ class ServiceRequestCard extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           request.isHousekeeping ? 'Housekeeping' : 'Maintenance',
-          style: AppTypography.style(color: categoryColor.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.w600),
+          style: AppTypography.style(
+            color: categoryColor.withValues(alpha: 0.8),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         if ((request.detail ?? '').isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -84,14 +100,20 @@ class ServiceRequestCard extends StatelessWidget {
             request.detail!,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 12,
+            ),
           ),
         ],
         if (request.time != null) ...[
           const SizedBox(height: 6),
           Text(
             DateFormat('MMM d, h:mm a').format(request.time!),
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.3),
+              fontSize: 11,
+            ),
           ),
         ],
       ],
@@ -101,10 +123,17 @@ class ServiceRequestCard extends StatelessWidget {
   Widget _statusBadge(Color accent) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      decoration: BoxDecoration(color: accent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         request.statusLabel,
-        style: AppTypography.style(color: accent, fontSize: 10, fontWeight: FontWeight.w700),
+        style: AppTypography.style(
+          color: accent,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

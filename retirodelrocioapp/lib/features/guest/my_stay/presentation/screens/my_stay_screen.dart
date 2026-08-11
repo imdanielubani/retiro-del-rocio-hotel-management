@@ -11,6 +11,7 @@ import 'package:retirodelrocioapp/features/guest/notifications/application/guest
 import 'package:retirodelrocioapp/features/guest/my_stay/domain/guest_stay.dart';
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/extend_stay_screen.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -50,6 +51,14 @@ class MyStayScreen extends ConsumerWidget {
     );
   }
 
+  void _openEmergency(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: device, status: status),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stayAsync = ref.watch(myStayProvider(_token));
@@ -78,6 +87,7 @@ class MyStayScreen extends ConsumerWidget {
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: () => _openNotifications(context),
                     onProfile: () {},
+                    onEmergency: () => _openEmergency(context),
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),

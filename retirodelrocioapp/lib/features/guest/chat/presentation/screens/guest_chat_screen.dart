@@ -13,6 +13,7 @@ import 'package:retirodelrocioapp/features/guest/chat/presentation/widgets/chat_
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -64,6 +65,14 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
           device: widget.device,
           status: widget.status,
         ),
+      ),
+    );
+  }
+
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
       ),
     );
   }
@@ -168,6 +177,7 @@ class _GuestChatScreenState extends ConsumerState<GuestChatScreen> {
                     weather: weather,
                     onNotifications: _openNotifications,
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                     hasUnreadNotifications: unreadNotifications > 0,
                   ),
                   const SizedBox(height: 22),

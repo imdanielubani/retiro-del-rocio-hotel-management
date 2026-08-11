@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest
 import 'package:retirodelrocioapp/features/guest/intercom/application/guest_intercom_call_providers.dart';
 import 'package:retirodelrocioapp/features/guest/intercom/domain/intercom_department.dart';
 import 'package:retirodelrocioapp/features/guest/intercom/presentation/screens/room_to_room_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/intercom_call/data/intercom_call_repository.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
@@ -70,6 +71,14 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
     }
   }
 
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: widget.device, status: widget.status),
+      ),
+    );
+  }
+
   void _openRoomToRoom() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -119,6 +128,7 @@ class _GuestIntercomScreenState extends ConsumerState<GuestIntercomScreen> {
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: () {},
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                   ),
                   const SizedBox(height: 20),
                   _header(),

@@ -13,6 +13,7 @@ import 'package:retirodelrocioapp/features/guest/my_stay/presentation/widgets/ex
 import 'package:retirodelrocioapp/features/guest/my_stay/presentation/widgets/extend_stay_dialogs.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/room_status_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
@@ -70,23 +71,33 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
   /// This screen only carries a [GuestStay], not the tablet's [RoomStatus] —
   /// so prefer the live status the rest of the app already keeps warm, and
   /// fall back to a status built from the stay itself if it hasn't loaded yet.
-  void _openNotifications() {
+  RoomStatus get _statusOrFallback {
     final live = ref.read(roomStatusProvider(widget.device.token)).value;
-    final status =
-        live ??
+    return live ??
         RoomStatus(
           occupancy: Occupancy.occupied,
           suiteName: _r.roomName,
           roomNumber: _roomNumber,
           guest: GuestInfo(name: widget.stay.guests.primaryName),
         );
+  }
 
+  void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GuestNotificationScreen(
           device: widget.device,
-          status: status,
+          status: _statusOrFallback,
         ),
+      ),
+    );
+  }
+
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            SosScreen(device: widget.device, status: _statusOrFallback),
       ),
     );
   }
@@ -246,9 +257,9 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: _openNotifications,
                     onProfile: () {},
+                    onEmergency: _openEmergency,
                     hasUnreadNotifications:
-                        ref.watch(guestUnreadNotificationsProvider(_token)) >
-                        0,
+                        ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),
                   const SizedBox(height: 20),
                   _header(),
@@ -573,7 +584,8 @@ class _ExtendStayScreenState extends ConsumerState<ExtendStayScreen> {
   }
 
   Widget _confirmButton() {
-    final enabled = _selected != null &&
+    final enabled =
+        _selected != null &&
         _additionalNights > 0 &&
         _paymentMethod != null &&
         !_busy;

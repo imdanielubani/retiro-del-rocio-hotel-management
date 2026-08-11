@@ -154,7 +154,10 @@ class _CinemaPaymentDialogState extends State<_CinemaPaymentDialog> {
                   const SizedBox(height: 12),
                   _row('VAT (7.5%)', widget.vatLabel),
                   const SizedBox(height: 16),
-                  Container(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+                  Container(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [

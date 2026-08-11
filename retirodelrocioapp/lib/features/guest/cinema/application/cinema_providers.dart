@@ -28,17 +28,18 @@ final cinemaBookingsProvider = FutureProvider.autoDispose
 /// Which private rooms are already taken for a given movie/date/time — keyed
 /// by a composite string so picking a different showing re-fetches.
 final cinemaRoomAvailabilityProvider = FutureProvider.autoDispose
-    .family<List<String>, ({String deviceToken, String movieSlug, String date, String time})>(
-      (ref, args) {
-        final repo = ref.watch(cinemaRepositoryProvider);
-        return repo.roomAvailability(
-          args.deviceToken,
-          args.movieSlug,
-          args.date,
-          args.time,
-        );
-      },
-    );
+    .family<
+      List<String>,
+      ({String deviceToken, String movieSlug, String date, String time})
+    >((ref, args) {
+      final repo = ref.watch(cinemaRepositoryProvider);
+      return repo.roomAvailability(
+        args.deviceToken,
+        args.movieSlug,
+        args.date,
+        args.time,
+      );
+    });
 
 class CinemaActions {
   const CinemaActions(this._ref, this._deviceToken);
@@ -56,11 +57,10 @@ class CinemaActions {
     return confirmation;
   }
 
-  Future<CinemaBookingQuote> initializePaystack(
-    Map<String, dynamic> payload,
-  ) => _ref
-      .read(cinemaRepositoryProvider)
-      .initializePaystack(_deviceToken, payload);
+  Future<CinemaBookingQuote> initializePaystack(Map<String, dynamic> payload) =>
+      _ref
+          .read(cinemaRepositoryProvider)
+          .initializePaystack(_deviceToken, payload);
 
   Future<CinemaBookingConfirmation> confirmPaystack(String reference) async {
     final confirmation = await _ref

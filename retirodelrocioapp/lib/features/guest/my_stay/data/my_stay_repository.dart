@@ -81,7 +81,10 @@ class MyStayRepository {
   /// Extend the stay straight against the room's folio, no Paystack round
   /// trip needed. Confirmed immediately. Returns the updated stay with its
   /// `extension` details.
-  Future<GuestStay> chargeToRoom(String deviceToken, DateTime newCheckOut) async {
+  Future<GuestStay> chargeToRoom(
+    String deviceToken,
+    DateTime newCheckOut,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('tablets/extend-stay/charge-to-room')),

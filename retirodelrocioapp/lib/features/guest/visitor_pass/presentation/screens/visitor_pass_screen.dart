@@ -10,6 +10,7 @@ import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_devic
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/application/visitor_pass_providers.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/data/visitor_pass_repository.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/domain/visitor_pass.dart';
@@ -77,6 +78,14 @@ class _VisitorPassScreenState extends ConsumerState<VisitorPassScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GuestNotificationScreen(device: device, status: status),
+      ),
+    );
+  }
+
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: device, status: status),
       ),
     );
   }
@@ -223,6 +232,7 @@ class _VisitorPassScreenState extends ConsumerState<VisitorPassScreen> {
                             weather: ref.watch(weatherProvider).value,
                             onNotifications: _openNotifications,
                             onProfile: () {},
+                            onEmergency: _openEmergency,
                             hasUnreadNotifications:
                                 ref.watch(
                                   guestUnreadNotificationsProvider(

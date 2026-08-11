@@ -139,9 +139,7 @@ class SpaRepository {
       throw SpaException(_messageFrom(error));
     } catch (error) {
       debugPrint('SpaRepository: confirmPaystack failed — $error');
-      throw SpaException(
-        'Could not confirm your booking. Please try again.',
-      );
+      throw SpaException('Could not confirm your booking. Please try again.');
     }
   }
 

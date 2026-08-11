@@ -12,6 +12,7 @@ import 'package:retirodelrocioapp/features/guest/service_requests/application/se
 import 'package:retirodelrocioapp/features/guest/service_requests/data/service_request_repository.dart';
 import 'package:retirodelrocioapp/features/guest/service_requests/domain/guest_service_request.dart';
 import 'package:retirodelrocioapp/features/guest/service_requests/presentation/widgets/service_request_card.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -42,10 +43,12 @@ class GuestServiceRequestScreen extends ConsumerStatefulWidget {
   final RoomStatus status;
 
   @override
-  ConsumerState<GuestServiceRequestScreen> createState() => _GuestServiceRequestScreenState();
+  ConsumerState<GuestServiceRequestScreen> createState() =>
+      _GuestServiceRequestScreenState();
 }
 
-class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestScreen> {
+class _GuestServiceRequestScreenState
+    extends ConsumerState<GuestServiceRequestScreen> {
   final _notesController = TextEditingController();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -75,6 +78,14 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
     );
   }
 
+  void _openEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: device, status: status),
+      ),
+    );
+  }
+
   void _pickHousekeeping() => setState(() => _panel = _Panel.housekeeping);
 
   void _pickMaintenance() => setState(() => _panel = _Panel.maintenance);
@@ -99,7 +110,10 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
     try {
       final request = await ref
           .read(serviceRequestActionsProvider(device.token))
-          .createHousekeeping(type: type.key, notes: _notesController.text.trim());
+          .createHousekeeping(
+            type: type.key,
+            notes: _notesController.text.trim(),
+          );
       if (!mounted) return;
       setState(() {
         _submitted = request;
@@ -148,7 +162,11 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
         duration: const Duration(seconds: 5),
         content: Text(
           message,
-          style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+          style: AppTypography.style(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -156,8 +174,11 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
 
   @override
   Widget build(BuildContext context) {
-    final requests = ref.watch(guestServiceRequestsProvider(device.token)).value ?? const [];
-    final housekeepingTypes = ref.watch(housekeepingRequestTypesProvider(device.token)).value ?? const [];
+    final requests =
+        ref.watch(guestServiceRequestsProvider(device.token)).value ?? const [];
+    final housekeepingTypes =
+        ref.watch(housekeepingRequestTypesProvider(device.token)).value ??
+        const [];
     if (_selectedType == null && housekeepingTypes.isNotEmpty) {
       _selectedType = housekeepingTypes.first;
     }
@@ -184,13 +205,20 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
                         children: [
                           GuestTopBar(
                             suiteName: status.suiteName ?? 'Suite',
-                            roomNumber: status.roomNumber ?? device.roomNumber ?? '—',
+                            roomNumber:
+                                status.roomNumber ?? device.roomNumber ?? '—',
                             guestName: status.guest?.name ?? 'Guest',
                             weather: ref.watch(weatherProvider).value,
                             onNotifications: _openNotifications,
                             onProfile: () {},
+                            onEmergency: _openEmergency,
                             hasUnreadNotifications:
-                                ref.watch(guestUnreadNotificationsProvider(device.token)) > 0,
+                                ref.watch(
+                                  guestUnreadNotificationsProvider(
+                                    device.token,
+                                  ),
+                                ) >
+                                0,
                           ),
                           const SizedBox(height: 22),
                           _headerRow(),
@@ -201,7 +229,9 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
                               children: [
                                 Expanded(
                                   flex: 52,
-                                  child: SingleChildScrollView(child: _leftPanel(housekeepingTypes)),
+                                  child: SingleChildScrollView(
+                                    child: _leftPanel(housekeepingTypes),
+                                  ),
                                 ),
                                 const SizedBox(width: 28),
                                 Expanded(flex: 48, child: _history(requests)),
@@ -236,12 +266,20 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
             children: [
               Text(
                 'Service Request',
-                style: AppTypography.style(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w700, height: 1.15),
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Housekeeping asks and maintenance faults, in one place',
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 15),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 15,
+                ),
               ),
             ],
           ),
@@ -253,7 +291,12 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
   Widget _backButton() {
     return Material(
       color: Colors.white.withValues(alpha: 0.06),
-      shape: CircleBorder(side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8)),
+      shape: CircleBorder(
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
+      ),
       child: InkWell(
         onTap: () {
           if (_panel != _Panel.category) {
@@ -266,7 +309,11 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Icon(Icons.arrow_back_rounded, size: 18, color: Colors.white.withValues(alpha: 0.8)),
+          child: Icon(
+            Icons.arrow_back_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
         ),
       ),
     );
@@ -274,12 +321,13 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
 
   // --- Left panel ---------------------------------------------------------
 
-  Widget _leftPanel(List<HousekeepingRequestTypeOption> housekeepingTypes) => switch (_panel) {
-    _Panel.category => _categoryPicker(),
-    _Panel.housekeeping => _housekeepingForm(housekeepingTypes),
-    _Panel.maintenance => _maintenanceForm(),
-    _Panel.success => _success(),
-  };
+  Widget _leftPanel(List<HousekeepingRequestTypeOption> housekeepingTypes) =>
+      switch (_panel) {
+        _Panel.category => _categoryPicker(),
+        _Panel.housekeeping => _housekeepingForm(housekeepingTypes),
+        _Panel.maintenance => _maintenanceForm(),
+        _Panel.success => _success(),
+      };
 
   Widget _categoryPicker() {
     return Column(
@@ -289,7 +337,8 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           color: _housekeepingGold,
           icon: Icons.cleaning_services_rounded,
           title: 'Housekeeping',
-          subtitle: 'Towels, amenities, Do Not Disturb, or a make-up-room visit',
+          subtitle:
+              'Towels, amenities, Do Not Disturb, or a make-up-room visit',
           onTap: _pickHousekeeping,
         ),
         const SizedBox(height: 16),
@@ -321,7 +370,10 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           padding: const EdgeInsets.all(20.8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: 0.25), width: 0.8),
+            border: Border.all(
+              color: color.withValues(alpha: 0.25),
+              width: 0.8,
+            ),
           ),
           child: Row(
             children: [
@@ -329,7 +381,10 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
                 width: 52,
                 height: 52,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(icon, size: 24, color: color),
               ),
               const SizedBox(width: 16),
@@ -340,17 +395,28 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
                   children: [
                     Text(
                       title,
-                      style: AppTypography.style(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12, height: 1.4),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.3)),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
             ],
           ),
         ),
@@ -378,7 +444,10 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           if (types.isEmpty)
             Text(
               'Could not load request types. Please try again shortly.',
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 13,
+              ),
             )
           else
             Wrap(
@@ -408,7 +477,9 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
   Widget _typeChip(HousekeepingRequestTypeOption type) {
     final selected = _selectedType == type;
     return Material(
-      color: selected ? _housekeepingGold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.05),
+      color: selected
+          ? _housekeepingGold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _selectedType = type),
@@ -418,19 +489,29 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? _housekeepingGold.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.12),
+              color: selected
+                  ? _housekeepingGold.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.12),
               width: 0.8,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(type.icon, size: 14, color: selected ? _housekeepingGold : Colors.white.withValues(alpha: 0.6)),
+              Icon(
+                type.icon,
+                size: 14,
+                color: selected
+                    ? _housekeepingGold
+                    : Colors.white.withValues(alpha: 0.6),
+              ),
               const SizedBox(width: 6),
               Text(
                 type.label,
                 style: AppTypography.style(
-                  color: selected ? _housekeepingGold : Colors.white.withValues(alpha: 0.7),
+                  color: selected
+                      ? _housekeepingGold
+                      : Colors.white.withValues(alpha: 0.7),
                   fontSize: 13,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
@@ -449,7 +530,11 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _textField(label: "WHAT'S WRONG", controller: _titleController, hint: 'e.g. AC not cooling'),
+          _textField(
+            label: "WHAT'S WRONG",
+            controller: _titleController,
+            hint: 'e.g. AC not cooling',
+          ),
           const SizedBox(height: 14),
           _textField(
             label: 'DETAILS (OPTIONAL)',
@@ -471,10 +556,17 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [for (final p in MaintenancePriority.values) _priorityChip(p)],
+            children: [
+              for (final p in MaintenancePriority.values) _priorityChip(p),
+            ],
           ),
           const SizedBox(height: 20),
-          _primaryButton(label: 'Send Request', accent: _maintenanceBlue, busy: _busy, onTap: _submitMaintenance),
+          _primaryButton(
+            label: 'Send Request',
+            accent: _maintenanceBlue,
+            busy: _busy,
+            onTap: _submitMaintenance,
+          ),
         ],
       ),
     );
@@ -483,7 +575,9 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
   Widget _priorityChip(MaintenancePriority priority) {
     final selected = _selectedPriority == priority;
     return Material(
-      color: selected ? _maintenanceBlue.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.05),
+      color: selected
+          ? _maintenanceBlue.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _selectedPriority = priority),
@@ -493,14 +587,18 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? _maintenanceBlue.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.12),
+              color: selected
+                  ? _maintenanceBlue.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.12),
               width: 0.8,
             ),
           ),
           child: Text(
             priority.label,
             style: AppTypography.style(
-              color: selected ? _maintenanceBlue : Colors.white.withValues(alpha: 0.7),
+              color: selected
+                  ? _maintenanceBlue
+                  : Colors.white.withValues(alpha: 0.7),
               fontSize: 13,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             ),
@@ -510,7 +608,11 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
     );
   }
 
-  Widget _formShell({required String title, required Color accent, required Widget child}) {
+  Widget _formShell({
+    required String title,
+    required Color accent,
+    required Widget child,
+  }) {
     return Container(
       padding: const EdgeInsets.all(24.8),
       decoration: BoxDecoration(
@@ -521,7 +623,14 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: AppTypography.style(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 16),
           child,
         ],
@@ -552,7 +661,10 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.07),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.12),
+              width: 0.8,
+            ),
           ),
           child: TextField(
             controller: controller,
@@ -562,9 +674,15 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
             decoration: InputDecoration(
               isCollapsed: true,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               hintText: hint,
-              hintStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+              hintStyle: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
             ),
           ),
         ),
@@ -591,11 +709,18 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
               ? const SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.black,
+                  ),
                 )
               : Text(
                   label,
-                  style: AppTypography.style(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w600),
+                  style: AppTypography.style(
+                    color: Colors.black,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
         ),
       ),
@@ -611,23 +736,37 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _confirmGreen.withValues(alpha: 0.35), width: 0.8),
+        border: Border.all(
+          color: _confirmGreen.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.check_circle_outline_rounded, size: 36, color: _confirmGreen),
+          Icon(
+            Icons.check_circle_outline_rounded,
+            size: 36,
+            color: _confirmGreen,
+          ),
           const SizedBox(height: 10),
           Text(
             'Request Sent!',
-            style: AppTypography.style(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             request.title,
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -637,7 +776,11 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
                   ? 'Housekeeping has been notified and will attend to your room shortly.'
                   : 'Maintenance has been notified and will look into it shortly.',
               textAlign: TextAlign.center,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, height: 1.5),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 13,
+                height: 1.5,
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -659,11 +802,18 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 0.8,
+            ),
           ),
           child: Text(
             'Done',
-            style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),
@@ -695,7 +845,8 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
                   padding: const EdgeInsets.only(bottom: 12),
                   itemCount: requests.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => ServiceRequestCard(request: requests[i]),
+                  itemBuilder: (_, i) =>
+                      ServiceRequestCard(request: requests[i]),
                 ),
         ),
       ],
@@ -709,22 +860,36 @@ class _GuestServiceRequestScreenState extends ConsumerState<GuestServiceRequestS
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.support_agent_rounded, size: 34, color: Colors.white.withValues(alpha: 0.25)),
+          Icon(
+            Icons.support_agent_rounded,
+            size: 34,
+            color: Colors.white.withValues(alpha: 0.25),
+          ),
           const SizedBox(height: 14),
           Text(
             'No requests yet',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Ask housekeeping or report a fault and it will show up here.',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 13),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 13,
+            ),
           ),
         ],
       ),

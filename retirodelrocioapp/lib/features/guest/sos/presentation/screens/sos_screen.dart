@@ -125,11 +125,12 @@ class _SosScreenState extends ConsumerState<SosScreen> {
                     weather: ref.watch(weatherProvider).value,
                     onNotifications: _openNotifications,
                     onProfile: () {},
+                    // Already on the Emergency SOS screen — the button is
+                    // inert here rather than pushing a duplicate instance.
+                    onEmergency: () {},
                     hasUnreadNotifications:
                         ref.watch(
-                          guestUnreadNotificationsProvider(
-                            widget.device.token,
-                          ),
+                          guestUnreadNotificationsProvider(widget.device.token),
                         ) >
                         0,
                   ),

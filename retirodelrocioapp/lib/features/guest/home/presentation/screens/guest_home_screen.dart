@@ -49,10 +49,6 @@ class GuestHomeScreen extends ConsumerStatefulWidget {
   ConsumerState<GuestHomeScreen> createState() => _GuestHomeScreenState();
 }
 
-/// The design's emergency red (pure #FF0000), used for the button and the
-/// confirm action in its dialog.
-const Color _emergencyRed = Color(0xFFFF0000);
-
 class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
   /// The in-room tablet is a shared kiosk: when a guest walks away and leaves it
   /// on the home screen, it returns to the idle welcome screen on its own after
@@ -314,6 +310,7 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
                       weather: weather,
                       onNotifications: () => _open(_alerts),
                       onProfile: () => _open(GuestServices.myStay),
+                      onEmergency: _emergency,
                       hasUnreadNotifications:
                           ref.watch(
                             guestUnreadNotificationsProvider(
@@ -365,96 +362,42 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
   );
 
   Widget _header(String guestName) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'WELCOME BACK,',
-                style: AppTypography.style(
-                  color: AppColors.gold,
-                  fontSize: 12,
-                  letterSpacing: 0.6,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                guestName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.style(
-                  color: Colors.white,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w700,
-                  height: 1.1,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'Your suite is set. Explore in-suite dining, smart room controls, '
-                'spa and more.',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.style(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 15,
-                ),
-              ),
-            ],
+        Text(
+          'WELCOME BACK,',
+          style: AppTypography.style(
+            color: AppColors.gold,
+            fontSize: 12,
+            letterSpacing: 0.6,
           ),
         ),
-        const SizedBox(width: 24),
-        _emergencyButton(),
+        const SizedBox(height: 3),
+        Text(
+          guestName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.style(
+            color: Colors.white,
+            fontSize: 36,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'Your suite is set. Explore in-suite dining, smart room controls, '
+          'spa and more.',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.style(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 15,
+          ),
+        ),
       ],
-    );
-  }
-
-  /// Emergency (Figma 87:5003) — a red-tinted pill, 140 × 38: 7% red fill,
-  /// 12% red border, pure-red icon and label.
-  Widget _emergencyButton() {
-    return Material(
-      color: _emergencyRed.withValues(alpha: 0.07),
-      borderRadius: BorderRadius.circular(100),
-      child: InkWell(
-        onTap: _emergency,
-        borderRadius: BorderRadius.circular(100),
-        child: Container(
-          height: 38,
-          // The design's 140px is measured in SF Pro; Poppins sets wider, so
-          // treat it as a minimum and let the padding size the pill.
-          constraints: const BoxConstraints(minWidth: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 21),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: _emergencyRed.withValues(alpha: 0.12)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.warning_amber_rounded,
-                size: 14,
-                color: _emergencyRed,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Emergency',
-                style: AppTypography.style(
-                  color: _emergencyRed,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  height: 21 / 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

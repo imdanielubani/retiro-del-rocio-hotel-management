@@ -29,7 +29,10 @@ class ServiceRequestRepository {
   final Dio _dio;
 
   Options _auth(String deviceToken) => Options(
-    headers: {'Authorization': 'Bearer $deviceToken', 'Accept': 'application/json'},
+    headers: {
+      'Authorization': 'Bearer $deviceToken',
+      'Accept': 'application/json',
+    },
   );
 
   /// This stay's request history, newest first. Failures fall back to an
@@ -65,7 +68,11 @@ class ServiceRequestRepository {
       if (data is! List) return const [];
       return data
           .whereType<Map>()
-          .map((e) => HousekeepingRequestTypeOption.fromJson(e.cast<String, dynamic>()))
+          .map(
+            (e) => HousekeepingRequestTypeOption.fromJson(
+              e.cast<String, dynamic>(),
+            ),
+          )
           .toList();
     } catch (error) {
       debugPrint('ServiceRequestRepository: types failed — $error');
@@ -93,23 +100,31 @@ class ServiceRequestRepository {
   }) => _create(deviceToken, {
     'category': 'maintenance',
     'title': title,
-    if (description != null && description.isNotEmpty) 'description': description,
+    if (description != null && description.isNotEmpty)
+      'description': description,
     'priority': priority,
   });
 
-  Future<GuestServiceRequest> _create(String deviceToken, Map<String, dynamic> data) async {
+  Future<GuestServiceRequest> _create(
+    String deviceToken,
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('service-requests')),
         data: data,
         options: _auth(deviceToken),
       );
-      return GuestServiceRequest.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return GuestServiceRequest.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw ServiceRequestException(_messageFrom(error));
     } catch (error) {
       debugPrint('ServiceRequestRepository: create failed — $error');
-      throw ServiceRequestException('Could not send this request. Please try again.');
+      throw ServiceRequestException(
+        'Could not send this request. Please try again.',
+      );
     }
   }
 
@@ -117,11 +132,15 @@ class ServiceRequestRepository {
     final data = error.response?.data;
     if (data is Map && data['errors'] is Map) {
       final errors = (data['errors'] as Map).values;
-      if (errors.isNotEmpty && errors.first is List && (errors.first as List).isNotEmpty) {
+      if (errors.isNotEmpty &&
+          errors.first is List &&
+          (errors.first as List).isNotEmpty) {
         return (errors.first as List).first.toString();
       }
     }
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
     switch (error.type) {

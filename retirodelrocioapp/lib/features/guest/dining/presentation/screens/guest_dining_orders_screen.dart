@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/guest/dining/domain/menu_item.dart';
 import 'package:retirodelrocioapp/features/guest/home/presentation/widgets/guest_top_bar.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
+import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
@@ -37,6 +38,14 @@ class GuestDiningOrdersScreen extends ConsumerWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GuestNotificationScreen(device: device, status: status),
+      ),
+    );
+  }
+
+  void _openEmergency(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SosScreen(device: device, status: status),
       ),
     );
   }
@@ -72,6 +81,7 @@ class GuestDiningOrdersScreen extends ConsumerWidget {
                     weather: weather,
                     onNotifications: () => _openNotifications(context),
                     onProfile: () {},
+                    onEmergency: () => _openEmergency(context),
                     hasUnreadNotifications:
                         ref.watch(guestUnreadNotificationsProvider(_token)) > 0,
                   ),

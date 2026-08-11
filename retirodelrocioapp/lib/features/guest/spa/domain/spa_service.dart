@@ -93,7 +93,11 @@ class SpaCatalog {
   final List<SpaCategory> categories;
   final List<String> availableTimes;
 
-  static const empty = SpaCatalog(services: [], categories: [], availableTimes: []);
+  static const empty = SpaCatalog(
+    services: [],
+    categories: [],
+    availableTimes: [],
+  );
 
   factory SpaCatalog.fromJson(Map<String, dynamic> json) => SpaCatalog(
     services: ((json['services'] as List?) ?? const [])
