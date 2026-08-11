@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
-import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/bar/application/bar_providers.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_tab.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_pos_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_tab_detail_screen.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_page_header.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_tab_card.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_widgets.dart';
 
@@ -64,49 +64,38 @@ class _BarTabsScreenState extends ConsumerState<BarTabsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Tabs',
-                style: AppTypography.style(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            Material(
-              color: AppColors.gold,
+        BarPageHeader(
+          title: 'Tabs',
+          trailing: Material(
+            color: AppColors.gold,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _newSale,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.point_of_sale_rounded,
-                        size: 18,
+              onTap: _newSale,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.point_of_sale_rounded,
+                      size: 18,
+                      color: Color(0xFF0A0F1E),
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'New Sale',
+                      style: TextStyle(
                         color: Color(0xFF0A0F1E),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
-                      SizedBox(width: 6),
-                      Text(
-                        'New Sale',
-                        style: TextStyle(
-                          color: Color(0xFF0A0F1E),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
         const SizedBox(height: 14),
         BarSearchField(

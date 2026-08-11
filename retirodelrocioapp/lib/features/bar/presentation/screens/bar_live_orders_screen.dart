@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
-import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/bar/application/bar_providers.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_order.dart';
+import 'package:retirodelrocioapp/features/bar/domain/bar_overview.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/screens/bar_order_detail_screen.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_order_card.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_page_header.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_widgets.dart';
 
 /// The drink order board — New → Preparing → Served, grouped from the exact
@@ -55,20 +56,16 @@ class _BarLiveOrdersScreenState extends ConsumerState<BarLiveOrdersScreen> {
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(barLiveOrdersProvider(_token));
     final orders = ordersAsync.value ?? const <BarOrder>[];
+    final overview = ref.watch(barOverviewProvider(_token)).value;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 4),
-        Text(
-          'Live Orders',
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 14),
+        const BarPageHeader(title: 'Live Orders'),
+        const SizedBox(height: 18),
+        _stats(overview ?? BarOverview.empty),
+        const SizedBox(height: 18),
         BarSearchField(
           hintText: 'Search order, tab or guest…',
           onChanged: (v) => setState(() => _search = v),
@@ -123,6 +120,44 @@ class _BarLiveOrdersScreenState extends ConsumerState<BarLiveOrdersScreen> {
     );
   }
 
+  Widget _stats(BarOverview overview) {
+    return Row(
+      children: [
+        Expanded(
+          child: BarStatCard(
+            label: 'NEW',
+            value: '${overview.newCount}',
+            accent: barBoardColumnColor('new'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: BarStatCard(
+            label: 'PREPARING',
+            value: '${overview.preparingCount}',
+            accent: barBoardColumnColor('preparing'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: BarStatCard(
+            label: 'SERVED TODAY',
+            value: '${overview.servedToday}',
+            accent: barBoardColumnColor('served'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: BarStatCard(
+            label: 'OPEN TABS',
+            value: '${overview.openTabs}',
+            accent: AppColors.gold,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _board(List<BarOrder> orders) {
     if (orders.isEmpty) {
       return const BarEmptyState(
@@ -138,7 +173,7 @@ class _BarLiveOrdersScreenState extends ConsumerState<BarLiveOrdersScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 280,
-          mainAxisExtent: 150,
+          mainAxisExtent: 112,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),

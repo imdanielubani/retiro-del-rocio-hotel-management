@@ -6,6 +6,7 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/bar/application/bar_providers.dart';
 import 'package:retirodelrocioapp/features/bar/data/bar_repository.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_menu_item.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_page_header.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_widgets.dart';
 
 /// Menu Availability — the drinks catalog the admin Bar & Lounge dashboard
@@ -62,14 +63,7 @@ class _BarMenuScreenState extends ConsumerState<BarMenuScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 4),
-        Text(
-          'Drinks Menu',
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        const BarPageHeader(title: 'Drinks Menu'),
         const SizedBox(height: 14),
         BarSearchField(
           hintText: 'Search drinks…',

@@ -76,7 +76,7 @@ class _BarShellState extends ConsumerState<BarShell> {
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
                       child: IndexedStack(
                         index: _tab.index,
                         children: [

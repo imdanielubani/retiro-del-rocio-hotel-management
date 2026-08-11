@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
-import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/bar/notifications/application/bar_notification_providers.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_page_header.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_top_bar.dart';
 import 'package:retirodelrocioapp/features/welcome/application/weather_providers.dart';
 
@@ -71,7 +71,12 @@ class BarScaffold extends ConsumerWidget {
                       onNotifications: onNotifications,
                     ),
                     const SizedBox(height: 20),
-                    _header(),
+                    BarPageHeader(
+                      title: title,
+                      subtitle: subtitle,
+                      onBack: onBack,
+                      trailing: trailing,
+                    ),
                     const SizedBox(height: 20),
                     Expanded(child: body),
                   ],
@@ -79,63 +84,6 @@ class BarScaffold extends ConsumerWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _header() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        if (onBack != null) ...[_backButton(), const SizedBox(width: 15)],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                subtitle,
-                style: AppTypography.style(color: AppColors.gold, fontSize: 12),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                title,
-                style: AppTypography.style(
-                  color: Colors.white,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w700,
-                  height: 1.1,
-                ),
-              ),
-            ],
-          ),
-        ),
-        ?trailing,
-      ],
-    );
-  }
-
-  Widget _backButton() {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.06),
-      shape: CircleBorder(
-        side: BorderSide(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 0.8,
-        ),
-      ),
-      child: InkWell(
-        onTap: onBack,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(
-            Icons.arrow_back_rounded,
-            size: 20,
-            color: Colors.white.withValues(alpha: 0.8),
-          ),
         ),
       ),
     );

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retirodelrocioapp/core/theme/app_colors.dart';
-import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 import 'package:retirodelrocioapp/features/bar/application/bar_providers.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_order.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_tab.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_order_card.dart';
+import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_page_header.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_tab_card.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/widgets/bar_widgets.dart';
 
@@ -55,14 +55,7 @@ class _BarHistoryScreenState extends ConsumerState<BarHistoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 4),
-        Text(
-          'History',
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        const BarPageHeader(title: 'History'),
         const SizedBox(height: 14),
         BarSearchField(
           hintText: 'Search tab, order or guest…',
