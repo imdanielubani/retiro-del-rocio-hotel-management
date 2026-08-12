@@ -5,10 +5,15 @@ import 'package:retirodelrocioapp/core/storage/device_session_store.dart';
 import 'package:retirodelrocioapp/features/authentication/data/auth_repository.dart';
 import 'package:retirodelrocioapp/features/authentication/domain/staff_session.dart';
 
-final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository());
-final authSessionStoreProvider = Provider<AuthSessionStore>((ref) => AuthSessionStore());
-final deviceSessionStoreProvider =
-    Provider<DeviceSessionStore>((ref) => DeviceSessionStore());
+final authRepositoryProvider = Provider<AuthRepository>(
+  (ref) => AuthRepository(),
+);
+final authSessionStoreProvider = Provider<AuthSessionStore>(
+  (ref) => AuthSessionStore(),
+);
+final deviceSessionStoreProvider = Provider<DeviceSessionStore>(
+  (ref) => DeviceSessionStore(),
+);
 
 /// Holds the current staff session. Loads any persisted session on start so a
 /// signed-in staffer goes straight to their dashboard.
@@ -44,7 +49,8 @@ class AuthController extends AsyncNotifier<StaffSession?> {
     // fixed at launch, so a tablet paired *during* this run (fresh setup → sign
     // in) would have a null snapshot and fail here. The store is always current —
     // provisioning writes it, and the device verify re-saves it.
-    final device = await ref.read(deviceSessionStoreProvider).read() ??
+    final device =
+        await ref.read(deviceSessionStoreProvider).read() ??
         ref.read(bootstrapDeviceProvider);
     final current = state.value;
     if (device == null || current == null) {

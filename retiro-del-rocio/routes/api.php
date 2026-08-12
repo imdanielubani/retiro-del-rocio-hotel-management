@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\GuestChatController;
 use App\Http\Controllers\Api\V1\GuestIntercomCallController;
 use App\Http\Controllers\Api\V1\GuestServiceRequestController;
 use App\Http\Controllers\Api\V1\HousekeepingController;
+use App\Http\Controllers\Api\V1\KitchenController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ReceptionChatController;
@@ -525,6 +526,43 @@ $api->group(function () {
             ->name('api.v1.bar.notifications.read-all');
         Route::post('bar/notifications/{notification}/read', [BarController::class, 'markNotificationRead'])
             ->whereNumber('notification')->name('api.v1.bar.notifications.read');
+
+        // --- Kitchen tablet (staff JWT, kitchen role) ---
+        // The chef/kitchen staffer signs in on the kitchen station; their JWT
+        // authorises the ticket board. The role is re-checked in the
+        // controller on every call. Orders here are the exact same
+        // DiningOrder rows the Kitchen admin dashboard manages.
+        Route::get('kitchen/overview', [KitchenController::class, 'overview'])
+            ->name('api.v1.kitchen.overview');
+        Route::get('kitchen/orders', [KitchenController::class, 'liveOrders'])
+            ->name('api.v1.kitchen.orders');
+        Route::get('kitchen/orders/{order}', [KitchenController::class, 'orderDetail'])
+            ->name('api.v1.kitchen.orders.show');
+        Route::post('kitchen/orders/{order}/prepare', [KitchenController::class, 'markPreparing'])
+            ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.prepare');
+        Route::post('kitchen/orders/{order}/serve', [KitchenController::class, 'markServed'])
+            ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.serve');
+        Route::post('kitchen/orders/{order}/void-item', [KitchenController::class, 'voidItem'])
+            ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.void-item');
+        Route::post('kitchen/orders/{order}/assign', [KitchenController::class, 'assignOrder'])
+            ->middleware('throttle:30,1')->name('api.v1.kitchen.orders.assign');
+        Route::get('kitchen/chefs', [KitchenController::class, 'chefs'])
+            ->name('api.v1.kitchen.chefs');
+
+        Route::get('kitchen/menu', [KitchenController::class, 'menu'])
+            ->name('api.v1.kitchen.menu');
+        Route::post('kitchen/menu/{id}/toggle', [KitchenController::class, 'toggleMenuItemAvailability'])
+            ->whereNumber('id')->middleware('throttle:30,1')->name('api.v1.kitchen.menu.toggle');
+
+        Route::get('kitchen/history', [KitchenController::class, 'history'])
+            ->name('api.v1.kitchen.history');
+
+        Route::get('kitchen/notifications', [KitchenController::class, 'notifications'])
+            ->name('api.v1.kitchen.notifications');
+        Route::post('kitchen/notifications/read-all', [KitchenController::class, 'markAllNotificationsRead'])
+            ->name('api.v1.kitchen.notifications.read-all');
+        Route::post('kitchen/notifications/{notification}/read', [KitchenController::class, 'markNotificationRead'])
+            ->whereNumber('notification')->name('api.v1.kitchen.notifications.read');
 
         // --- Staff Chat (shared by every staff tablet's Chat screen) ---
         // Reception, Housekeeping, Maintenance and Security all message each

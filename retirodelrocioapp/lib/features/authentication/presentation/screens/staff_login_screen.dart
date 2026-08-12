@@ -54,7 +54,9 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
       _error = null;
     });
     try {
-      final session = await ref.read(authControllerProvider.notifier).login(
+      final session = await ref
+          .read(authControllerProvider.notifier)
+          .login(
             deviceToken: widget.device.token,
             email: email,
             password: password,
@@ -62,7 +64,9 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
           );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => StaffDashboardScreen(session: session)),
+        MaterialPageRoute(
+          builder: (_) => StaffDashboardScreen(session: session),
+        ),
       );
     } on AuthException catch (e) {
       if (mounted) {
@@ -75,9 +79,9 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
   }
 
   void _forgotPassword() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()));
   }
 
   @override
@@ -93,19 +97,29 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
             child: SingleChildScrollView(
               child: Container(
                 width: 460,
-                padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 44,
+                  vertical: 40,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    width: 0.8,
+                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(
-                      child: Image.asset('assets/icons/Rociologosetup.png',
-                          width: 84, height: 84, fit: BoxFit.contain),
+                      child: Image.asset(
+                        'assets/icons/Rociologosetup.png',
+                        width: 84,
+                        height: 84,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -145,7 +159,9 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
                       trailing: IconButton(
                         onPressed: () => setState(() => _obscure = !_obscure),
                         icon: Icon(
-                          _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscure
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
                           color: Colors.white.withValues(alpha: 0.5),
                           size: 20,
                         ),
@@ -198,7 +214,9 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
                                     width: 22,
                                     height: 22,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2.5, color: AppColors.onGold),
+                                      strokeWidth: 2.5,
+                                      color: AppColors.onGold,
+                                    ),
                                   )
                                 : Text(
                                     'Sign In',
@@ -280,7 +298,10 @@ class _AuthField extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 0.8,
+            ),
           ),
           child: Row(
             children: [

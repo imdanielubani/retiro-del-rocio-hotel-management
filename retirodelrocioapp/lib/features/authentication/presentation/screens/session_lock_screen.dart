@@ -11,7 +11,11 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/r
 /// Full-screen lock shown after inactivity. The staffer re-enters their
 /// password to resume, or logs out entirely.
 class SessionLockScreen extends ConsumerWidget {
-  const SessionLockScreen({super.key, required this.session, required this.onUnlocked});
+  const SessionLockScreen({
+    super.key,
+    required this.session,
+    required this.onUnlocked,
+  });
 
   final StaffSession session;
   final VoidCallback onUnlocked;
@@ -36,11 +40,17 @@ class SessionLockScreen extends ConsumerWidget {
             child: SingleChildScrollView(
               child: Container(
                 width: 420,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 36,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1A1712),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    width: 0.8,
+                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -54,7 +64,11 @@ class SessionLockScreen extends ConsumerWidget {
                           color: AppColors.gold.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.lock_rounded, color: AppColors.gold, size: 28),
+                        child: const Icon(
+                          Icons.lock_rounded,
+                          color: AppColors.gold,
+                          size: 28,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

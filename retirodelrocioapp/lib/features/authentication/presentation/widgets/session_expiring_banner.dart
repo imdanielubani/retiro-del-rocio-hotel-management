@@ -5,7 +5,11 @@ import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 /// Warning banner shown a few minutes before the session (JWT) expires, with a
 /// countdown and a "Stay signed in" action.
 class SessionExpiringBanner extends StatelessWidget {
-  const SessionExpiringBanner({super.key, required this.timeLeft, required this.onStay});
+  const SessionExpiringBanner({
+    super.key,
+    required this.timeLeft,
+    required this.onStay,
+  });
 
   final Duration timeLeft;
   final VoidCallback onStay;
@@ -27,11 +31,18 @@ class SessionExpiringBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF2A2010),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.gold.withValues(alpha: 0.4), width: 0.8),
+          border: Border.all(
+            color: AppColors.gold.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.access_time_rounded, color: AppColors.gold, size: 20),
+            const Icon(
+              Icons.access_time_rounded,
+              color: AppColors.gold,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -51,7 +62,10 @@ class SessionExpiringBanner extends StatelessWidget {
                 onTap: onStay,
                 borderRadius: BorderRadius.circular(10),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Text(
                     'Stay signed in',
                     style: AppTypography.style(

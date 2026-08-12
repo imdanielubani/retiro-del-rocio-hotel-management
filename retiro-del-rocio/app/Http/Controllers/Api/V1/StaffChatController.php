@@ -21,7 +21,7 @@ use Throwable;
 class StaffChatController extends Controller
 {
     /** The tablet-facing roles — the admin dashboard reaches this data through its own Livewire page, not this API. */
-    private const TABLET_ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar'];
+    private const TABLET_ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar', 'kitchen'];
 
     /**
      * GET /staff/chat/channels — one row per other station (the three peer

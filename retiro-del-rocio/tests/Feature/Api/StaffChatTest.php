@@ -35,11 +35,11 @@ class StaffChatTest extends TestCase
         $data = $this->withToken($this->tokenFor('maintenance'))
             ->getJson('/api/v1/staff/chat/channels')
             ->assertOk()
-            ->assertJsonCount(5, 'data')
+            ->assertJsonCount(6, 'data')
             ->json('data');
 
         $this->assertEqualsCanonicalizing(
-            ['reception', 'housekeeping', 'security', 'bar', 'admin'],
+            ['reception', 'housekeeping', 'security', 'bar', 'kitchen', 'admin'],
             array_column($data, 'role'),
         );
     }
@@ -161,7 +161,7 @@ class StaffChatTest extends TestCase
     public function test_an_unknown_role_is_rejected(): void
     {
         $this->withToken($this->tokenFor('reception'))
-            ->postJson('/api/v1/staff/chat/channels/kitchen/messages', ['body' => 'Hello?'])
+            ->postJson('/api/v1/staff/chat/channels/valet/messages', ['body' => 'Hello?'])
             ->assertStatus(404);
     }
 
@@ -181,9 +181,9 @@ class StaffChatTest extends TestCase
 
     public function test_a_non_staff_user_is_forbidden(): void
     {
-        Role::findOrCreate('kitchen');
+        Role::findOrCreate('valet');
         $user = User::factory()->create(['status' => 'active']);
-        $user->assignRole('kitchen');
+        $user->assignRole('valet');
         $token = app(JwtService::class)->issue(['sub' => $user->id])['token'];
 
         $this->withToken($token)
