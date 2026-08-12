@@ -37,19 +37,22 @@ class MaintenanceNavigation {
   }) {
     if (item == current) return;
 
-    if (item == MaintenanceNavItem.dashboard) {
-      Navigator.of(context).popUntil(
-        (route) => !(route.settings.name?.startsWith(_prefix) ?? false),
-      );
-      return;
-    }
+    // Always return to the dashboard root first — it's never a named
+    // `maintenance/` route itself (it occupies the route slot the login
+    // screen replaced), so popping past it here would otherwise be
+    // irreversible.
+    Navigator.of(context).popUntil(
+      (route) => !(route.settings.name?.startsWith(_prefix) ?? false),
+    );
+
+    if (item == MaintenanceNavItem.dashboard) return;
 
     final page = _pageFor(item, session);
     if (page == null) {
       _comingSoon(context, item);
       return;
     }
-    Navigator.of(context).pushReplacement(_route(item, page));
+    Navigator.of(context).push(_route(item, page));
   }
 
   static void afterLogout(BuildContext context) {
