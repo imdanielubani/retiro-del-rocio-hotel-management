@@ -19,7 +19,10 @@ class RolesAndPermissionsSeeder extends Seeder
         // Reset cached roles and permissions.
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // Permissions grouped by the admin modules the portal manages.
+        // Permissions grouped by the admin modules the portal manages. Each
+        // one gates both its sidebar link and its routes (see routes/web.php
+        // and components/admin/app.blade.php) — a role without a permission
+        // never sees or can open that module.
         $permissions = [
             'view dashboard',
             'manage bookings',
@@ -34,6 +37,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage gym',
             'manage transport',
             'manage settings',
+            'manage guests',
+            'manage kitchen',
+            'manage bar',
+            'manage bar inventory',
+            'manage housekeeping',
+            'manage maintenance',
+            'manage security',
+            'manage billing',
         ];
 
         foreach ($permissions as $permission) {
@@ -53,7 +64,10 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::whereNot('name', 'manage settings')->get()
         );
 
-        // Manager gets day-to-day operational permissions.
+        // Manager gets day-to-day operational permissions only — every other
+        // module (Kitchen, Bar, Housekeeping, Maintenance, Security, Devices,
+        // Chat, CMS, Billing, etc.) stays hidden/blocked until a Super Admin
+        // or Admin grants it from Roles & Permissions.
         $manager->syncPermissions([
             'view dashboard',
             'manage bookings',

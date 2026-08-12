@@ -18,12 +18,15 @@ class _FakeStaffChatRepository extends StaffChatRepository {
 }
 
 StaffChannel _channel(
+  int userId,
   String role, {
   int unreadCount = 0,
   String? lastMessage,
 }) => StaffChannel(
+  userId: userId,
+  name: role[0].toUpperCase() + role.substring(1),
   role: role,
-  label: role[0].toUpperCase() + role.substring(1),
+  roleLabel: role[0].toUpperCase() + role.substring(1),
   online: true,
   lastMessage: lastMessage,
   lastMessageLabel: null,
@@ -70,7 +73,7 @@ void main() {
     'first poll that establishes the baseline',
     (tester) async {
       final repo = _FakeStaffChatRepository()
-        ..channelsToReturn = [_channel('maintenance', unreadCount: 0)];
+        ..channelsToReturn = [_channel(1, 'maintenance', unreadCount: 0)];
       final container = await pumpApp(tester, repo);
 
       // The first fetch establishes the baseline — nothing "arrived" yet.
@@ -79,7 +82,7 @@ void main() {
       // Maintenance sends a message — housekeeping's next poll sees the
       // unread count go from 0 to 1.
       repo.channelsToReturn = [
-        _channel('maintenance', unreadCount: 1, lastMessage: 'AC is fixed.'),
+        _channel(1, 'maintenance', unreadCount: 1, lastMessage: 'AC is fixed.'),
       ];
       container.invalidate(staffChatChannelsProvider(token));
       await tester.pump();
@@ -97,10 +100,10 @@ void main() {
     'unread count dropping to zero (opening the thread) never toasts',
     (tester) async {
       final repo = _FakeStaffChatRepository()
-        ..channelsToReturn = [_channel('reception', unreadCount: 3)];
+        ..channelsToReturn = [_channel(2, 'reception', unreadCount: 3)];
       final container = await pumpApp(tester, repo);
 
-      repo.channelsToReturn = [_channel('reception', unreadCount: 0)];
+      repo.channelsToReturn = [_channel(2, 'reception', unreadCount: 0)];
       container.invalidate(staffChatChannelsProvider(token));
       await tester.pump();
       await tester.pump();
@@ -115,7 +118,7 @@ void main() {
     tester,
   ) async {
     final repo = _FakeStaffChatRepository()
-      ..channelsToReturn = [_channel('security', unreadCount: 2)];
+      ..channelsToReturn = [_channel(3, 'security', unreadCount: 2)];
     final container = await pumpApp(tester, repo);
 
     container.invalidate(staffChatChannelsProvider(token));

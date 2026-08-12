@@ -45,9 +45,7 @@ class ReceptionNotificationRepository {
       throw ReceptionNotificationException(_messageFrom(error));
     } catch (error) {
       debugPrint('ReceptionNotificationRepository: fetch failed — $error');
-      throw ReceptionNotificationException(
-        'Could not load the notifications.',
-      );
+      throw ReceptionNotificationException('Could not load the notifications.');
     }
   }
 

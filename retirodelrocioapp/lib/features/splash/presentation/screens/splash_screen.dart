@@ -5,7 +5,6 @@ import 'package:retirodelrocioapp/core/theme/app_colors.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/core/widgets/blend_mask.dart';
 
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 

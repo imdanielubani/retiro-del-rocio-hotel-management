@@ -21,17 +21,14 @@ void main() {
     expect(() => SosAlarm.audioContext, returnsNormally);
   });
 
-  test(
-    'an AudioContextIOS combining ambient with mixWithOthers is invalid '
-    '(regression guard — this is the exact bug that silenced the chime)',
-    () {
-      expect(
-        () => AudioContextIOS(
-          category: AVAudioSessionCategory.ambient,
-          options: const {AVAudioSessionOptions.mixWithOthers},
-        ),
-        throwsA(isA<AssertionError>()),
-      );
-    },
-  );
+  test('an AudioContextIOS combining ambient with mixWithOthers is invalid '
+      '(regression guard — this is the exact bug that silenced the chime)', () {
+    expect(
+      () => AudioContextIOS(
+        category: AVAudioSessionCategory.ambient,
+        options: const {AVAudioSessionOptions.mixWithOthers},
+      ),
+      throwsA(isA<AssertionError>()),
+    );
+  });
 }

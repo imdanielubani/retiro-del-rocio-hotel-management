@@ -72,9 +72,15 @@ class ReceptionTopBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.gold.withValues(alpha: 0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.28), width: 0.8),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.28),
+          width: 0.8,
+        ),
       ),
-      child: Image.asset('assets/icons/Rociologosetup.png', fit: BoxFit.contain),
+      child: Image.asset(
+        'assets/icons/Rociologosetup.png',
+        fit: BoxFit.contain,
+      ),
     );
   }
 
@@ -106,13 +112,13 @@ class ReceptionTopBar extends StatelessWidget {
   }
 
   Widget _divider() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          width: 1,
-          height: 22,
-          color: Colors.white.withValues(alpha: 0.1),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Container(
+      width: 1,
+      height: 22,
+      color: Colors.white.withValues(alpha: 0.1),
+    ),
+  );
 
   Widget _identity() {
     return Column(
@@ -149,13 +155,20 @@ class ReceptionTopBar extends StatelessWidget {
           Material(
             color: Colors.white.withValues(alpha: 0.12),
             shape: CircleBorder(
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+              side: BorderSide(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 0.8,
+              ),
             ),
             child: InkWell(
               onTap: onNotifications,
               customBorder: const CircleBorder(),
               child: const Center(
-                child: Icon(Icons.notifications_none_rounded, size: 16, color: Colors.white),
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -180,7 +193,10 @@ class ReceptionTopBar extends StatelessWidget {
     return Container(
       width: 35,
       height: 35,
-      decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+      decoration: const BoxDecoration(
+        color: AppColors.gold,
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
       child: Text(
         _initials,
@@ -235,7 +251,10 @@ class _WeatherClockPillState extends State<_WeatherClockPill> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 0.8,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

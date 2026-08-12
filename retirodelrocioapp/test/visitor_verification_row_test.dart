@@ -119,56 +119,58 @@ void main() {
     isInside: false,
   );
 
-  testWidgets('a visitor who is inside shows the Inside tag and a Check Out button', (
-    tester,
-  ) async {
-    var checkedOut = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 420,
-            child: VisitorVerificationRow(
-              pass: insidePass,
-              expanded: true,
-              onTap: () {},
-              onCheckOut: () => checkedOut = true,
+  testWidgets(
+    'a visitor who is inside shows the Inside tag and a Check Out button',
+    (tester) async {
+      var checkedOut = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 420,
+              child: VisitorVerificationRow(
+                pass: insidePass,
+                expanded: true,
+                onTap: () {},
+                onCheckOut: () => checkedOut = true,
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Inside'), findsOneWidget);
-    expect(find.text('Check Out Visitor'), findsOneWidget);
+      expect(find.text('Inside'), findsOneWidget);
+      expect(find.text('Check Out Visitor'), findsOneWidget);
 
-    await tester.tap(find.text('Check Out Visitor'));
-    await tester.pump();
-    expect(checkedOut, isTrue);
-  });
+      await tester.tap(find.text('Check Out Visitor'));
+      await tester.pump();
+      expect(checkedOut, isTrue);
+    },
+  );
 
-  testWidgets('a checked-out visitor shows neither the Inside tag nor a Check Out button', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 420,
-            child: VisitorVerificationRow(
-              pass: exitedPass,
-              expanded: true,
-              onTap: () {},
-              onCheckOut: () {},
+  testWidgets(
+    'a checked-out visitor shows neither the Inside tag nor a Check Out button',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 420,
+              child: VisitorVerificationRow(
+                pass: exitedPass,
+                expanded: true,
+                onTap: () {},
+                onCheckOut: () {},
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Inside'), findsNothing);
-    expect(find.text('Check Out Visitor'), findsNothing);
-  });
+      expect(find.text('Inside'), findsNothing);
+      expect(find.text('Check Out Visitor'), findsNothing);
+    },
+  );
 
   testWidgets('a busy check-out shows a spinner instead of the label', (
     tester,

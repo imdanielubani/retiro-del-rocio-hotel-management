@@ -5,7 +5,10 @@ import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/main
 
 /// "Accept" — confirms taking ownership of a work order before it happens.
 /// Returns true if the technician confirmed.
-Future<bool> showAcceptOrderDialog(BuildContext context, {required String orderTitle}) async {
+Future<bool> showAcceptOrderDialog(
+  BuildContext context, {
+  required String orderTitle,
+}) async {
   final confirmed = await showDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -22,12 +25,20 @@ Future<bool> showAcceptOrderDialog(BuildContext context, {required String orderT
             children: [
               Row(
                 children: [
-                  const Icon(Icons.assignment_turned_in_outlined, color: kMtBlue, size: 22),
+                  const Icon(
+                    Icons.assignment_turned_in_outlined,
+                    color: kMtBlue,
+                    size: 22,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Accept this order?',
-                      style: AppTypography.style(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -35,7 +46,11 @@ Future<bool> showAcceptOrderDialog(BuildContext context, {required String orderT
               const SizedBox(height: 12),
               Text(
                 'You\'ll be assigned to "$orderTitle" and it moves to Accepted.',
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 14, height: 1.4),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 20),
               Row(
@@ -43,7 +58,13 @@ Future<bool> showAcceptOrderDialog(BuildContext context, {required String orderT
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: Text('Cancel', style: AppTypography.style(color: Colors.white70, fontSize: 14)),
+                      child: Text(
+                        'Cancel',
+                        style: AppTypography.style(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -59,7 +80,11 @@ Future<bool> showAcceptOrderDialog(BuildContext context, {required String orderT
                           alignment: Alignment.center,
                           child: Text(
                             'Accept',
-                            style: AppTypography.style(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w700),
+                            style: AppTypography.style(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),

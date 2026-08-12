@@ -67,9 +67,9 @@ class _Level extends StatelessWidget {
           children: [
             Text('Level $depth'),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => _Level(depth + 1)),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => _Level(depth + 1))),
               child: const Text('Push deeper'),
             ),
           ],
@@ -85,8 +85,9 @@ void main() {
       ProviderScope(
         overrides: [
           bootstrapDeviceProvider.overrideWithValue(_device),
-          roomStatusProvider
-              .overrideWith((ref, token) async => ref.watch(_liveStatus)),
+          roomStatusProvider.overrideWith(
+            (ref, token) async => ref.watch(_liveStatus),
+          ),
         ],
         child: MaterialApp(
           navigatorKey: rootNavigatorKey,
@@ -158,8 +159,9 @@ void main() {
       ProviderScope(
         overrides: [
           bootstrapDeviceProvider.overrideWithValue(staffDevice),
-          roomStatusProvider
-              .overrideWith((ref, token) async => ref.watch(_liveStatus)),
+          roomStatusProvider.overrideWith(
+            (ref, token) async => ref.watch(_liveStatus),
+          ),
         ],
         child: MaterialApp(
           navigatorKey: rootNavigatorKey,

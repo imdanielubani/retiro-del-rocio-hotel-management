@@ -41,30 +41,36 @@ class ReceptionDepartureOpenItem {
   final String title;
   final String? detail;
 
-  factory ReceptionDepartureOpenItem.housekeeping(Map<String, dynamic> json) => ReceptionDepartureOpenItem(
-    title: json['type_label'] as String? ?? 'Request',
-    detail: json['notes'] as String?,
-  );
+  factory ReceptionDepartureOpenItem.housekeeping(Map<String, dynamic> json) =>
+      ReceptionDepartureOpenItem(
+        title: json['type_label'] as String? ?? 'Request',
+        detail: json['notes'] as String?,
+      );
 
-  factory ReceptionDepartureOpenItem.workOrder(Map<String, dynamic> json) => ReceptionDepartureOpenItem(
-    title: json['title'] as String? ?? 'Fault',
-    detail: json['status_label'] as String?,
-  );
+  factory ReceptionDepartureOpenItem.workOrder(Map<String, dynamic> json) =>
+      ReceptionDepartureOpenItem(
+        title: json['title'] as String? ?? 'Fault',
+        detail: json['status_label'] as String?,
+      );
 }
 
 /// One visitor pass still active against the stay — informational only,
 /// checkout closes it automatically.
 @immutable
 class ReceptionDepartureVisitor {
-  const ReceptionDepartureVisitor({required this.visitorName, required this.statusLabel});
+  const ReceptionDepartureVisitor({
+    required this.visitorName,
+    required this.statusLabel,
+  });
 
   final String visitorName;
   final String statusLabel;
 
-  factory ReceptionDepartureVisitor.fromJson(Map<String, dynamic> json) => ReceptionDepartureVisitor(
-    visitorName: json['visitor_name'] as String? ?? 'Visitor',
-    statusLabel: json['status_label'] as String? ?? '',
-  );
+  factory ReceptionDepartureVisitor.fromJson(Map<String, dynamic> json) =>
+      ReceptionDepartureVisitor(
+        visitorName: json['visitor_name'] as String? ?? 'Visitor',
+        statusLabel: json['status_label'] as String? ?? '',
+      );
 }
 
 /// Everything the desk should see before checking a guest out
@@ -111,24 +117,37 @@ class ReceptionDepartureReadiness {
   factory ReceptionDepartureReadiness.fromJson(Map<String, dynamic> json) {
     final openRequests = (json['open_requests'] as List?) ?? const [];
     final openWorkOrders = (json['open_work_orders'] as List?) ?? const [];
-    final activeVisitorPasses = (json['active_visitor_passes'] as List?) ?? const [];
+    final activeVisitorPasses =
+        (json['active_visitor_passes'] as List?) ?? const [];
 
     return ReceptionDepartureReadiness(
       due: (json['due'] as num?)?.toInt() ?? 0,
       dueLabel: json['due_label'] as String? ?? 'NGN 0',
       canCheckOut: json['can_check_out'] as bool? ?? false,
-      inspectionStatus: ReceptionInspectionStatus.fromApi(json['inspection_status'] as String?),
+      inspectionStatus: ReceptionInspectionStatus.fromApi(
+        json['inspection_status'] as String?,
+      ),
       openRequests: openRequests
           .whereType<Map>()
-          .map((e) => ReceptionDepartureOpenItem.housekeeping(e.cast<String, dynamic>()))
+          .map(
+            (e) => ReceptionDepartureOpenItem.housekeeping(
+              e.cast<String, dynamic>(),
+            ),
+          )
           .toList(),
       openWorkOrders: openWorkOrders
           .whereType<Map>()
-          .map((e) => ReceptionDepartureOpenItem.workOrder(e.cast<String, dynamic>()))
+          .map(
+            (e) =>
+                ReceptionDepartureOpenItem.workOrder(e.cast<String, dynamic>()),
+          )
           .toList(),
       activeVisitorPasses: activeVisitorPasses
           .whereType<Map>()
-          .map((e) => ReceptionDepartureVisitor.fromJson(e.cast<String, dynamic>()))
+          .map(
+            (e) =>
+                ReceptionDepartureVisitor.fromJson(e.cast<String, dynamic>()),
+          )
           .toList(),
     );
   }

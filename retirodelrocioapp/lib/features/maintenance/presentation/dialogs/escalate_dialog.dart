@@ -4,7 +4,11 @@ import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/main
 
 /// "Escalate" — confirms bumping a work order up one priority level before
 /// it happens. Returns true if the technician confirmed.
-Future<bool> showEscalateDialog(BuildContext context, {required String orderTitle, required String currentPriority}) async {
+Future<bool> showEscalateDialog(
+  BuildContext context, {
+  required String orderTitle,
+  required String currentPriority,
+}) async {
   final confirmed = await showDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -21,12 +25,20 @@ Future<bool> showEscalateDialog(BuildContext context, {required String orderTitl
             children: [
               Row(
                 children: [
-                  const Icon(Icons.arrow_circle_up_rounded, color: kMtRed, size: 22),
+                  const Icon(
+                    Icons.arrow_circle_up_rounded,
+                    color: kMtRed,
+                    size: 22,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Escalate this order?',
-                      style: AppTypography.style(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -34,7 +46,11 @@ Future<bool> showEscalateDialog(BuildContext context, {required String orderTitl
               const SizedBox(height: 12),
               Text(
                 '"$orderTitle" is currently ${_label(currentPriority)} priority. Escalating raises it one level and flags it for the desk.',
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 14, height: 1.4),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 20),
               Row(
@@ -42,7 +58,13 @@ Future<bool> showEscalateDialog(BuildContext context, {required String orderTitl
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: Text('Cancel', style: AppTypography.style(color: Colors.white70, fontSize: 14)),
+                      child: Text(
+                        'Cancel',
+                        style: AppTypography.style(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -58,7 +80,11 @@ Future<bool> showEscalateDialog(BuildContext context, {required String orderTitl
                           alignment: Alignment.center,
                           child: Text(
                             'Escalate',
-                            style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                            style: AppTypography.style(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
@@ -75,4 +101,6 @@ Future<bool> showEscalateDialog(BuildContext context, {required String orderTitl
   return confirmed ?? false;
 }
 
-String _label(String priority) => priority.isEmpty ? priority : priority[0].toUpperCase() + priority.substring(1);
+String _label(String priority) => priority.isEmpty
+    ? priority
+    : priority[0].toUpperCase() + priority.substring(1);

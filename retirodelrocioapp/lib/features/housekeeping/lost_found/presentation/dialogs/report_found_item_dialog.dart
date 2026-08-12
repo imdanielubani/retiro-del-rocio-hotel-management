@@ -11,7 +11,10 @@ import 'package:retirodelrocioapp/features/housekeeping/lost_found/domain/lost_f
 /// "Report a Found Item" — log something a housekeeper found while turning
 /// over a room, optionally against that room; left blank for something found
 /// in a common area. Returns the created item, or null if cancelled.
-Future<LostFoundItem?> showReportFoundItemDialog(BuildContext context, {required String token}) {
+Future<LostFoundItem?> showReportFoundItemDialog(
+  BuildContext context, {
+  required String token,
+}) {
   return showDialog<LostFoundItem>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -25,7 +28,8 @@ class ReportFoundItemDialog extends ConsumerStatefulWidget {
   final String token;
 
   @override
-  ConsumerState<ReportFoundItemDialog> createState() => _ReportFoundItemDialogState();
+  ConsumerState<ReportFoundItemDialog> createState() =>
+      _ReportFoundItemDialogState();
 }
 
 class _ReportFoundItemDialogState extends ConsumerState<ReportFoundItemDialog> {
@@ -59,7 +63,9 @@ class _ReportFoundItemDialogState extends ConsumerState<ReportFoundItemDialog> {
           .createItem(
             roomUnitId: _room?.id,
             itemDescription: description,
-            notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+            notes: _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
           );
       if (mounted) Navigator.of(context).pop(item);
     } on LostFoundException catch (e) {
@@ -90,25 +96,50 @@ class _ReportFoundItemDialogState extends ConsumerState<ReportFoundItemDialog> {
               children: [
                 Text(
                   'Report a Found Item',
-                  style: AppTypography.style(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                _field(controller: _descriptionController, label: 'What did you find'),
+                _field(
+                  controller: _descriptionController,
+                  label: 'What did you find',
+                ),
                 const SizedBox(height: 12),
                 _roomDropdown(rooms),
                 const SizedBox(height: 12),
-                _field(controller: _notesController, label: 'Where exactly, or other detail (optional)', maxLines: 3),
+                _field(
+                  controller: _notesController,
+                  label: 'Where exactly, or other detail (optional)',
+                  maxLines: 3,
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: 10),
-                  Text(_error!, style: AppTypography.style(color: const Color(0xFFFF6B6B), fontSize: 12)),
+                  Text(
+                    _error!,
+                    style: AppTypography.style(
+                      color: const Color(0xFFFF6B6B),
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                        child: Text('Cancel', style: AppTypography.style(color: Colors.white70, fontSize: 14)),
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        child: Text(
+                          'Cancel',
+                          style: AppTypography.style(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -126,7 +157,10 @@ class _ReportFoundItemDialogState extends ConsumerState<ReportFoundItemDialog> {
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
                                   )
                                 : Text(
                                     'Log Item',
@@ -150,17 +184,27 @@ class _ReportFoundItemDialogState extends ConsumerState<ReportFoundItemDialog> {
     );
   }
 
-  Widget _field({required TextEditingController controller, required String label, int maxLines = 1}) {
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    int maxLines = 1,
+  }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
@@ -176,7 +220,10 @@ class _ReportFoundItemDialogState extends ConsumerState<ReportFoundItemDialog> {
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: 'Room (optional)',
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -186,11 +233,16 @@ class _ReportFoundItemDialogState extends ConsumerState<ReportFoundItemDialog> {
         ),
       ),
       items: [
-        const DropdownMenuItem<HousekeepingRoom?>(value: null, child: Text('None — common area')),
+        const DropdownMenuItem<HousekeepingRoom?>(
+          value: null,
+          child: Text('None — common area'),
+        ),
         for (final room in rooms)
           DropdownMenuItem<HousekeepingRoom?>(
             value: room,
-            child: Text('Room ${room.number}${(room.roomName ?? '').isNotEmpty ? ' · ${room.roomName}' : ''}'),
+            child: Text(
+              'Room ${room.number}${(room.roomName ?? '').isNotEmpty ? ' · ${room.roomName}' : ''}',
+            ),
           ),
       ],
       onChanged: (value) => setState(() => _room = value),

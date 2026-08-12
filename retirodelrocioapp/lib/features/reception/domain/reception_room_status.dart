@@ -15,10 +15,11 @@ enum ReceptionRoomBoardStatus {
   final String label;
   final IconData icon;
 
-  static ReceptionRoomBoardStatus fromApi(String? value) => ReceptionRoomBoardStatus.values.firstWhere(
-    (s) => s.name == value,
-    orElse: () => ready,
-  );
+  static ReceptionRoomBoardStatus fromApi(String? value) =>
+      ReceptionRoomBoardStatus.values.firstWhere(
+        (s) => s.name == value,
+        orElse: () => ready,
+      );
 }
 
 /// One room on reception's Room Status board (`GET /reception/room-status`)
@@ -60,20 +61,24 @@ class ReceptionRoomStatusEntry {
   final String boardStatusLabel;
   final String? updatedLabel;
 
-  factory ReceptionRoomStatusEntry.fromJson(Map<String, dynamic> json) => ReceptionRoomStatusEntry(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    number: json['number'] as String? ?? '—',
-    roomName: json['room_name'] as String?,
-    occupancy: json['occupancy'] as String? ?? 'available',
-    occupancyLabel: json['occupancy_label'] as String? ?? 'Available',
-    housekeepingStatus: json['housekeeping_status'] as String? ?? 'clean',
-    housekeepingStatusLabel: json['housekeeping_status_label'] as String? ?? 'Clean',
-    guestName: json['guest_name'] as String?,
-    hasOpenWorkOrder: json['has_open_work_order'] as bool? ?? false,
-    boardStatus: ReceptionRoomBoardStatus.fromApi(json['board_status'] as String?),
-    boardStatusLabel: json['board_status_label'] as String? ?? 'Ready',
-    updatedLabel: json['updated_label'] as String?,
-  );
+  factory ReceptionRoomStatusEntry.fromJson(Map<String, dynamic> json) =>
+      ReceptionRoomStatusEntry(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        number: json['number'] as String? ?? '—',
+        roomName: json['room_name'] as String?,
+        occupancy: json['occupancy'] as String? ?? 'available',
+        occupancyLabel: json['occupancy_label'] as String? ?? 'Available',
+        housekeepingStatus: json['housekeeping_status'] as String? ?? 'clean',
+        housekeepingStatusLabel:
+            json['housekeeping_status_label'] as String? ?? 'Clean',
+        guestName: json['guest_name'] as String?,
+        hasOpenWorkOrder: json['has_open_work_order'] as bool? ?? false,
+        boardStatus: ReceptionRoomBoardStatus.fromApi(
+          json['board_status'] as String?,
+        ),
+        boardStatusLabel: json['board_status_label'] as String? ?? 'Ready',
+        updatedLabel: json['updated_label'] as String?,
+      );
 }
 
 /// The Room Status board in one payload: headline counters plus every room
@@ -117,7 +122,9 @@ class ReceptionRoomStatusBoard {
       dirty: (stats['dirty'] as num?)?.toInt() ?? 0,
       rooms: rooms
           .whereType<Map>()
-          .map((e) => ReceptionRoomStatusEntry.fromJson(e.cast<String, dynamic>()))
+          .map(
+            (e) => ReceptionRoomStatusEntry.fromJson(e.cast<String, dynamic>()),
+          )
           .toList(),
     );
   }

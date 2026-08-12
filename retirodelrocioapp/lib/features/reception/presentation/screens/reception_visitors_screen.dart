@@ -22,12 +22,14 @@ class ReceptionVisitorsScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<ReceptionVisitorsScreen> createState() => _ReceptionVisitorsScreenState();
+  ConsumerState<ReceptionVisitorsScreen> createState() =>
+      _ReceptionVisitorsScreenState();
 }
 
 enum _VisitorFilter { all, expected, inside }
 
-class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScreen> {
+class _ReceptionVisitorsScreenState
+    extends ConsumerState<ReceptionVisitorsScreen> {
   String _search = '';
   _VisitorFilter _filter = _VisitorFilter.all;
 
@@ -54,11 +56,13 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
     final q = _search.trim().toLowerCase();
     if (q.isEmpty) return rows;
     return rows
-        .where((v) =>
-            v.visitorName.toLowerCase().contains(q) ||
-            (v.hostName ?? '').toLowerCase().contains(q) ||
-            (v.roomNumber ?? '').toLowerCase().contains(q) ||
-            (v.suiteName ?? '').toLowerCase().contains(q))
+        .where(
+          (v) =>
+              v.visitorName.toLowerCase().contains(q) ||
+              (v.hostName ?? '').toLowerCase().contains(q) ||
+              (v.roomNumber ?? '').toLowerCase().contains(q) ||
+              (v.suiteName ?? '').toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -66,7 +70,9 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
   Widget build(BuildContext context) {
     final visitorsAsync = ref.watch(receptionVisitorsProvider(_token));
     final overview = visitorsAsync.value ?? ReceptionVisitorsOverview.empty;
-    final unreadNotifications = ref.watch(receptionUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      receptionUnreadNotificationsProvider(_token),
+    );
 
     return ReceptionScaffold(
       session: widget.session,
@@ -96,12 +102,15 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
             child: visitorsAsync.when(
               loading: () => overview.visitors.isNotEmpty
                   ? _list(overview)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => overview.visitors.isNotEmpty
                   ? _list(overview)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(receptionVisitorsProvider(_token)),
+                        onPressed: () =>
+                            ref.invalidate(receptionVisitorsProvider(_token)),
                         child: const Text(
                           'Could not load visitors. Retry',
                           style: TextStyle(color: AppColors.gold),
@@ -119,11 +128,25 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
   Widget _summaryCards(ReceptionVisitorsOverview overview) {
     return Row(
       children: [
-        Expanded(child: _summaryCard('EXPECTED', '${overview.expected}', AppColors.gold)),
+        Expanded(
+          child: _summaryCard(
+            'EXPECTED',
+            '${overview.expected}',
+            AppColors.gold,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _summaryCard('CURRENTLY INSIDE', '${overview.inside}', kReceptionBlue)),
+        Expanded(
+          child: _summaryCard(
+            'CURRENTLY INSIDE',
+            '${overview.inside}',
+            kReceptionBlue,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _summaryCard('TODAY', '${overview.today}', kReceptionGreen)),
+        Expanded(
+          child: _summaryCard('TODAY', '${overview.today}', kReceptionGreen),
+        ),
       ],
     );
   }
@@ -134,7 +157,10 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +204,9 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
   Widget _chip(String label, _VisitorFilter value) {
     final selected = _filter == value;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _filter = value),
@@ -188,14 +216,18 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.6),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -229,7 +261,10 @@ class _ReceptionVisitorsScreenState extends ConsumerState<ReceptionVisitorsScree
     ReceptionNavigation.push(
       context,
       'notifications',
-      ReceptionNotificationScreen(session: widget.session, current: ReceptionNavItem.visitorPass),
+      ReceptionNotificationScreen(
+        session: widget.session,
+        current: ReceptionNavItem.visitorPass,
+      ),
     );
   }
 }

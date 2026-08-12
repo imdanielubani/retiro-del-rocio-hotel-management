@@ -20,7 +20,11 @@ import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/main
 /// raised against it, plus a "Mark Serviced" action that restarts its
 /// preventive-maintenance interval.
 class AssetDetailScreen extends ConsumerStatefulWidget {
-  const AssetDetailScreen({super.key, required this.session, required this.assetId});
+  const AssetDetailScreen({
+    super.key,
+    required this.session,
+    required this.assetId,
+  });
 
   final StaffSession session;
   final int assetId;
@@ -35,7 +39,12 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
   String get _token => widget.session.token;
 
   void _onNav(MaintenanceNavItem item) {
-    MaintenanceNavigation.select(context, widget.session, item, current: MaintenanceNavItem.assets);
+    MaintenanceNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: MaintenanceNavItem.assets,
+    );
   }
 
   Future<void> _logout() async {
@@ -48,7 +57,9 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
   Future<void> _markServiced() async {
     setState(() => _marking = true);
     try {
-      await ref.read(maintenanceActionsProvider(_token)).markAssetServiced(widget.assetId);
+      await ref
+          .read(maintenanceActionsProvider(_token))
+          .markAssetServiced(widget.assetId);
     } on MaintenanceException catch (e) {
       _showFailure(e.message);
     } catch (_) {
@@ -64,7 +75,10 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -72,7 +86,10 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MaintenanceNotificationScreen(session: widget.session, current: MaintenanceNavItem.assets),
+        builder: (_) => MaintenanceNotificationScreen(
+          session: widget.session,
+          current: MaintenanceNavItem.assets,
+        ),
       ),
     );
   }
@@ -83,8 +100,12 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
     ref.watch(maintenanceNotificationChimeProvider(_token));
     ref.watch(maintenanceSlaBreachChimeProvider(_token));
 
-    final assetAsync = ref.watch(maintenanceAssetDetailProvider((_token, widget.assetId)));
-    final unreadNotifications = ref.watch(maintenanceUnreadNotificationsProvider(_token));
+    final assetAsync = ref.watch(
+      maintenanceAssetDetailProvider((_token, widget.assetId)),
+    );
+    final unreadNotifications = ref.watch(
+      maintenanceUnreadNotificationsProvider(_token),
+    );
 
     return MaintenanceScaffold(
       session: widget.session,
@@ -95,10 +116,15 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
       onNotifications: _openNotifications,
       title: assetAsync.value?.name ?? 'Asset',
       onBack: () => Navigator.of(context).maybePop(),
-      trailing: assetAsync.value != null && assetAsync.value!.isOnScheduledMaintenance ? _markServicedButton() : null,
+      trailing:
+          assetAsync.value != null && assetAsync.value!.isOnScheduledMaintenance
+          ? _markServicedButton()
+          : null,
       body: assetAsync.when(
         data: (data) => data == null ? _notFound() : _content(data),
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.gold),
+        ),
         error: (_, _) => _notFound(),
       ),
     );
@@ -118,16 +144,27 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.black,
+                  ),
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.check_circle_outline_rounded, size: 16, color: Colors.black),
+                    const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 16,
+                      color: Colors.black,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Mark Serviced',
-                      style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: Colors.black,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -140,7 +177,10 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
     return Center(
       child: Text(
         'Could not load this asset.',
-        style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+        style: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.6),
+          fontSize: 15,
+        ),
       ),
     );
   }
@@ -170,7 +210,10 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
             )
           else
             ...asset.serviceHistory.map(
-              (order) => Padding(padding: const EdgeInsets.only(bottom: 10), child: _historyRow(order)),
+              (order) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _historyRow(order),
+              ),
             ),
         ],
       ),
@@ -183,7 +226,10 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,10 +244,14 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
               if (asset.isDueForService) _tag('Service Due', kMtRed),
             ],
           ),
-          if ((asset.category ?? '').isNotEmpty || asset.isDueForService) const SizedBox(height: 10),
+          if ((asset.category ?? '').isNotEmpty || asset.isDueForService)
+            const SizedBox(height: 10),
           _infoRow('Location', asset.locationLabel),
           if (asset.isOnScheduledMaintenance) ...[
-            _infoRow('Service interval', 'Every ${asset.serviceIntervalDays} days'),
+            _infoRow(
+              'Service interval',
+              'Every ${asset.serviceIntervalDays} days',
+            ),
             _infoRow('Last serviced', asset.lastServicedLabel ?? 'Never'),
           ],
           if ((asset.notes ?? '').isNotEmpty) _infoRow('Notes', asset.notes!),
@@ -213,8 +263,18 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
   Widget _tag(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
-      child: Text(label, style: AppTypography.style(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.style(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -228,11 +288,21 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
             width: 130,
             child: Text(
               label,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 13,
+              ),
             ),
           ),
           Expanded(
-            child: Text(value, style: AppTypography.style(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            child: Text(
+              value,
+              style: AppTypography.style(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -245,7 +315,10 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Row(
         children: [
@@ -257,15 +330,23 @@ class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
                   order.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   [
                     order.createdLabel ?? '',
-                    if ((order.assignedToName ?? '').isNotEmpty) order.assignedToName!,
+                    if ((order.assignedToName ?? '').isNotEmpty)
+                      order.assignedToName!,
                   ].where((s) => s.isNotEmpty).join('  ·  '),
-                  style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

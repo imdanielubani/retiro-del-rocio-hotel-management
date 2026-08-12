@@ -30,6 +30,7 @@ class IntercomCallScreen extends ConsumerStatefulWidget {
     required this.watchCall,
     this.myRoomUnitId,
     this.myRole,
+    this.myUserId,
     required this.onAnswer,
     required this.onDecline,
     required this.onEnd,
@@ -38,10 +39,13 @@ class IntercomCallScreen extends ConsumerStatefulWidget {
 
   final IntercomCall? Function(WidgetRef ref) watchCall;
 
-  /// Exactly one of [myRoomUnitId] / [myRole] is set — the guest's own room,
-  /// or the staff role this tablet is signed in as.
+  /// Exactly one of [myRoomUnitId] / [myRole] / [myUserId] is set — the
+  /// guest's own room, a department-wide destination (a guest calling
+  /// "reception" as a whole), or the individual staff member this tablet is
+  /// signed in as, for a staff-to-staff call.
   final int? myRoomUnitId;
   final String? myRole;
+  final int? myUserId;
 
   final Future<void> Function(int callId) onAnswer;
   final Future<void> Function(int callId) onDecline;
@@ -74,9 +78,11 @@ class _IntercomCallScreenState extends ConsumerState<IntercomCallScreen> {
   bool _muted = false;
   bool _speakerOn = false;
 
-  bool _isMe(IntercomParty p) => widget.myRoomUnitId != null
-      ? p.roomUnitId == widget.myRoomUnitId
-      : p.role == widget.myRole;
+  bool _isMe(IntercomParty p) {
+    if (widget.myUserId != null) return p.userId == widget.myUserId;
+    if (widget.myRoomUnitId != null) return p.roomUnitId == widget.myRoomUnitId;
+    return p.role == widget.myRole;
+  }
 
   @override
   void dispose() {

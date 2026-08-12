@@ -56,25 +56,26 @@ class ReceptionBooking {
   /// "Overdue by 2 days", present only when [isOverdue] is true.
   final String? overdueLabel;
 
-  factory ReceptionBooking.fromJson(Map<String, dynamic> json) =>
-      ReceptionBooking(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        reference: json['reference'] as String? ?? '',
-        guestName: json['guest_name'] as String? ?? 'Guest',
-        roomLabel: json['room_label'] as String? ?? '',
-        dateLabel: json['date_label'] as String? ?? '',
-        status: json['status'] as String? ?? '',
-        statusLabel: json['status_label'] as String? ?? '',
-        isWalkIn: json['is_walk_in'] as bool? ?? false,
-        originLabel: (json['origin_label'] as String?)?.trim().isNotEmpty == true
-            ? json['origin_label'] as String
-            : null,
-        isDueToday: json['is_due_today'] as bool? ?? false,
-        isOverdue: json['is_overdue'] as bool? ?? false,
-        overdueLabel: (json['overdue_label'] as String?)?.trim().isNotEmpty == true
-            ? json['overdue_label'] as String
-            : null,
-      );
+  factory ReceptionBooking.fromJson(
+    Map<String, dynamic> json,
+  ) => ReceptionBooking(
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    reference: json['reference'] as String? ?? '',
+    guestName: json['guest_name'] as String? ?? 'Guest',
+    roomLabel: json['room_label'] as String? ?? '',
+    dateLabel: json['date_label'] as String? ?? '',
+    status: json['status'] as String? ?? '',
+    statusLabel: json['status_label'] as String? ?? '',
+    isWalkIn: json['is_walk_in'] as bool? ?? false,
+    originLabel: (json['origin_label'] as String?)?.trim().isNotEmpty == true
+        ? json['origin_label'] as String
+        : null,
+    isDueToday: json['is_due_today'] as bool? ?? false,
+    isOverdue: json['is_overdue'] as bool? ?? false,
+    overdueLabel: (json['overdue_label'] as String?)?.trim().isNotEmpty == true
+        ? json['overdue_label'] as String
+        : null,
+  );
 }
 
 /// One row in the Alerts panel.
@@ -99,16 +100,16 @@ class ReceptionAlert {
   final AlertSeverity severity;
 
   factory ReceptionAlert.fromJson(Map<String, dynamic> json) => ReceptionAlert(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        type: json['type'] as String? ?? 'sos',
-        title: json['title'] as String? ?? 'Alert',
-        timeLabel: json['time_label'] as String? ?? '',
-        severity: switch (json['severity'] as String?) {
-          'high' => AlertSeverity.high,
-          'low' => AlertSeverity.low,
-          _ => AlertSeverity.medium,
-        },
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    type: json['type'] as String? ?? 'sos',
+    title: json['title'] as String? ?? 'Alert',
+    timeLabel: json['time_label'] as String? ?? '',
+    severity: switch (json['severity'] as String?) {
+      'high' => AlertSeverity.high,
+      'low' => AlertSeverity.low,
+      _ => AlertSeverity.medium,
+    },
+  );
 }
 
 /// The room-status tally shown as three tiles.
@@ -208,7 +209,8 @@ class ReceptionOverview {
       arrivalsToday: (stats['arrivals_today'] as num?)?.toInt() ?? 0,
       checkInsToday: (stats['check_ins_today'] as num?)?.toInt() ?? 0,
       departuresToday: (stats['departures_today'] as num?)?.toInt() ?? 0,
-      visitorPassCheckIns: (stats['visitor_pass_check_ins'] as num?)?.toInt() ?? 0,
+      visitorPassCheckIns:
+          (stats['visitor_pass_check_ins'] as num?)?.toInt() ?? 0,
       overdueDepartures: (stats['overdue_departures'] as num?)?.toInt() ?? 0,
       arrivals: parse('arrivals', ReceptionBooking.fromJson),
       departures: parse('departures', ReceptionBooking.fromJson),

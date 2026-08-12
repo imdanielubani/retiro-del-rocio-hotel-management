@@ -111,45 +111,64 @@ void main() {
     isPending: false,
   );
 
-  testWidgets('a dirty checkout-today room shows its status, guest and a Mark Preparing action', (tester) async {
-    var tappedStatus = '';
-    await tester.pumpWidget(
-      _host(HousekeepingRoomCard(room: dirtyRoom, onMarkStatus: (s) => tappedStatus = s)),
-    );
+  testWidgets(
+    'a dirty checkout-today room shows its status, guest and a Mark Preparing action',
+    (tester) async {
+      var tappedStatus = '';
+      await tester.pumpWidget(
+        _host(
+          HousekeepingRoomCard(
+            room: dirtyRoom,
+            onMarkStatus: (s) => tappedStatus = s,
+          ),
+        ),
+      );
 
-    expect(find.text('Room 204'), findsOneWidget);
-    expect(find.text('Dirty'), findsOneWidget);
-    expect(find.text('Checkout today'), findsOneWidget);
-    expect(find.text('Ada Lovelace'), findsOneWidget); // now its own prominent line
-    expect(find.text('Mark Preparing'), findsOneWidget);
+      expect(find.text('Room 204'), findsOneWidget);
+      expect(find.text('Dirty'), findsOneWidget);
+      expect(find.text('Checkout today'), findsOneWidget);
+      expect(
+        find.text('Ada Lovelace'),
+        findsOneWidget,
+      ); // now its own prominent line
+      expect(find.text('Mark Preparing'), findsOneWidget);
 
-    await tester.tap(find.text('Mark Preparing'));
-    await tester.pump();
-    expect(tappedStatus, 'preparing');
-  });
+      await tester.tap(find.text('Mark Preparing'));
+      await tester.pump();
+      expect(tappedStatus, 'preparing');
+    },
+  );
 
-  testWidgets('a room being prepared offers Mark Clean once the turnover is done', (tester) async {
-    const room = HousekeepingRoom(
-      id: 2,
-      number: '204',
-      roomName: 'Brisa Residence',
-      occupancy: 'available',
-      occupancyLabel: 'Available',
-      housekeepingStatus: 'preparing',
-      housekeepingStatusLabel: 'Preparing',
-    );
-    var tappedStatus = '';
-    await tester.pumpWidget(
-      _host(HousekeepingRoomCard(room: room, onMarkStatus: (s) => tappedStatus = s)),
-    );
+  testWidgets(
+    'a room being prepared offers Mark Clean once the turnover is done',
+    (tester) async {
+      const room = HousekeepingRoom(
+        id: 2,
+        number: '204',
+        roomName: 'Brisa Residence',
+        occupancy: 'available',
+        occupancyLabel: 'Available',
+        housekeepingStatus: 'preparing',
+        housekeepingStatusLabel: 'Preparing',
+      );
+      var tappedStatus = '';
+      await tester.pumpWidget(
+        _host(
+          HousekeepingRoomCard(
+            room: room,
+            onMarkStatus: (s) => tappedStatus = s,
+          ),
+        ),
+      );
 
-    expect(find.text('Preparing'), findsOneWidget);
-    expect(find.text('Mark Clean'), findsOneWidget);
+      expect(find.text('Preparing'), findsOneWidget);
+      expect(find.text('Mark Clean'), findsOneWidget);
 
-    await tester.tap(find.text('Mark Clean'));
-    await tester.pump();
-    expect(tappedStatus, 'clean');
-  });
+      await tester.tap(find.text('Mark Clean'));
+      await tester.pump();
+      expect(tappedStatus, 'clean');
+    },
+  );
 
   testWidgets('an out-of-order room offers Mark Fixed instead', (tester) async {
     const room = HousekeepingRoom(
@@ -162,7 +181,9 @@ void main() {
     );
     var tappedStatus = '';
     await tester.pumpWidget(
-      _host(HousekeepingRoomCard(room: room, onMarkStatus: (s) => tappedStatus = s)),
+      _host(
+        HousekeepingRoomCard(room: room, onMarkStatus: (s) => tappedStatus = s),
+      ),
     );
 
     expect(find.text('Mark Fixed'), findsOneWidget);
@@ -171,58 +192,78 @@ void main() {
     expect(tappedStatus, 'clean');
   });
 
-  testWidgets('a pending request shows a Mark Complete button that reports the tap', (tester) async {
-    var completed = false;
-    await tester.pumpWidget(
-      _host(HousekeepingRequestCard(request: pendingRequest, onComplete: () => completed = true)),
-    );
-
-    expect(find.text('Towels'), findsOneWidget);
-    expect(find.text('Mark Complete'), findsOneWidget);
-
-    await tester.tap(find.text('Mark Complete'));
-    await tester.pump();
-    expect(completed, isTrue);
-  });
-
-  testWidgets('the overflow menu offers Report Fault when wired up, and reports the tap', (tester) async {
-    var faultReported = false;
-    await tester.pumpWidget(
-      _host(
-        HousekeepingRoomCard(
-          room: dirtyRoom,
-          onMarkStatus: (_) {},
-          onReportFault: () => faultReported = true,
+  testWidgets(
+    'a pending request shows a Mark Complete button that reports the tap',
+    (tester) async {
+      var completed = false;
+      await tester.pumpWidget(
+        _host(
+          HousekeepingRequestCard(
+            request: pendingRequest,
+            onComplete: () => completed = true,
+          ),
         ),
-      ),
+      );
+
+      expect(find.text('Towels'), findsOneWidget);
+      expect(find.text('Mark Complete'), findsOneWidget);
+
+      await tester.tap(find.text('Mark Complete'));
+      await tester.pump();
+      expect(completed, isTrue);
+    },
+  );
+
+  testWidgets(
+    'the overflow menu offers Report Fault when wired up, and reports the tap',
+    (tester) async {
+      var faultReported = false;
+      await tester.pumpWidget(
+        _host(
+          HousekeepingRoomCard(
+            room: dirtyRoom,
+            onMarkStatus: (_) {},
+            onReportFault: () => faultReported = true,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Report Fault'), findsOneWidget);
+
+      await tester.tap(find.text('Report Fault'));
+      await tester.pumpAndSettle();
+      expect(faultReported, isTrue);
+    },
+  );
+
+  testWidgets('the overflow menu omits Report Fault when it is not wired up', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(HousekeepingRoomCard(room: dirtyRoom, onMarkStatus: (_) {})),
     );
-
-    await tester.tap(find.byIcon(Icons.more_vert_rounded));
-    await tester.pumpAndSettle();
-    expect(find.text('Report Fault'), findsOneWidget);
-
-    await tester.tap(find.text('Report Fault'));
-    await tester.pumpAndSettle();
-    expect(faultReported, isTrue);
-  });
-
-  testWidgets('the overflow menu omits Report Fault when it is not wired up', (tester) async {
-    await tester.pumpWidget(_host(HousekeepingRoomCard(room: dirtyRoom, onMarkStatus: (_) {})));
 
     await tester.tap(find.byIcon(Icons.more_vert_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Report Fault'), findsNothing);
   });
 
-  testWidgets('a completed request shows Completed instead of a Mark Complete button', (tester) async {
-    await tester.pumpWidget(
-      _host(HousekeepingRequestCard(request: completedRequest, onComplete: () {})),
-    );
+  testWidgets(
+    'a completed request shows Completed instead of a Mark Complete button',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          HousekeepingRequestCard(request: completedRequest, onComplete: () {}),
+        ),
+      );
 
-    expect(find.text('Do Not Disturb'), findsOneWidget);
-    expect(find.text('Completed'), findsOneWidget);
-    expect(find.text('Mark Complete'), findsNothing);
-  });
+      expect(find.text('Do Not Disturb'), findsOneWidget);
+      expect(find.text('Completed'), findsOneWidget);
+      expect(find.text('Mark Complete'), findsNothing);
+    },
+  );
 
   test('HousekeepingGuestRequest.fromJson parses the requesting guest', () {
     final request = HousekeepingGuestRequest.fromJson({
@@ -239,7 +280,9 @@ void main() {
     expect(request.guestName, 'Grace Hopper');
   });
 
-  testWidgets('a request card shows the guest it was raised for', (tester) async {
+  testWidgets('a request card shows the guest it was raised for', (
+    tester,
+  ) async {
     const request = HousekeepingGuestRequest(
       id: 8,
       roomUnitId: 1,
@@ -252,7 +295,9 @@ void main() {
       isPending: true,
     );
 
-    await tester.pumpWidget(_host(HousekeepingRequestCard(request: request, onComplete: () {})));
+    await tester.pumpWidget(
+      _host(HousekeepingRequestCard(request: request, onComplete: () {})),
+    );
 
     expect(find.textContaining('Grace Hopper'), findsOneWidget);
   });

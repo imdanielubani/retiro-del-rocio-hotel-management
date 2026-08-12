@@ -27,13 +27,18 @@ import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/stat
 /// has attached, with actions to move it through accept → start → complete
 /// and to capture a new attachment.
 class WorkOrderDetailScreen extends ConsumerStatefulWidget {
-  const WorkOrderDetailScreen({super.key, required this.session, required this.orderId});
+  const WorkOrderDetailScreen({
+    super.key,
+    required this.session,
+    required this.orderId,
+  });
 
   final StaffSession session;
   final int orderId;
 
   @override
-  ConsumerState<WorkOrderDetailScreen> createState() => _WorkOrderDetailScreenState();
+  ConsumerState<WorkOrderDetailScreen> createState() =>
+      _WorkOrderDetailScreenState();
 }
 
 class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
@@ -43,7 +48,12 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   String get _token => widget.session.token;
 
   void _onNav(MaintenanceNavItem item) {
-    MaintenanceNavigation.select(context, widget.session, item, current: MaintenanceNavItem.workOrders);
+    MaintenanceNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: MaintenanceNavItem.workOrders,
+    );
   }
 
   Future<void> _logout() async {
@@ -70,7 +80,9 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     final choice = await showModalBottomSheet<_AttachmentChoice>(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -80,24 +92,52 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
               child: SizedBox.shrink(),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_camera_rounded, color: AppColors.gold),
-              title: Text('Take a photo', style: AppTypography.style(color: Colors.white, fontSize: 15)),
-              onTap: () => Navigator.of(context).pop(_AttachmentChoice.photoCamera),
+              leading: const Icon(
+                Icons.photo_camera_rounded,
+                color: AppColors.gold,
+              ),
+              title: Text(
+                'Take a photo',
+                style: AppTypography.style(color: Colors.white, fontSize: 15),
+              ),
+              onTap: () =>
+                  Navigator.of(context).pop(_AttachmentChoice.photoCamera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppColors.gold),
-              title: Text('Choose a photo', style: AppTypography.style(color: Colors.white, fontSize: 15)),
-              onTap: () => Navigator.of(context).pop(_AttachmentChoice.photoGallery),
+              leading: const Icon(
+                Icons.photo_library_rounded,
+                color: AppColors.gold,
+              ),
+              title: Text(
+                'Choose a photo',
+                style: AppTypography.style(color: Colors.white, fontSize: 15),
+              ),
+              onTap: () =>
+                  Navigator.of(context).pop(_AttachmentChoice.photoGallery),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam_rounded, color: AppColors.gold),
-              title: Text('Record a video', style: AppTypography.style(color: Colors.white, fontSize: 15)),
-              onTap: () => Navigator.of(context).pop(_AttachmentChoice.videoCamera),
+              leading: const Icon(
+                Icons.videocam_rounded,
+                color: AppColors.gold,
+              ),
+              title: Text(
+                'Record a video',
+                style: AppTypography.style(color: Colors.white, fontSize: 15),
+              ),
+              onTap: () =>
+                  Navigator.of(context).pop(_AttachmentChoice.videoCamera),
             ),
             ListTile(
-              leading: const Icon(Icons.video_library_rounded, color: AppColors.gold),
-              title: Text('Choose a video', style: AppTypography.style(color: Colors.white, fontSize: 15)),
-              onTap: () => Navigator.of(context).pop(_AttachmentChoice.videoGallery),
+              leading: const Icon(
+                Icons.video_library_rounded,
+                color: AppColors.gold,
+              ),
+              title: Text(
+                'Choose a video',
+                style: AppTypography.style(color: Colors.white, fontSize: 15),
+              ),
+              onTap: () =>
+                  Navigator.of(context).pop(_AttachmentChoice.videoGallery),
             ),
           ],
         ),
@@ -108,18 +148,28 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     try {
       final picker = ImagePicker();
       final XFile? picked = switch (choice) {
-        _AttachmentChoice.photoCamera => await picker.pickImage(source: ImageSource.camera, imageQuality: 80),
-        _AttachmentChoice.photoGallery => await picker.pickImage(source: ImageSource.gallery, imageQuality: 80),
+        _AttachmentChoice.photoCamera => await picker.pickImage(
+          source: ImageSource.camera,
+          imageQuality: 80,
+        ),
+        _AttachmentChoice.photoGallery => await picker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 80,
+        ),
         _AttachmentChoice.videoCamera => await picker.pickVideo(
           source: ImageSource.camera,
           maxDuration: const Duration(minutes: 2),
         ),
-        _AttachmentChoice.videoGallery => await picker.pickVideo(source: ImageSource.gallery),
+        _AttachmentChoice.videoGallery => await picker.pickVideo(
+          source: ImageSource.gallery,
+        ),
       };
       if (picked == null || !mounted) return;
 
       setState(() => _uploading = true);
-      await ref.read(maintenanceActionsProvider(_token)).uploadAttachment(widget.orderId, picked.path);
+      await ref
+          .read(maintenanceActionsProvider(_token))
+          .uploadAttachment(widget.orderId, picked.path);
     } on MaintenanceException catch (e) {
       _showFailure(e.message);
     } catch (_) {
@@ -135,7 +185,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -146,7 +199,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       SnackBar(
         backgroundColor: kMtGreen.withValues(alpha: 0.9),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -154,27 +210,44 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MaintenanceNotificationScreen(session: widget.session, current: MaintenanceNavItem.workOrders),
+        builder: (_) => MaintenanceNotificationScreen(
+          session: widget.session,
+          current: MaintenanceNavItem.workOrders,
+        ),
       ),
     );
   }
 
   Future<void> _escalate(WorkOrder order) async {
-    final confirmed = await showEscalateDialog(context, orderTitle: order.title, currentPriority: order.priority);
+    final confirmed = await showEscalateDialog(
+      context,
+      orderTitle: order.title,
+      currentPriority: order.priority,
+    );
     if (!confirmed || !mounted) return;
-    await _run(() => ref.read(maintenanceActionsProvider(_token)).escalate(order.id));
+    await _run(
+      () => ref.read(maintenanceActionsProvider(_token)).escalate(order.id),
+    );
   }
 
   Future<void> _updateStatus(WorkOrder order) async {
     final status = await showStatusUpdateSheet(context, order: order);
     if (status == null || !mounted) return;
-    await _run(() => ref.read(maintenanceActionsProvider(_token)).updateStatus(order.id, status));
+    await _run(
+      () => ref
+          .read(maintenanceActionsProvider(_token))
+          .updateStatus(order.id, status),
+    );
   }
 
   Future<void> _assignTechnician() async {
     final technician = await showAssignTechnicianSheet(context, token: _token);
     if (technician == null || !mounted) return;
-    await _run(() => ref.read(maintenanceActionsProvider(_token)).assign(widget.orderId, technician.id));
+    await _run(
+      () => ref
+          .read(maintenanceActionsProvider(_token))
+          .assign(widget.orderId, technician.id),
+    );
   }
 
   @override
@@ -183,8 +256,12 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     ref.watch(maintenanceNotificationChimeProvider(_token));
     ref.watch(maintenanceSlaBreachChimeProvider(_token));
 
-    final orderAsync = ref.watch(maintenanceWorkOrderDetailProvider((_token, widget.orderId)));
-    final unreadNotifications = ref.watch(maintenanceUnreadNotificationsProvider(_token));
+    final orderAsync = ref.watch(
+      maintenanceWorkOrderDetailProvider((_token, widget.orderId)),
+    );
+    final unreadNotifications = ref.watch(
+      maintenanceUnreadNotificationsProvider(_token),
+    );
 
     return MaintenanceScaffold(
       session: widget.session,
@@ -197,7 +274,9 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       onBack: () => Navigator.of(context).maybePop(),
       body: orderAsync.when(
         data: (data) => data == null ? _notFound() : _content(data),
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.gold),
+        ),
         error: (_, _) => _notFound(),
       ),
     );
@@ -207,7 +286,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     return Center(
       child: Text(
         'Could not load this work order.',
-        style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+        style: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.6),
+          fontSize: 15,
+        ),
       ),
     );
   }
@@ -223,7 +305,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
           Row(
             children: [
               Expanded(child: _actionRow(order)),
-              if (!order.isDone) ...[const SizedBox(width: 12), _requestPartsButton(order)],
+              if (!order.isDone) ...[
+                const SizedBox(width: 12),
+                _requestPartsButton(order),
+              ],
             ],
           ),
           if (!order.isDone) ...[
@@ -249,7 +334,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
           ),
           const SizedBox(height: 12),
           if (order.attachments.isEmpty)
-            const MaintenanceSectionEmpty(icon: Icons.attach_file_rounded, message: 'No photos or videos attached yet')
+            const MaintenanceSectionEmpty(
+              icon: Icons.attach_file_rounded,
+              message: 'No photos or videos attached yet',
+            )
           else
             _attachmentGrid(order),
         ],
@@ -262,7 +350,11 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       color: Colors.white.withValues(alpha: 0.06),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: () => showPartsRequestDialog(context, token: _token, workOrderId: order.id),
+        onTap: () => showPartsRequestDialog(
+          context,
+          token: _token,
+          workOrderId: order.id,
+        ),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           height: 46,
@@ -271,11 +363,19 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.handyman_outlined, size: 16, color: Colors.white70),
+              const Icon(
+                Icons.handyman_outlined,
+                size: 16,
+                color: Colors.white70,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Request Parts',
-                style: AppTypography.style(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -287,11 +387,29 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   Widget _secondaryActionsRow(WorkOrder order) {
     return Row(
       children: [
-        Expanded(child: _secondaryButton('Escalate', Icons.arrow_circle_up_rounded, () => _escalate(order))),
+        Expanded(
+          child: _secondaryButton(
+            'Escalate',
+            Icons.arrow_circle_up_rounded,
+            () => _escalate(order),
+          ),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _secondaryButton('Assign', Icons.person_outline_rounded, _assignTechnician)),
+        Expanded(
+          child: _secondaryButton(
+            'Assign',
+            Icons.person_outline_rounded,
+            _assignTechnician,
+          ),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _secondaryButton('Status', Icons.sync_alt_rounded, () => _updateStatus(order))),
+        Expanded(
+          child: _secondaryButton(
+            'Status',
+            Icons.sync_alt_rounded,
+            () => _updateStatus(order),
+          ),
+        ),
       ],
     );
   }
@@ -313,7 +431,11 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.w600),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -335,16 +457,27 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
               ? const SizedBox(
                   width: 14,
                   height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.gold,
+                  ),
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.add_a_photo_outlined, size: 14, color: AppColors.gold),
+                    const Icon(
+                      Icons.add_a_photo_outlined,
+                      size: 14,
+                      color: AppColors.gold,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Add',
-                      style: AppTypography.style(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: AppColors.gold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -360,7 +493,9 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: order.priority == 'urgent' ? kMtRed.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.08),
+          color: order.priority == 'urgent'
+              ? kMtRed.withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.08),
           width: 0.8,
         ),
       ),
@@ -369,18 +504,28 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
         children: [
           Row(
             children: [
-              _tag(order.priorityLabel, maintenancePriorityColor(order.priority)),
+              _tag(
+                order.priorityLabel,
+                maintenancePriorityColor(order.priority),
+              ),
               const SizedBox(width: 8),
               _tag(order.statusLabel, maintenanceStatusColor(order.status)),
-              if (order.slaBreached) ...[const SizedBox(width: 8), _tag('SLA Breached', kMtRed)],
+              if (order.slaBreached) ...[
+                const SizedBox(width: 8),
+                _tag('SLA Breached', kMtRed),
+              ],
             ],
           ),
           const SizedBox(height: 12),
-          if ((order.description ?? '').isNotEmpty) _infoRow('Details', order.description!),
+          if ((order.description ?? '').isNotEmpty)
+            _infoRow('Details', order.description!),
           _infoRow('Location', order.locationLabel),
-          if ((order.reportedBy ?? '').isNotEmpty) _infoRow('Reported by', order.reportedBy!),
-          if ((order.assignedToName ?? '').isNotEmpty) _infoRow('Technician', order.assignedToName!),
-          if ((order.createdLabel ?? '').isNotEmpty) _infoRow('Reported', order.createdLabel!),
+          if ((order.reportedBy ?? '').isNotEmpty)
+            _infoRow('Reported by', order.reportedBy!),
+          if ((order.assignedToName ?? '').isNotEmpty)
+            _infoRow('Technician', order.assignedToName!),
+          if ((order.createdLabel ?? '').isNotEmpty)
+            _infoRow('Reported', order.createdLabel!),
         ],
       ),
     );
@@ -389,8 +534,18 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   Widget _tag(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
-      child: Text(label, style: AppTypography.style(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.style(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -402,10 +557,23 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
         children: [
           SizedBox(
             width: 110,
-            child: Text(label, style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
+            child: Text(
+              label,
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 13,
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value, style: AppTypography.style(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            child: Text(
+              value,
+              style: AppTypography.style(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -418,7 +586,14 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
         children: [
           const Icon(Icons.check_circle_rounded, size: 18, color: kMtGreen),
           const SizedBox(width: 8),
-          Text('Completed', style: AppTypography.style(color: kMtGreen, fontSize: 14, fontWeight: FontWeight.w700)),
+          Text(
+            'Completed',
+            style: AppTypography.style(
+              color: kMtGreen,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       );
     }
@@ -429,7 +604,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
             'Accept',
             kMtBlue,
             () async {
-              final confirmed = await showAcceptOrderDialog(context, orderTitle: order.title);
+              final confirmed = await showAcceptOrderDialog(
+                context,
+                orderTitle: order.title,
+              );
               if (!confirmed || !mounted) return;
               await _run(() => actions.accept(order.id));
             },
@@ -440,7 +618,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
             'Complete',
             kMtGreen,
             () async {
-              final confirmed = await showCloseOrderDialog(context, orderTitle: order.title);
+              final confirmed = await showCloseOrderDialog(
+                context,
+                orderTitle: order.title,
+              );
               if (!confirmed || !mounted) return;
               await _run(() async {
                 final result = await actions.complete(order.id);
@@ -462,8 +643,22 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
             height: 46,
             alignment: Alignment.center,
             child: _busy
-                ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: color))
-                : Text(label, style: AppTypography.style(color: color, fontSize: 14, fontWeight: FontWeight.w700)),
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: color,
+                    ),
+                  )
+                : Text(
+                    label,
+                    style: AppTypography.style(
+                      color: color,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
         ),
       ),
@@ -483,7 +678,10 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       itemCount: order.attachments.length,
       itemBuilder: (_, i) {
         final attachment = order.attachments[i];
-        return AttachmentThumbnail(attachment: attachment, onTap: () => showAttachmentViewer(context, attachment));
+        return AttachmentThumbnail(
+          attachment: attachment,
+          onTap: () => showAttachmentViewer(context, attachment),
+        );
       },
     );
   }

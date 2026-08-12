@@ -30,7 +30,9 @@ class LostFoundItemCard extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: item.isUnclaimed ? AppColors.gold.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.08),
+          color: item.isUnclaimed
+              ? AppColors.gold.withValues(alpha: 0.18)
+              : Colors.white.withValues(alpha: 0.08),
           width: 0.8,
         ),
       ),
@@ -44,17 +46,23 @@ class LostFoundItemCard extends StatelessWidget {
                   item.itemDescription,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.style(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               if (item.isUnclaimed && !busy) _overflowMenu(),
             ],
           ),
-          if ((item.roomNumber ?? '').isNotEmpty || (item.roomName ?? '').isNotEmpty) ...[
+          if ((item.roomNumber ?? '').isNotEmpty ||
+              (item.roomName ?? '').isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(
               [
-                if ((item.roomNumber ?? '').isNotEmpty) 'Room ${item.roomNumber}',
+                if ((item.roomNumber ?? '').isNotEmpty)
+                  'Room ${item.roomNumber}',
                 if ((item.roomName ?? '').isNotEmpty) item.roomName!,
               ].join('  ·  '),
               maxLines: 1,
@@ -72,17 +80,25 @@ class LostFoundItemCard extends StatelessWidget {
               item.notes!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 12,
+              ),
             ),
           ],
-          if ((item.foundByName ?? '').isNotEmpty || (item.foundLabel ?? '').isNotEmpty) ...[
+          if ((item.foundByName ?? '').isNotEmpty ||
+              (item.foundLabel ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               [
-                if ((item.foundByName ?? '').isNotEmpty) 'Found by ${item.foundByName}',
+                if ((item.foundByName ?? '').isNotEmpty)
+                  'Found by ${item.foundByName}',
                 if ((item.foundLabel ?? '').isNotEmpty) item.foundLabel!,
               ].join('  ·  '),
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 12,
+              ),
             ),
           ],
           const SizedBox(height: 14),
@@ -95,12 +111,19 @@ class LostFoundItemCard extends StatelessWidget {
   Widget _overflowMenu() {
     return PopupMenuButton<void>(
       color: const Color(0xFF141414),
-      icon: Icon(Icons.more_vert_rounded, size: 16, color: Colors.white.withValues(alpha: 0.4)),
+      icon: Icon(
+        Icons.more_vert_rounded,
+        size: 16,
+        color: Colors.white.withValues(alpha: 0.4),
+      ),
       padding: EdgeInsets.zero,
       itemBuilder: (context) => [
         PopupMenuItem<void>(
           onTap: onMarkDisposed,
-          child: Text('Mark Disposed', style: AppTypography.style(color: Colors.white, fontSize: 13)),
+          child: Text(
+            'Mark Disposed',
+            style: AppTypography.style(color: Colors.white, fontSize: 13),
+          ),
         ),
       ],
     );
@@ -132,12 +155,19 @@ class LostFoundItemCard extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(999),
+          ),
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       );
@@ -155,7 +185,11 @@ class LostFoundItemCard extends StatelessWidget {
           child: Center(
             child: Text(
               'Mark Returned',
-              style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTypography.style(
+                color: Colors.black,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

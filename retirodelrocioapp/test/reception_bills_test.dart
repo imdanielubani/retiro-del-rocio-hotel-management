@@ -4,8 +4,8 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_bill.dart'
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
 
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(body: SizedBox(width: 520, child: child)),
-    );
+  home: Scaffold(body: SizedBox(width: 520, child: child)),
+);
 
 void main() {
   group('domain parsing', () {
@@ -69,7 +69,11 @@ void main() {
             'amount_label': 'NGN 21,250',
             'has_charges': true,
             'items': [
-              {'label': 'Room Rate', 'sub': 'NGN 4,250 × 5', 'amount_label': 'NGN 21,250'},
+              {
+                'label': 'Room Rate',
+                'sub': 'NGN 4,250 × 5',
+                'amount_label': 'NGN 21,250',
+              },
             ],
           },
           {
@@ -120,9 +124,13 @@ void main() {
     hasBalance: false,
   );
 
-  testWidgets('a bill row shows the guest, room and balance, and taps', (tester) async {
+  testWidgets('a bill row shows the guest, room and balance, and taps', (
+    tester,
+  ) async {
     var tapped = false;
-    await tester.pumpWidget(_host(ReceptionBillRowCard(row: owing, onTap: () => tapped = true)));
+    await tester.pumpWidget(
+      _host(ReceptionBillRowCard(row: owing, onTap: () => tapped = true)),
+    );
 
     expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(find.text('NGN 21,250'), findsOneWidget);
@@ -133,8 +141,12 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('a settled bill row reads "settled" instead of "due"', (tester) async {
-    await tester.pumpWidget(_host(ReceptionBillRowCard(row: settled, onTap: () {})));
+  testWidgets('a settled bill row reads "settled" instead of "due"', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(ReceptionBillRowCard(row: settled, onTap: () {})),
+    );
 
     expect(find.text('Grace Hopper'), findsOneWidget);
     expect(find.text('settled'), findsOneWidget);

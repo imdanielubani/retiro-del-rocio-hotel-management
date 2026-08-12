@@ -13,7 +13,7 @@ class DiningOrder extends Model
         'subtotal', 'vat', 'service_fee', 'total',
         'customer_name', 'customer_email', 'customer_phone',
         'status', 'payment_status', 'payment_method', 'paid_at',
-        'assigned_to', 'age_verified_at', 'age_verified_by',
+        'assigned_to', 'age_verified_at', 'age_verified_by', 'estimated_ready_at',
     ];
 
     protected $casts = [
@@ -27,6 +27,7 @@ class DiningOrder extends Model
         'total' => 'integer',
         'paid_at' => 'datetime',
         'age_verified_at' => 'datetime',
+        'estimated_ready_at' => 'datetime',
     ];
 
     /**
@@ -84,10 +85,23 @@ class DiningOrder extends Model
         return $query->where('has_food', true);
     }
 
-    /** Orders the Bar & Lounge admin queue (and Bar Tablet board) handles — anything with a drink item. */
+    /**
+     * Orders the Bar & Lounge admin queue (and Bar Tablet board) handles —
+     * anything with a drink item, plus anything rung up on one of the Bar
+     * Tablet's own POS tabs even if that particular order is food-only (the
+     * waiter running that tab still owns tracking it through to serving —
+     * without this it would vanish from their own board the moment they
+     * rang up a table that only ordered food).
+     */
     public function scopeForBarLounge($query)
     {
-        return $query->where('has_drinks', true);
+        return $query->where(fn ($q) => $q->where('has_drinks', true)->orWhereNotNull('bar_tab_id'));
+    }
+
+    /** Whether the Bar Tablet manages this order at all — {@see scopeForBarLounge()}'s single-row equivalent. */
+    public function belongsToBarLounge(): bool
+    {
+        return (bool) $this->has_drinks || $this->bar_tab_id !== null;
     }
 
     /** Comma-separated dish names, e.g. "Pan-Seared Salmon, Wagyu Tenderloin". */
@@ -239,17 +253,57 @@ class DiningOrder extends Model
     }
 
     /**
-     * Where this order sits on the Bar Tablet's New / Preparing / Served
-     * board — reuses the existing status vocabulary (no new statuses) so the
-     * admin Kitchen/BarLounge `Orders` screens, which already drive every
-     * status through this same set, stay fully compatible.
+     * Preparing → ready for pickup — the Kitchen's "Mark Ready" action.
+     * Distinct from {@see markServed()}: the ticket is cooked and waiting at
+     * the pass, not yet actually handed to the guest — the waiter still has
+     * to collect it and serve it, which is what markServed() represents.
+     *
+     * That hand-off only exists when a bar/waiter is actually running this
+     * order (rung up on a tab, or mixed with a drink they're already
+     * carrying to the table) — a pure guest-tablet room-service food order
+     * has no waiter to hand off to, so it goes straight to delivered, same
+     * as before this two-step flow existed.
+     */
+    public function markReadyForPickup(): bool
+    {
+        if (! $this->has_food) {
+            return false;
+        }
+
+        if (! in_array($this->status, ['pending', 'confirmed', 'preparing'], true)) {
+            return false;
+        }
+
+        if (! $this->bar_tab_id && ! $this->has_drinks) {
+            return $this->markServed();
+        }
+
+        return $this->update(['status' => 'ready']);
+    }
+
+    /**
+     * The Kitchen sets (or, calling it again, increases) how long this
+     * ticket still needs — surfaced to the Bar Tablet so the waiter can give
+     * the guest a real answer instead of guessing.
+     */
+    public function setEta(int $minutes): bool
+    {
+        return $this->update(['estimated_ready_at' => now()->addMinutes($minutes)]);
+    }
+
+    /**
+     * Where this order sits on the Bar Tablet's New / Preparing / Ready /
+     * Served board — reuses the existing status vocabulary (no new statuses)
+     * so the admin Kitchen/BarLounge `Orders` screens, which already drive
+     * every status through this same set, stay fully compatible.
      */
     public function barBoardColumn(): string
     {
         return match ($this->status) {
             'pending', 'confirmed' => 'new',
             'preparing' => 'preparing',
-            'ready', 'on_way', 'delivered' => 'served',
+            'ready', 'on_way' => 'ready',
+            'delivered' => 'served',
             default => 'other',
         };
     }
@@ -259,9 +313,34 @@ class DiningOrder extends Model
         return match ($this->barBoardColumn()) {
             'new' => 'New',
             'preparing' => 'Preparing',
+            'ready' => 'Ready for Pickup',
             'served' => 'Served',
             default => $this->statusLabel(),
         };
+    }
+
+    /**
+     * ETA fields shared by the Bar and Kitchen tablet presenters — a ticket
+     * past its estimate is flagged `estimated_ready_overdue` rather than
+     * showing a negative minute count.
+     */
+    private function etaPresenter(): array
+    {
+        if (! $this->estimated_ready_at) {
+            return [
+                'estimated_ready_label' => null,
+                'estimated_ready_minutes' => null,
+                'estimated_ready_overdue' => false,
+            ];
+        }
+
+        return [
+            'estimated_ready_label' => $this->estimated_ready_at->format('g:i A'),
+            'estimated_ready_minutes' => $this->estimated_ready_at->isFuture()
+                ? (int) ceil(now()->diffInSeconds($this->estimated_ready_at) / 60)
+                : 0,
+            'estimated_ready_overdue' => $this->estimated_ready_at->isPast(),
+        ];
     }
 
     /**
@@ -371,6 +450,7 @@ class DiningOrder extends Model
             'age_verified' => $this->age_verified_at !== null,
             'payment_status' => $this->payment_status,
             'payment_status_label' => $this->paymentLabel(),
+            ...$this->etaPresenter(),
         ];
     }
 
@@ -422,6 +502,7 @@ class DiningOrder extends Model
             'assigned_to_name' => $chef?->name,
             'payment_status' => $this->payment_status,
             'payment_status_label' => $this->paymentLabel(),
+            ...$this->etaPresenter(),
         ];
     }
 

@@ -45,9 +45,7 @@ class SecurityNotificationRepository {
       throw SecurityNotificationException(_messageFrom(error));
     } catch (error) {
       debugPrint('SecurityNotificationRepository: fetch failed — $error');
-      throw SecurityNotificationException(
-        'Could not load the notifications.',
-      );
+      throw SecurityNotificationException('Could not load the notifications.');
     }
   }
 
@@ -76,9 +74,7 @@ class SecurityNotificationRepository {
     } on DioException catch (error) {
       throw SecurityNotificationException(_messageFrom(error));
     } catch (error) {
-      debugPrint(
-        'SecurityNotificationRepository: markAllRead failed — $error',
-      );
+      debugPrint('SecurityNotificationRepository: markAllRead failed — $error');
       throw SecurityNotificationException(
         'Could not update the notifications.',
       );

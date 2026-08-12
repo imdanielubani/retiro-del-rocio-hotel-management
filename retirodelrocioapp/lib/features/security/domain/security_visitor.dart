@@ -41,7 +41,8 @@ class SecurityVisitor {
     return letters.join().toUpperCase();
   }
 
-  factory SecurityVisitor.fromJson(Map<String, dynamic> json) => SecurityVisitor(
+  factory SecurityVisitor.fromJson(Map<String, dynamic> json) =>
+      SecurityVisitor(
         id: (json['id'] as num?)?.toInt() ?? 0,
         name: json['name'] as String? ?? 'Visitor',
         reference: json['reference'] as String?,

@@ -41,7 +41,7 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
 
   String get _token => widget.session.token;
 
-  String get _myRole => widget.session.role;
+  int get _myUserId => widget.session.userId;
 
   @override
   void dispose() {
@@ -66,7 +66,7 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
     try {
       await ref
           .read(staffChatActionsProvider(_token))
-          .send(selected.role, body);
+          .send(selected.userId, body);
       _controller.clear();
     } on StaffChatException catch (error) {
       _toast(error.message, error: true);
@@ -89,7 +89,7 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
     }
     _lastTypingSentAt = now;
     unawaited(
-      ref.read(staffChatActionsProvider(_token)).sendTyping(selected.role),
+      ref.read(staffChatActionsProvider(_token)).sendTyping(selected.userId),
     );
   }
 
@@ -173,12 +173,13 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
         final c = channels[i];
         return StaffChatConversationTile(
           role: c.role,
-          label: c.label,
+          label: c.name,
+          roleLabel: c.roleLabel,
           online: c.online,
           preview: c.lastMessage,
           timeLabel: c.lastMessageLabel,
           unreadCount: c.unreadCount,
-          selected: _selected?.role == c.role,
+          selected: _selected?.userId == c.userId,
           onTap: () => _select(c),
         );
       },
@@ -226,12 +227,14 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
 
   Widget _thread(StaffChannel selected) {
     final messagesAsync = ref.watch(
-      staffChatThreadProvider((_token, selected.role)),
+      staffChatThreadProvider((_token, selected.userId)),
     );
     final messages = messagesAsync.value ?? const <StaffChatMessage>[];
     _maybeScrollToBottom(messages.length);
 
-    final typing = ref.watch(staffChatTypingProvider((_myRole, selected.role)));
+    final typing = ref.watch(
+      staffChatTypingProvider((_myUserId, selected.userId)),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -239,7 +242,7 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
         _threadHeader(selected),
         _divider(),
         Expanded(child: _messages(messages)),
-        if (typing) StaffTypingIndicator(label: '${selected.label} is typing…'),
+        if (typing) StaffTypingIndicator(label: '${selected.name} is typing…'),
         _divider(),
         _composer(selected),
       ],
@@ -259,7 +262,7 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  selected.label,
+                  selected.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.style(
@@ -269,7 +272,18 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
                   ),
                 ),
                 const SizedBox(height: 3),
-                StaffOnlineStatus(online: selected.online),
+                Row(
+                  children: [
+                    Text(
+                      '${selected.roleLabel} · ',
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                      ),
+                    ),
+                    StaffOnlineStatus(online: selected.online),
+                  ],
+                ),
               ],
             ),
           ),
@@ -335,7 +349,7 @@ class _StaffChatBodyState extends ConsumerState<StaffChatBody> {
                   isCollapsed: true,
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 13),
-                  hintText: 'Message ${selected.label}...',
+                  hintText: 'Message ${selected.name}...',
                   hintStyle: AppTypography.style(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 14,

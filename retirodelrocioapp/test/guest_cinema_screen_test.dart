@@ -169,9 +169,7 @@ void main() {
     return repo;
   }
 
-  testWidgets('renders the movie catalogue and today\'s date', (
-    tester,
-  ) async {
+  testWidgets('renders the movie catalogue and today\'s date', (tester) async {
     await pumpScreen(tester);
 
     expect(find.text('Cinema'), findsOneWidget);
@@ -197,8 +195,7 @@ void main() {
       await tester.pump();
 
       // Pick today from the date strip.
-      await tester
-          .tap(find.text(DateFormat('d').format(DateTime.now())).first);
+      await tester.tap(find.text(DateFormat('d').format(DateTime.now())).first);
       await tester.pump();
 
       // The room panel is now up (both rooms free).
@@ -222,10 +219,12 @@ void main() {
       expect(find.text('NGN 43,000'), findsOneWidget); // 40,000 + 7.5%
       expect(find.text('BOOK NOW'), findsNWidgets(2));
 
-      await tester.tap(find.descendant(
-        of: find.byType(Dialog),
-        matching: find.text('BOOK NOW'),
-      ));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text('BOOK NOW'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(repo.bookedToRoom, isTrue);
@@ -251,8 +250,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('2:00 PM'));
     await tester.pump();
-    await tester
-        .tap(find.text(DateFormat('d').format(DateTime.now())).first);
+    await tester.tap(find.text(DateFormat('d').format(DateTime.now())).first);
     await tester.pump();
     await tester.tap(find.text('Room 1'));
     await tester.pump();
@@ -273,10 +271,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('BOOK NOW'));
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(
-      of: find.byType(Dialog),
-      matching: find.text('BOOK NOW'),
-    ));
+    await tester.tap(
+      find.descendant(of: find.byType(Dialog), matching: find.text('BOOK NOW')),
+    );
     await tester.pumpAndSettle();
 
     expect(repo.bookedToRoom, isTrue);

@@ -37,10 +37,12 @@ class HousekeepingReportFaultDialog extends ConsumerStatefulWidget {
   final HousekeepingRoom room;
 
   @override
-  ConsumerState<HousekeepingReportFaultDialog> createState() => _HousekeepingReportFaultDialogState();
+  ConsumerState<HousekeepingReportFaultDialog> createState() =>
+      _HousekeepingReportFaultDialogState();
 }
 
-class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingReportFaultDialog> {
+class _HousekeepingReportFaultDialogState
+    extends ConsumerState<HousekeepingReportFaultDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   late HousekeepingRoom _room;
@@ -78,7 +80,9 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
           .reportFault(
             roomUnitId: _room.id,
             title: title,
-            description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
             priority: _priority,
           );
       if (mounted) Navigator.of(context).pop(order);
@@ -110,27 +114,49 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
               children: [
                 Text(
                   'Report Fault',
-                  style: AppTypography.style(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _field(controller: _titleController, label: 'What\'s wrong'),
                 const SizedBox(height: 12),
-                _field(controller: _descriptionController, label: 'Details (optional)', maxLines: 3),
+                _field(
+                  controller: _descriptionController,
+                  label: 'Details (optional)',
+                  maxLines: 3,
+                ),
                 const SizedBox(height: 12),
                 _roomDropdown(rooms),
                 const SizedBox(height: 12),
                 _priorityPicker(),
                 if (_error != null) ...[
                   const SizedBox(height: 10),
-                  Text(_error!, style: AppTypography.style(color: const Color(0xFFFF6B6B), fontSize: 12)),
+                  Text(
+                    _error!,
+                    style: AppTypography.style(
+                      color: const Color(0xFFFF6B6B),
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                        child: Text('Cancel', style: AppTypography.style(color: Colors.white70, fontSize: 14)),
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        child: Text(
+                          'Cancel',
+                          style: AppTypography.style(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -148,7 +174,10 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
                                   )
                                 : Text(
                                     'Report',
@@ -172,17 +201,27 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
     );
   }
 
-  Widget _field({required TextEditingController controller, required String label, int maxLines = 1}) {
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    int maxLines = 1,
+  }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
@@ -195,7 +234,10 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
     // The room this dialog was opened from may not (yet) be in the fetched
     // [rooms] list — e.g. it hasn't loaded yet on first open — so it's added
     // explicitly to guarantee the dropdown always has a valid initial value.
-    final options = {_room.id: _room, for (final r in rooms) r.id: r}.values.toList();
+    final options = {
+      _room.id: _room,
+      for (final r in rooms) r.id: r,
+    }.values.toList();
 
     return DropdownButtonFormField<HousekeepingRoom>(
       initialValue: _room,
@@ -203,7 +245,10 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: 'Room',
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -216,7 +261,9 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
         for (final room in options)
           DropdownMenuItem<HousekeepingRoom>(
             value: room,
-            child: Text('Room ${room.number}${(room.roomName ?? '').isNotEmpty ? ' · ${room.roomName}' : ''}'),
+            child: Text(
+              'Room ${room.number}${(room.roomName ?? '').isNotEmpty ? ' · ${room.roomName}' : ''}',
+            ),
           ),
       ],
       onChanged: (value) => setState(() => _room = value ?? _room),
@@ -241,12 +288,15 @@ class _HousekeepingReportFaultDialogState extends ConsumerState<HousekeepingRepo
               fontWeight: FontWeight.w600,
             ),
             side: BorderSide(
-              color: _priority == p ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1),
+              color: _priority == p
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.1),
             ),
           ),
       ],
     );
   }
 
-  String _label(String priority) => priority[0].toUpperCase() + priority.substring(1);
+  String _label(String priority) =>
+      priority[0].toUpperCase() + priority.substring(1);
 }

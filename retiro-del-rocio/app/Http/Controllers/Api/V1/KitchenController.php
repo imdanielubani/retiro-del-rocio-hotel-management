@@ -38,7 +38,7 @@ class KitchenController extends Controller
             'stats' => [
                 'new' => $orders->filter(fn (DiningOrder $o) => $o->barBoardColumn() === 'new')->count(),
                 'preparing' => $orders->filter(fn (DiningOrder $o) => $o->barBoardColumn() === 'preparing')->count(),
-                'ready' => $orders->filter(fn (DiningOrder $o) => $o->barBoardColumn() === 'served')->count(),
+                'ready' => $orders->filter(fn (DiningOrder $o) => $o->barBoardColumn() === 'ready')->count(),
                 'served_today' => DiningOrder::forKitchen()->where('status', 'delivered')
                     ->whereDate('updated_at', today())->count(),
             ],
@@ -94,13 +94,37 @@ class KitchenController extends Controller
         return response()->json(['data' => $order->fresh(['barTab', 'booking.roomUnit', 'assignedBartender'])->toKitchenOrderArray()]);
     }
 
-    /** POST /kitchen/orders/{order}/serve — the Mark Ready confirm dialog. */
-    public function markServed(Request $request, DiningOrder $order): JsonResponse
+    /**
+     * POST /kitchen/orders/{order}/serve — the Mark Ready confirm dialog:
+     * cooked and waiting at the pass, ready for pickup — not yet actually
+     * served to the guest, which stays a Bar Tablet action.
+     */
+    public function markReady(Request $request, DiningOrder $order): JsonResponse
     {
         $this->kitchenStaff($request);
         abort_unless($order->has_food, 404);
 
-        $order->markServed();
+        abort_unless($order->markReadyForPickup(), 422, 'This ticket cannot be marked ready right now.');
+
+        return response()->json(['data' => $order->fresh(['barTab', 'booking.roomUnit', 'assignedBartender'])->toKitchenOrderArray()]);
+    }
+
+    /**
+     * POST /kitchen/orders/{order}/eta — set or increase how long this
+     * ticket still needs. Blocked once it's ready or closed — there's
+     * nothing left to estimate at that point.
+     */
+    public function setEta(Request $request, DiningOrder $order): JsonResponse
+    {
+        $this->kitchenStaff($request);
+        abort_unless($order->has_food, 404);
+        abort_if(in_array($order->status, ['ready', 'on_way', 'delivered', 'cancelled'], true), 422, 'This ticket is already ready or closed.');
+
+        $data = $request->validate([
+            'minutes' => ['required', 'integer', 'min:1', 'max:180'],
+        ]);
+
+        $order->setEta($data['minutes']);
 
         return response()->json(['data' => $order->fresh(['barTab', 'booking.roomUnit', 'assignedBartender'])->toKitchenOrderArray()]);
     }

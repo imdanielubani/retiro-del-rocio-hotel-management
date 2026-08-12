@@ -122,12 +122,19 @@ class _HousekeepingNotificationScreenState
   }
 
   void _onNav(HousekeepingNavItem item) {
-    HousekeepingNavigation.select(context, widget.session, item, current: widget.current);
+    HousekeepingNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: widget.current,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final notificationsAsync = ref.watch(housekeepingNotificationsProvider(_token));
+    final notificationsAsync = ref.watch(
+      housekeepingNotificationsProvider(_token),
+    );
     final notifications = notificationsAsync.value ?? const [];
     final unreadCount = notifications.where((n) => !n.read).length;
 
@@ -151,8 +158,12 @@ class _HousekeepingNotificationScreenState
               data: (data) => _list(data),
               loading: () => notifications.isNotEmpty
                   ? _list(notifications)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-              error: (_, _) => notifications.isNotEmpty ? _list(notifications) : _errorState(),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
+              error: (_, _) => notifications.isNotEmpty
+                  ? _list(notifications)
+                  : _errorState(),
             ),
           ),
         ],
@@ -167,7 +178,10 @@ class _HousekeepingNotificationScreenState
         Container(
           width: 8,
           height: 8,
-          decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+          decoration: const BoxDecoration(
+            color: AppColors.gold,
+            shape: BoxShape.circle,
+          ),
         ),
         const SizedBox(width: 8),
         Text(
@@ -190,18 +204,26 @@ class _HousekeepingNotificationScreenState
           padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 0.8,
+            ),
           ),
           child: _markingAll
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.gold,
+                  ),
                 )
               : Text(
                   'Mark all read',
                   style: AppTypography.style(
-                    color: enabled ? AppColors.gold : AppColors.gold.withValues(alpha: 0.4),
+                    color: enabled
+                        ? AppColors.gold
+                        : AppColors.gold.withValues(alpha: 0.4),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -243,7 +265,9 @@ class _HousekeepingNotificationScreenState
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.2),
               width: 0.8,
             ),
           ),
@@ -253,7 +277,9 @@ class _HousekeepingNotificationScreenState
               Text(
                 label,
                 style: AppTypography.style(
-                  color: selected ? const Color(0xFF0A0F1E) : Colors.white.withValues(alpha: 0.6),
+                  color: selected
+                      ? const Color(0xFF0A0F1E)
+                      : Colors.white.withValues(alpha: 0.6),
                   fontSize: 13,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
@@ -261,9 +287,21 @@ class _HousekeepingNotificationScreenState
               if (badge != null && badge > 0) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
-                  child: Text('$badge', style: AppTypography.style(color: Colors.white, fontSize: 12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$badge',
+                    style: AppTypography.style(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -281,11 +319,18 @@ class _HousekeepingNotificationScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.notifications_off_outlined, size: 32, color: Colors.white.withValues(alpha: 0.3)),
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 32,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 12),
             Text(
               'No notifications here',
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 14),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -294,7 +339,8 @@ class _HousekeepingNotificationScreenState
 
     return RefreshIndicator(
       color: AppColors.gold,
-      onRefresh: () async => ref.invalidate(housekeepingNotificationsProvider(_token)),
+      onRefresh: () async =>
+          ref.invalidate(housekeepingNotificationsProvider(_token)),
       child: ListView.separated(
         padding: EdgeInsets.zero,
         itemCount: items.length,
@@ -317,13 +363,21 @@ class _HousekeepingNotificationScreenState
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.meeting_room_outlined, size: 13, color: AppColors.gold.withValues(alpha: 0.6)),
+        Icon(
+          Icons.meeting_room_outlined,
+          size: 13,
+          color: AppColors.gold.withValues(alpha: 0.6),
+        ),
         const SizedBox(width: 5),
         Flexible(
           child: Text(
             parts.join(' · '),
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: AppColors.gold.withValues(alpha: 0.75), fontSize: 12, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: AppColors.gold.withValues(alpha: 0.75),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -334,7 +388,9 @@ class _HousekeepingNotificationScreenState
     final busy = _busyId == n.id;
 
     return Material(
-      color: n.read ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.08),
+      color: n.read
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.white.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: busy ? null : () => _open(n),
@@ -344,7 +400,9 @@ class _HousekeepingNotificationScreenState
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: n.read ? Colors.white.withValues(alpha: 0.2) : AppColors.gold.withValues(alpha: 0.14),
+              color: n.read
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : AppColors.gold.withValues(alpha: 0.14),
               width: 0.8,
             ),
           ),
@@ -363,7 +421,10 @@ class _HousekeepingNotificationScreenState
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.gold,
+                        ),
                       )
                     : Icon(n.category.icon, size: 20, color: AppColors.gold),
               ),
@@ -378,9 +439,13 @@ class _HousekeepingNotificationScreenState
                           child: Text(
                             n.title,
                             style: AppTypography.style(
-                              color: n.read ? Colors.white.withValues(alpha: 0.7) : Colors.white,
+                              color: n.read
+                                  ? Colors.white.withValues(alpha: 0.7)
+                                  : Colors.white,
                               fontSize: 14,
-                              fontWeight: n.read ? FontWeight.w500 : FontWeight.w600,
+                              fontWeight: n.read
+                                  ? FontWeight.w500
+                                  : FontWeight.w600,
                             ),
                           ),
                         ),
@@ -389,7 +454,10 @@ class _HousekeepingNotificationScreenState
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                            decoration: const BoxDecoration(
+                              color: AppColors.gold,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ],
                       ],
@@ -397,7 +465,10 @@ class _HousekeepingNotificationScreenState
                     const SizedBox(height: 4),
                     Text(
                       n.message,
-                      style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 13,
+                      ),
                     ),
                     if (n.hasRoomContext) ...[
                       const SizedBox(height: 6),
@@ -406,7 +477,10 @@ class _HousekeepingNotificationScreenState
                     const SizedBox(height: 4),
                     Text(
                       _timeAgo(n.time),
-                      style: AppTypography.style(color: Colors.white.withValues(alpha: 0.25), fontSize: 11),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -423,24 +497,39 @@ class _HousekeepingNotificationScreenState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.cloud_off_rounded, size: 30, color: Colors.white.withValues(alpha: 0.4)),
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
           Text(
             'Could not load the notifications.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 16),
           Material(
             color: AppColors.gold,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              onTap: () => ref.invalidate(housekeepingNotificationsProvider(_token)),
+              onTap: () =>
+                  ref.invalidate(housekeepingNotificationsProvider(_token)),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Text(
                   'Retry',
-                  style: AppTypography.style(color: AppColors.onGold, fontSize: 14, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: AppColors.onGold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),

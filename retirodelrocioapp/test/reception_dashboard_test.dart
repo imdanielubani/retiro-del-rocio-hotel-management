@@ -56,7 +56,8 @@ void main() {
           {
             'id': 201,
             'type': 'overdue_departure',
-            'title': 'Overdue Checkout — Overdue Olu (Brisa Residence · Room 202)',
+            'title':
+                'Overdue Checkout — Overdue Olu (Brisa Residence · Room 202)',
             'time_label': 'Overdue by 2 days',
             'severity': 'high',
           },

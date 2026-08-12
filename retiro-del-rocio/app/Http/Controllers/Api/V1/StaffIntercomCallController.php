@@ -4,17 +4,22 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\IntercomCall;
+use App\Models\StaffMessage;
 use App\Models\User;
 use App\Support\AgoraTokenBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Internal staff Intercom — any staff tablet (Reception, Housekeeping,
- * Maintenance, Security) voice-calling any other station, the mesh
- * counterpart of {@see StaffChatController}. The caller's own role is read
- * off their staff JWT, never the URL, so a token can only ever act as the
- * role it actually holds.
+ * Internal staff Intercom — any staff tablet voice-calling one specific
+ * other staff member (or an admin-portal user), the mesh counterpart of
+ * {@see StaffChatController}. The caller's own identity is read off their
+ * staff JWT, never the URL, so a token can only ever act as the user it
+ * actually belongs to.
+ *
+ * A call is addressed to one person, not a role — two accounts holding the
+ * same role (e.g. two `bar` waiters) can be rung individually rather than
+ * every device with that role ringing at once.
  *
  * Reception's own screen also uses this for its Staff tab; its Guests tab
  * (calling/receiving from an in-house guest room) is served separately by
@@ -24,37 +29,39 @@ use Illuminate\Http\Request;
  */
 class StaffIntercomCallController extends Controller
 {
-    private const TABLET_ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar', 'kitchen'];
+    private const TABLET_ROLES = StaffMessage::ROLES;
 
-    /** POST /staff/intercom/calls — call another station. */
+    /** POST /staff/intercom/calls — call another staff member. */
     public function store(Request $request): JsonResponse
     {
-        $me = $this->myRole($request);
-        $data = $request->validate(['role' => ['required', 'string']]);
-        $other = $this->otherRole($me, $data['role']);
+        $me = $this->myUser($request);
+        $data = $request->validate(['user_id' => ['required', 'integer']]);
+        $target = $this->contact($me, (int) $data['user_id']);
 
-        abort_if($this->activeCallFor($me), 409, 'A call is already in progress.');
-        abort_if($this->activeCallFor($other), 409, 'That station already has a call in progress.');
+        abort_if($this->activeCallFor($me->id), 409, 'A call is already in progress.');
+        abort_if($this->activeCallFor($target->id), 409, 'That person already has a call in progress.');
 
         $call = IntercomCall::create([
-            'from_role' => $me,
-            'from_label' => $this->labelFor($me),
-            'to_role' => $other,
-            'to_label' => $this->labelFor($other),
+            'from_user_id' => $me->id,
+            'from_role' => $this->roleFor($me),
+            'from_label' => $me->name,
+            'to_user_id' => $target->id,
+            'to_role' => $this->roleFor($target),
+            'to_label' => $target->name,
             'status' => IntercomCall::RINGING,
         ]);
 
         return response()->json(['data' => $call->toCallArray()], 201);
     }
 
-    /** GET /staff/intercom/calls/current — this station's active call, either side. */
+    /** GET /staff/intercom/calls/current — this staffer's active call, either side. */
     public function current(Request $request): JsonResponse
     {
-        $me = $this->myRole($request);
+        $me = $this->myUser($request);
 
         $call = IntercomCall::current()
-            ->where('from_role', $me)
-            ->orWhere(fn ($q) => $q->current()->where('to_role', $me))
+            ->where('from_user_id', $me->id)
+            ->orWhere(fn ($q) => $q->current()->where('to_user_id', $me->id))
             ->latest('created_at')
             ->first();
 
@@ -64,8 +71,8 @@ class StaffIntercomCallController extends Controller
     /** POST /staff/intercom/calls/{call}/answer — accept an incoming call. */
     public function answer(Request $request, IntercomCall $call): JsonResponse
     {
-        $me = $this->myRole($request);
-        abort_unless($call->isCallee(null, $me), 403, 'Not this station\'s call.');
+        $me = $this->myUser($request);
+        abort_unless($call->isCallee(null, null, $me->id), 403, 'Not your call.');
         abort_unless($call->accept(), 409, 'This call can no longer be answered.');
 
         return response()->json(['data' => $call->fresh()->toCallArray()]);
@@ -74,36 +81,36 @@ class StaffIntercomCallController extends Controller
     /** POST /staff/intercom/calls/{call}/decline — decline an incoming call. */
     public function decline(Request $request, IntercomCall $call): JsonResponse
     {
-        $me = $this->myRole($request);
-        abort_unless($call->isCallee(null, $me), 403, 'Not this station\'s call.');
+        $me = $this->myUser($request);
+        abort_unless($call->isCallee(null, null, $me->id), 403, 'Not your call.');
         abort_unless($call->decline(), 409, 'This call can no longer be declined.');
 
         return response()->json(['data' => $call->fresh()->toCallArray()]);
     }
 
-    /** POST /staff/intercom/calls/{call}/end — hang up, whichever side this station is on. */
+    /** POST /staff/intercom/calls/{call}/end — hang up, whichever side this staffer is on. */
     public function end(Request $request, IntercomCall $call): JsonResponse
     {
-        $me = $this->myRole($request);
-        $isParty = $call->isCaller(null, $me) || $call->isCallee(null, $me);
-        abort_unless($isParty, 403, 'Not this station\'s call.');
+        $me = $this->myUser($request);
+        $isParty = $call->isCaller(null, null, $me->id) || $call->isCallee(null, null, $me->id);
+        abort_unless($isParty, 403, 'Not your call.');
         abort_unless($call->hangUp(), 409, 'This call has already ended.');
 
         return response()->json(['data' => $call->fresh()->toCallArray()]);
     }
 
     /**
-     * GET /staff/intercom/calls/{call}/token — this station's Agora
+     * GET /staff/intercom/calls/{call}/token — this staffer's Agora
      * credentials for the call's voice channel.
      */
     public function token(Request $request, IntercomCall $call): JsonResponse
     {
-        $me = $this->myRole($request);
-        $isParty = $call->isCaller(null, $me) || $call->isCallee(null, $me);
-        abort_unless($isParty, 403, 'Not this station\'s call.');
+        $me = $this->myUser($request);
+        $isParty = $call->isCaller(null, null, $me->id) || $call->isCallee(null, null, $me->id);
+        abort_unless($isParty, 403, 'Not your call.');
         abort_unless(in_array($call->status, IntercomCall::ACTIVE_STATUSES, true), 409, 'This call is no longer active.');
 
-        $uid = $call->isCaller(null, $me) ? 1 : 2;
+        $uid = $call->isCaller(null, null, $me->id) ? 1 : 2;
         $channel = 'intercom-'.$call->id;
 
         return response()->json(['data' => [
@@ -114,36 +121,46 @@ class StaffIntercomCallController extends Controller
         ]]);
     }
 
-    private function activeCallFor(string $role): ?IntercomCall
+    private function activeCallFor(int $userId): ?IntercomCall
     {
         return IntercomCall::active()
-            ->where('from_role', $role)
-            ->orWhere(fn ($q) => $q->active()->where('to_role', $role))
+            ->where('from_user_id', $userId)
+            ->orWhere(fn ($q) => $q->active()->where('to_user_id', $userId))
             ->first();
     }
 
-    private function labelFor(string $role): string
+    /**
+     * [$userId] validated as a real, reachable, different-from-caller staff
+     * member. Uses `whereHas` rather than Spatie's `role()` scope, which
+     * throws `RoleDoesNotExist` if any name in the list hasn't been
+     * created yet instead of simply matching nothing.
+     */
+    private function contact(User $me, int $userId): User
     {
-        return ucfirst($role);
+        $target = User::where('status', 'active')
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', array_merge(self::TABLET_ROLES, StaffMessage::ADMIN_ROLES)))
+            ->find($userId);
+
+        abort_unless($target && ! $target->is($me), 404, 'Unknown staff member.');
+
+        return $target;
     }
 
-    /** [$role] validated as a real, different-from-caller station. */
-    private function otherRole(string $me, string $role): string
+    /** [$user]'s own department role, or "admin" for an admin-portal user. */
+    private function roleFor(User $user): string
     {
-        abort_unless(in_array($role, self::TABLET_ROLES, true) && $role !== $me, 404, 'Unknown station.');
+        $role = collect(self::TABLET_ROLES)->first(fn (string $r) => $user->hasRole($r));
 
-        return $role;
+        return $role ?? 'admin';
     }
 
-    /** The calling staff member's own role, which must be one of the tablet roles. */
-    private function myRole(Request $request): string
+    /** The calling staff member, who must hold one of the tablet roles. */
+    private function myUser(Request $request): User
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401, 'Unauthenticated.');
+        abort_unless($user->hasAnyRole(self::TABLET_ROLES), 403, 'Not a recognised staff role.');
 
-        $role = collect(self::TABLET_ROLES)->first(fn (string $r) => $user->hasRole($r));
-        abort_unless($role !== null, 403, 'Not a recognised staff role.');
-
-        return $role;
+        return $user;
     }
 }

@@ -5,8 +5,8 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_guest.dart
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
 
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(body: SizedBox(width: 520, child: child)),
-    );
+  home: Scaffold(body: SizedBox(width: 520, child: child)),
+);
 
 void main() {
   group('domain parsing', () {
@@ -56,7 +56,10 @@ void main() {
     });
 
     test('ReceptionGuestSummary tolerates missing contact fields', () {
-      final g = ReceptionGuestSummary.fromJson({'key': 'name:jo', 'name': 'Jo'});
+      final g = ReceptionGuestSummary.fromJson({
+        'key': 'name:jo',
+        'name': 'Jo',
+      });
       expect(g.stays, 0);
       expect(g.inHouse, isFalse);
       expect(g.email, isNull);
@@ -94,9 +97,13 @@ void main() {
     inHouse: true,
   );
 
-  testWidgets('a guest card shows name, stays and the in-house tag and taps', (tester) async {
+  testWidgets('a guest card shows name, stays and the in-house tag and taps', (
+    tester,
+  ) async {
     var tapped = false;
-    await tester.pumpWidget(_host(ReceptionGuestCard(guest: guest, onTap: () => tapped = true)));
+    await tester.pumpWidget(
+      _host(ReceptionGuestCard(guest: guest, onTap: () => tapped = true)),
+    );
 
     expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
@@ -138,7 +145,9 @@ void main() {
   testWidgets('no check-out button without an onCheckOut callback', (
     tester,
   ) async {
-    await tester.pumpWidget(_host(ReceptionGuestCard(guest: guest, onTap: () {})));
+    await tester.pumpWidget(
+      _host(ReceptionGuestCard(guest: guest, onTap: () {})),
+    );
     expect(find.byIcon(Icons.logout_rounded), findsNothing);
   });
 
@@ -181,7 +190,9 @@ void main() {
     expect(checkedOut, isFalse);
   });
 
-  testWidgets('a booking row shows the reference, status pill and stay span', (tester) async {
+  testWidgets('a booking row shows the reference, status pill and stay span', (
+    tester,
+  ) async {
     const row = ReceptionBookingRow(
       id: 1,
       reference: 'BK-0137',

@@ -14,14 +14,14 @@ import 'package:retirodelrocioapp/features/staff_intercom/application/staff_inte
 /// Call this once per `build()` from any screen that should ring regardless
 /// of what's on screen for this station — mirrors
 /// `watchReceptionIntercomCall` in `reception_intercom_call_gate.dart`,
-/// generalised to any of Housekeeping/Maintenance/Security via
-/// [session.role].
+/// generalised to any staff role via [session.userId], the individual
+/// identity a staff-to-staff call is actually addressed to.
 void watchStaffIntercomCall(
   BuildContext context,
   WidgetRef ref,
   StaffSession session,
 ) {
-  final key = (session.token, session.role);
+  final key = (session.token, session.userId);
 
   ref.listen(staffIntercomCallProvider(key), (previous, next) {
     if (previous == null && next != null) {
@@ -29,7 +29,7 @@ void watchStaffIntercomCall(
         MaterialPageRoute(
           builder: (_) => IntercomCallScreen(
             watchCall: (ref) => ref.watch(staffIntercomCallProvider(key)),
-            myRole: session.role,
+            myUserId: session.userId,
             onAnswer: (id) =>
                 ref.read(staffIntercomCallProvider(key).notifier).answer(id),
             onDecline: (id) =>

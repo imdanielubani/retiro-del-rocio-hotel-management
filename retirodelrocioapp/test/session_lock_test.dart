@@ -9,9 +9,12 @@ void main() {
   // outside any Material. It must supply its own — otherwise the password field
   // and "Log out" button throw "No Material widget found". This pumps it with no
   // Material ancestor to reproduce exactly that condition.
-  testWidgets('session lock renders without a Material ancestor', (tester) async {
+  testWidgets('session lock renders without a Material ancestor', (
+    tester,
+  ) async {
     const session = StaffSession(
       token: 't',
+      userId: 1,
       name: 'Daniel Ubani',
       email: 'daniel@rocio.test',
       role: 'security',

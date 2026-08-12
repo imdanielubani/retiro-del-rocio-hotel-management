@@ -89,8 +89,30 @@ class KitchenRepository {
   Future<KitchenOrder> markPreparing(String token, int id) =>
       _orderAct(token, id, 'prepare');
 
-  Future<KitchenOrder> markServed(String token, int id) =>
+  /// Ready for pickup — not yet actually served to the guest, which is the
+  /// Bar Tablet's own action once the waiter collects it (or, for a plain
+  /// guest-tablet order with no waiter involved, this finalises it directly).
+  Future<KitchenOrder> markReady(String token, int id) =>
       _orderAct(token, id, 'serve');
+
+  /// Set or increase how long this ticket still needs.
+  Future<KitchenOrder> setEta(String token, int id, int minutes) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('kitchen/orders/$id/eta')),
+        data: {'minutes': minutes},
+        options: _auth(token),
+      );
+      return KitchenOrder.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw KitchenException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('KitchenRepository: setEta failed — $error');
+      throw KitchenException('Could not update the ready time.');
+    }
+  }
 
   Future<KitchenOrder> _orderAct(String token, int id, String action) async {
     try {

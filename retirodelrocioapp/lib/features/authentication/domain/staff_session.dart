@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 class StaffSession {
   const StaffSession({
     required this.token,
+    required this.userId,
     required this.name,
     required this.email,
     required this.role,
@@ -16,6 +17,11 @@ class StaffSession {
 
   /// The staffer's JWT (separate from the device token).
   final String token;
+
+  /// This staffer's own numeric user ID (from the JWT `sub` claim) — the
+  /// individual identity Staff Chat/Intercom address, distinct from [role]
+  /// which only says which department they belong to.
+  final int userId;
   final String name;
   final String email;
 
@@ -37,8 +43,10 @@ class StaffSession {
     String activeRole,
   ) {
     final user = (json['user'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final token = json['token'] as String? ?? '';
     return StaffSession(
-      token: json['token'] as String? ?? '',
+      token: token,
+      userId: (user['id'] as num?)?.toInt() ?? _subFromJwt(token) ?? 0,
       role: json['role'] as String? ?? activeRole,
       name: user['name'] as String? ?? 'Staff',
       email: user['email'] as String? ?? '',
@@ -47,6 +55,24 @@ class StaffSession {
           const [],
       expiresAt: _expiry(json),
     );
+  }
+
+  /// Reads the JWT's `sub` claim (the user ID) — the fallback when the
+  /// login response's `user.id` isn't present.
+  static int? _subFromJwt(String? token) {
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final normalized = base64Url.normalize(parts[1]);
+      final payload =
+          jsonDecode(utf8.decode(base64Url.decode(normalized)))
+              as Map<String, dynamic>;
+      final sub = payload['sub'];
+      if (sub is int) return sub;
+      if (sub is String) return int.tryParse(sub);
+    } catch (_) {}
+    return null;
   }
 
   /// Reads `expires_at` from the response, or falls back to the JWT `exp` claim.
@@ -76,6 +102,7 @@ class StaffSession {
 
   Map<String, dynamic> toJson() => {
     'token': token,
+    'user_id': userId,
     'name': name,
     'email': email,
     'role': role,
@@ -83,15 +110,20 @@ class StaffSession {
     'expires_at': expiresAt?.toIso8601String(),
   };
 
-  factory StaffSession.fromJson(Map<String, dynamic> json) => StaffSession(
-    token: json['token'] as String? ?? '',
-    name: json['name'] as String? ?? 'Staff',
-    email: json['email'] as String? ?? '',
-    role: json['role'] as String? ?? '',
-    roles:
-        (json['roles'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-    expiresAt: DateTime.tryParse(json['expires_at'] as String? ?? ''),
-  );
+  factory StaffSession.fromJson(Map<String, dynamic> json) {
+    final token = json['token'] as String? ?? '';
+    return StaffSession(
+      token: token,
+      userId: (json['user_id'] as num?)?.toInt() ?? _subFromJwt(token) ?? 0,
+      name: json['name'] as String? ?? 'Staff',
+      email: json['email'] as String? ?? '',
+      role: json['role'] as String? ?? '',
+      roles:
+          (json['roles'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      expiresAt: DateTime.tryParse(json['expires_at'] as String? ?? ''),
+    );
+  }
 
   /// Human label for the role, e.g. "reception" → "Reception".
   String get roleLabel =>

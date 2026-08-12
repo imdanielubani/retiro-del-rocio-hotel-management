@@ -21,12 +21,15 @@ class DeviceRevokedException implements Exception {
 /// the welcome screen for a device the hotel no longer knows about.
 class DeviceSessionService {
   DeviceSessionService({Dio? dio, DeviceSessionStore? store})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 8),
               receiveTimeout: const Duration(seconds: 8),
-            )),
-        _store = store ?? DeviceSessionStore();
+            ),
+          ),
+      _store = store ?? DeviceSessionStore();
 
   final Dio _dio;
   final DeviceSessionStore _store;
@@ -41,16 +44,21 @@ class DeviceSessionService {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('tablets/me')),
-        options: Options(headers: {
-          'Authorization': 'Bearer ${device.token}',
-          'Accept': 'application/json',
-        }),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${device.token}',
+            'Accept': 'application/json',
+          },
+        ),
       );
 
       final json = (response.data?['device'] as Map?)?.cast<String, dynamic>();
       if (json == null) return device;
 
-      final refreshed = ProvisionedDevice.fromDeviceJson(json, token: device.token);
+      final refreshed = ProvisionedDevice.fromDeviceJson(
+        json,
+        token: device.token,
+      );
       await _store.save(refreshed);
       return refreshed;
     } on DioException catch (error) {

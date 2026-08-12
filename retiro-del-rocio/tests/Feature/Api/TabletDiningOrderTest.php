@@ -110,7 +110,7 @@ class TabletDiningOrderTest extends TestCase
             ->assertJsonPath('data.items.0.name', 'Active Dish')
             ->assertJsonPath('data.items.0.price_label', 'NGN 9,000')
             ->assertJsonPath('data.items.0.prep_label', '25 mins')
-            ->assertJsonPath('data.service_fee_label', 'NGN 1,000')
+            ->assertJsonPath('data.service_fee_label', 'NGN 0')
             ->assertJsonCount(7, 'data.categories');
     }
 
@@ -129,8 +129,8 @@ class TabletDiningOrderTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.items_label', 'Salmon, Wagyu')
             ->assertJsonPath('data.item_count', 3)
-            // subtotal = 9000 + 15000*2 = 39000, +7.5% VAT (2925) +1000 service fee = 42925
-            ->assertJsonPath('data.total_label', 'NGN 42,925')
+            // subtotal = 9000 + 15000*2 = 39000, +7.5% VAT (2925), no service fee = 41925
+            ->assertJsonPath('data.total_label', 'NGN 41,925')
             ->assertJsonPath('data.payment_method', 'room_charge');
 
         $order = DiningOrder::where('booking_id', $this->booking->id)->first();
@@ -140,8 +140,8 @@ class TabletDiningOrderTest extends TestCase
         $this->assertNull($order->paid_at);
         $this->assertSame(39000, (int) $order->subtotal);
         $this->assertSame(2925, (int) $order->vat);
-        $this->assertSame(1000, (int) $order->service_fee);
-        $this->assertSame(42925, (int) $order->total);
+        $this->assertSame(0, (int) $order->service_fee);
+        $this->assertSame(41925, (int) $order->total);
         $this->assertCount(2, $order->items);
         $this->assertSame('No truffle please', $order->items[1]['note']);
 
@@ -306,7 +306,7 @@ class TabletDiningOrderTest extends TestCase
             ], 200),
             '*/transaction/verify/*' => Http::response([
                 'status' => true,
-                'data' => ['status' => 'success', 'amount' => 1067500, 'channel' => 'card'],
+                'data' => ['status' => 'success', 'amount' => 967500, 'channel' => 'card'],
             ], 200),
         ]);
 
@@ -315,7 +315,7 @@ class TabletDiningOrderTest extends TestCase
                 'items' => [['menu_item_id' => $salmon->id, 'qty' => 1]],
             ])
             ->assertOk()
-            ->assertJsonPath('data.total_label', 'NGN 10,675') // 9000 + 675 VAT + 1000 fee
+            ->assertJsonPath('data.total_label', 'NGN 9,675') // 9000 + 675 VAT, no service fee
             ->json('data.reference');
 
         $this->assertSame('pending', DiningOrder::where('reference', $reference)->first()->payment_status);
@@ -411,6 +411,6 @@ class TabletDiningOrderTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.categories.2.key', 'restaurant')
             ->assertJsonPath('data.categories.2.has_charges', true)
-            ->assertJsonPath('data.categories.2.amount_label', 'NGN 10,000');
+            ->assertJsonPath('data.categories.2.amount_label', 'NGN 9,000');
     }
 }

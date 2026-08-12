@@ -50,7 +50,7 @@ void showStaffChatToast(StaffChannel channel) {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${channel.label} — New Message',
+                    '${channel.name} — New Message',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.style(

@@ -23,12 +23,12 @@ class RoomOption {
   final bool hasTablet;
 
   factory RoomOption.fromJson(Map<String, dynamic> json) => RoomOption(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        number: json['number'] as String? ?? '',
-        roomName: json['room_name'] as String? ?? '',
-        priceLabel: json['price_label'] as String?,
-        hasTablet: json['has_tablet'] as bool? ?? false,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    number: json['number'] as String? ?? '',
+    roomName: json['room_name'] as String? ?? '',
+    priceLabel: json['price_label'] as String?,
+    hasTablet: json['has_tablet'] as bool? ?? false,
+  );
 }
 
 /// The room-assignment options: the unit the booking holds plus same-type
@@ -41,14 +41,14 @@ class RoomOptions {
   final List<RoomOption> available;
 
   factory RoomOptions.fromJson(Map<String, dynamic> json) => RoomOptions(
-        assigned: json['assigned'] is Map
-            ? RoomOption.fromJson((json['assigned'] as Map).cast<String, dynamic>())
-            : null,
-        available: ((json['available'] as List?) ?? const [])
-            .whereType<Map>()
-            .map((e) => RoomOption.fromJson(e.cast<String, dynamic>()))
-            .toList(),
-      );
+    assigned: json['assigned'] is Map
+        ? RoomOption.fromJson((json['assigned'] as Map).cast<String, dynamic>())
+        : null,
+    available: ((json['available'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => RoomOption.fromJson(e.cast<String, dynamic>()))
+        .toList(),
+  );
 }
 
 /// The "Check-In Complete" summary returned when a guest is checked in.

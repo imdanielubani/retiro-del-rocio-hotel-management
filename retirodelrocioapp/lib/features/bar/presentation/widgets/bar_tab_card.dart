@@ -71,7 +71,10 @@ class BarTabCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${tab.orderCount} ${tab.orderCount == 1 ? 'order' : 'orders'} · ${tab.openedAtLabel ?? ''}',
+                      '${tab.orderCount} ${tab.orderCount == 1 ? 'order' : 'orders'} · ${tab.openedAtLabel ?? ''}'
+                      '${tab.reservationCode != null ? ' · ${tab.reservationCode}' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTypography.style(
                         color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 12,

@@ -70,40 +70,60 @@ void main() {
     isUnclaimed: false,
   );
 
-  testWidgets('an unclaimed item shows a Mark Returned button that reports the tap', (tester) async {
-    var returnedTapped = false;
+  testWidgets(
+    'an unclaimed item shows a Mark Returned button that reports the tap',
+    (tester) async {
+      var returnedTapped = false;
+      await tester.pumpWidget(
+        _host(
+          LostFoundItemCard(
+            item: unclaimedItem,
+            onMarkReturned: () => returnedTapped = true,
+            onMarkDisposed: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Blue phone charger'), findsOneWidget);
+      expect(find.textContaining('Room 204'), findsOneWidget);
+      expect(find.textContaining('Found by Ada Lovelace'), findsOneWidget);
+      expect(find.text('Mark Returned'), findsOneWidget);
+
+      await tester.tap(find.text('Mark Returned'));
+      await tester.pump();
+      expect(returnedTapped, isTrue);
+    },
+  );
+
+  testWidgets(
+    'a returned item shows who it was returned to, not the action button',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          LostFoundItemCard(
+            item: returnedItem,
+            onMarkReturned: () {},
+            onMarkDisposed: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Returned to Grace Hopper'), findsOneWidget);
+      expect(find.text('Mark Returned'), findsNothing);
+    },
+  );
+
+  testWidgets('a disposed item shows a Disposed pill, not the action button', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _host(
         LostFoundItemCard(
-          item: unclaimedItem,
-          onMarkReturned: () => returnedTapped = true,
+          item: disposedItem,
+          onMarkReturned: () {},
           onMarkDisposed: () {},
         ),
       ),
-    );
-
-    expect(find.text('Blue phone charger'), findsOneWidget);
-    expect(find.textContaining('Room 204'), findsOneWidget);
-    expect(find.textContaining('Found by Ada Lovelace'), findsOneWidget);
-    expect(find.text('Mark Returned'), findsOneWidget);
-
-    await tester.tap(find.text('Mark Returned'));
-    await tester.pump();
-    expect(returnedTapped, isTrue);
-  });
-
-  testWidgets('a returned item shows who it was returned to, not the action button', (tester) async {
-    await tester.pumpWidget(
-      _host(LostFoundItemCard(item: returnedItem, onMarkReturned: () {}, onMarkDisposed: () {})),
-    );
-
-    expect(find.text('Returned to Grace Hopper'), findsOneWidget);
-    expect(find.text('Mark Returned'), findsNothing);
-  });
-
-  testWidgets('a disposed item shows a Disposed pill, not the action button', (tester) async {
-    await tester.pumpWidget(
-      _host(LostFoundItemCard(item: disposedItem, onMarkReturned: () {}, onMarkDisposed: () {})),
     );
 
     expect(find.text('Disposed'), findsOneWidget);

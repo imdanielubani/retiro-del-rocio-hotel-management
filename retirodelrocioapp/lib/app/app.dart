@@ -34,9 +34,7 @@ class RocioTabletApp extends ConsumerWidget {
       // would push content past the fixed-height cards and bars.
       builder: (context, child) => MediaQuery.withNoTextScaling(
         child: AmbientVideoScope(
-          child: CheckoutResetWatcher(
-            child: child ?? const SizedBox.shrink(),
-          ),
+          child: CheckoutResetWatcher(child: child ?? const SizedBox.shrink()),
         ),
       ),
     );

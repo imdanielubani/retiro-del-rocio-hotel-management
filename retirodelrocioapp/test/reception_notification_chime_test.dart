@@ -97,10 +97,7 @@ void main() {
 
     // A read notification (e.g. marked read on another device) appears for
     // the first time — it's not a new arrival worth interrupting the desk for.
-    repo.notifications = [
-      _notification(1),
-      _notification(2, read: true),
-    ];
+    repo.notifications = [_notification(1), _notification(2, read: true)];
     container.invalidate(receptionNotificationsProvider(token));
     await tester.pump();
     await tester.pump();

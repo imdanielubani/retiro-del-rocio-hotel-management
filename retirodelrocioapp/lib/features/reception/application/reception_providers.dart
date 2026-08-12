@@ -250,21 +250,28 @@ class ReceptionActions {
   /// Everything the desk should see before checking [bookingId] out — the
   /// outstanding balance, open housekeeping/maintenance items, and active
   /// visitor passes — for the pre-checkout confirmation dialog.
-  Future<ReceptionDepartureReadiness> departureReadiness(int bookingId) =>
-      _ref.read(receptionRepositoryProvider).departureReadiness(_token, bookingId);
+  Future<ReceptionDepartureReadiness> departureReadiness(int bookingId) => _ref
+      .read(receptionRepositoryProvider)
+      .departureReadiness(_token, bookingId);
 
   /// The desk records a balance the guest already paid in person, by
   /// [method], so it no longer blocks checkout. Also refreshes the Bills
   /// list, since it's now settled there too.
-  Future<ReceptionDepartureReadiness> settleBill(int bookingId, ReceptionDeskPaymentMethod method) async {
-    final readiness = await _ref.read(receptionRepositoryProvider).settleBill(_token, bookingId, method);
+  Future<ReceptionDepartureReadiness> settleBill(
+    int bookingId,
+    ReceptionDeskPaymentMethod method,
+  ) async {
+    final readiness = await _ref
+        .read(receptionRepositoryProvider)
+        .settleBill(_token, bookingId, method);
     _ref.invalidate(receptionBillsProvider(_token));
     return readiness;
   }
 
   /// Ask housekeeping to inspect the room before this guest can check out.
-  Future<ReceptionDepartureReadiness> requestInspection(int bookingId) =>
-      _ref.read(receptionRepositoryProvider).requestInspection(_token, bookingId);
+  Future<ReceptionDepartureReadiness> requestInspection(int bookingId) => _ref
+      .read(receptionRepositoryProvider)
+      .requestInspection(_token, bookingId);
 
   Future<void> checkOut(int bookingId) async {
     await _ref.read(receptionRepositoryProvider).checkOut(_token, bookingId);

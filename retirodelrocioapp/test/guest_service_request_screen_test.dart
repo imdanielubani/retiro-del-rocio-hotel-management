@@ -27,22 +27,39 @@ class _FakeServiceRequestRepository implements ServiceRequestRepository {
   String? lastPriority;
 
   static const _types = [
-    HousekeepingRequestTypeOption(key: 'towels', label: 'Towels', icon: Icons.dry_cleaning_rounded),
-    HousekeepingRequestTypeOption(key: 'amenities', label: 'Amenities', icon: Icons.soap_rounded),
-    HousekeepingRequestTypeOption(key: 'dnd', label: 'Do Not Disturb', icon: Icons.do_not_disturb_on_rounded),
+    HousekeepingRequestTypeOption(
+      key: 'towels',
+      label: 'Towels',
+      icon: Icons.dry_cleaning_rounded,
+    ),
+    HousekeepingRequestTypeOption(
+      key: 'amenities',
+      label: 'Amenities',
+      icon: Icons.soap_rounded,
+    ),
+    HousekeepingRequestTypeOption(
+      key: 'dnd',
+      label: 'Do Not Disturb',
+      icon: Icons.do_not_disturb_on_rounded,
+    ),
     HousekeepingRequestTypeOption(
       key: 'make_up_room',
       label: 'Make Up Room',
       icon: Icons.cleaning_services_rounded,
     ),
-    HousekeepingRequestTypeOption(key: 'other', label: 'Other', icon: Icons.more_horiz_rounded),
+    HousekeepingRequestTypeOption(
+      key: 'other',
+      label: 'Other',
+      icon: Icons.more_horiz_rounded,
+    ),
   ];
 
   @override
   Future<List<GuestServiceRequest>> list(String deviceToken) async => history;
 
   @override
-  Future<List<HousekeepingRequestTypeOption>> types(String deviceToken) async => _types;
+  Future<List<HousekeepingRequestTypeOption>> types(String deviceToken) async =>
+      _types;
 
   @override
   Future<GuestServiceRequest> createHousekeeping(
@@ -163,27 +180,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('picking Housekeeping, a type, and submitting sends the request', (
-    tester,
-  ) async {
-    final repo = await pumpScreen(tester);
+  testWidgets(
+    'picking Housekeeping, a type, and submitting sends the request',
+    (tester) async {
+      final repo = await pumpScreen(tester);
 
-    await tester.tap(find.text('Housekeeping'));
-    await tester.pump();
+      await tester.tap(find.text('Housekeeping'));
+      await tester.pump();
 
-    expect(find.text('Housekeeping Request'), findsOneWidget);
-    expect(find.text('Towels'), findsOneWidget); // default selected type chip
+      expect(find.text('Housekeeping Request'), findsOneWidget);
+      expect(find.text('Towels'), findsOneWidget); // default selected type chip
 
-    await tester.tap(find.text('Do Not Disturb'));
-    await tester.pump();
+      await tester.tap(find.text('Do Not Disturb'));
+      await tester.pump();
 
-    await tester.tap(find.text('Send Request'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Send Request'));
+      await tester.pumpAndSettle();
 
-    expect(repo.createdHousekeeping, isTrue);
-    expect(repo.lastType, 'dnd');
-    expect(find.text('Request Sent!'), findsOneWidget);
-  });
+      expect(repo.createdHousekeeping, isTrue);
+      expect(repo.lastType, 'dnd');
+      expect(find.text('Request Sent!'), findsOneWidget);
+    },
+  );
 
   testWidgets('picking Maintenance requires a title before it can submit', (
     tester,
@@ -199,7 +217,10 @@ void main() {
     await tester.pump();
 
     expect(repo.createdMaintenance, isFalse);
-    expect(find.text('Please describe the fault in a few words.'), findsOneWidget);
+    expect(
+      find.text('Please describe the fault in a few words.'),
+      findsOneWidget,
+    );
 
     await tester.enterText(find.byType(TextField).first, 'AC not cooling');
     await tester.tap(find.text('High'));

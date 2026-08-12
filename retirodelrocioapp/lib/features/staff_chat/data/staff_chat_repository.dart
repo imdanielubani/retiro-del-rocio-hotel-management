@@ -49,10 +49,12 @@ class StaffChatRepository {
     }
   }
 
-  Future<List<StaffChatMessage>> messages(String token, String role) async {
+  Future<List<StaffChatMessage>> messages(String token, int contactId) async {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('staff/chat/channels/$role/messages')),
+        Uri.parse(
+          ApiConfig.endpoint('staff/chat/channels/$contactId/messages'),
+        ),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
@@ -65,10 +67,16 @@ class StaffChatRepository {
     }
   }
 
-  Future<StaffChatMessage> send(String token, String role, String body) async {
+  Future<StaffChatMessage> send(
+    String token,
+    int contactId,
+    String body,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('staff/chat/channels/$role/messages')),
+        Uri.parse(
+          ApiConfig.endpoint('staff/chat/channels/$contactId/messages'),
+        ),
         data: {'body': body},
         options: _auth(token),
       );
@@ -87,10 +95,10 @@ class StaffChatRepository {
 
   /// Fire-and-forget "I'm typing" signal. Failures are swallowed — a missed
   /// typing indicator is never worth surfacing.
-  Future<void> sendTyping(String token, String role) async {
+  Future<void> sendTyping(String token, int contactId) async {
     try {
       await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('staff/chat/channels/$role/typing')),
+        Uri.parse(ApiConfig.endpoint('staff/chat/channels/$contactId/typing')),
         options: _auth(token),
       );
     } catch (error) {

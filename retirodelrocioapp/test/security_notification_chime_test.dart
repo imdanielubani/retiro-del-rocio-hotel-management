@@ -17,8 +17,7 @@ class _FakeSecurityNotificationRepository
   List<SecurityNotification> notifications = const [];
 
   @override
-  Future<List<SecurityNotification>> fetch(String token) async =>
-      notifications;
+  Future<List<SecurityNotification>> fetch(String token) async => notifications;
 }
 
 SecurityNotification _notification(int id, {bool read = false}) =>
@@ -97,10 +96,7 @@ void main() {
 
     // A read notification (e.g. marked read on another device) appears for
     // the first time — it's not a new arrival worth interrupting the officer for.
-    repo.notifications = [
-      _notification(1),
-      _notification(2, read: true),
-    ];
+    repo.notifications = [_notification(1), _notification(2, read: true)];
     container.invalidate(securityNotificationsProvider(token));
     await tester.pump();
     await tester.pump();

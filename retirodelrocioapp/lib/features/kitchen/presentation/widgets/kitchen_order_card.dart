@@ -66,6 +66,34 @@ class KitchenOrderCard extends StatelessWidget {
                   fontSize: 12,
                 ),
               ),
+              if (order.estimatedReadyLabel != null &&
+                  order.boardColumn == 'preparing') ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 13,
+                      color: order.estimatedReadyOverdue
+                          ? const Color(0xFFEF4444)
+                          : AppColors.gold,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      order.estimatedReadyOverdue
+                          ? 'Running late · was due ${order.estimatedReadyLabel}'
+                          : 'Ready by ${order.estimatedReadyLabel}',
+                      style: AppTypography.style(
+                        color: order.estimatedReadyOverdue
+                            ? const Color(0xFFEF4444)
+                            : AppColors.gold,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 15),
               Row(
                 children: [

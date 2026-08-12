@@ -19,8 +19,8 @@ class StaffChatTypingSent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /** @param  string  $from  The sender's own role, e.g. 'maintenance' */
-    public function __construct(public string $channelKey, public string $from) {}
+    /** @param  int  $from  The sender's own user ID */
+    public function __construct(public string $channelKey, public int $from) {}
 
     /** @return array<int, Channel> */
     public function broadcastOn(): array
@@ -36,6 +36,8 @@ class StaffChatTypingSent implements ShouldBroadcastNow
     /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
-        return ['from' => $this->from];
+        // Cast to string — the Flutter side's generic NamedTypingChannel
+        // parses `from` as a string for every feature that reuses it.
+        return ['from' => (string) $this->from];
     }
 }

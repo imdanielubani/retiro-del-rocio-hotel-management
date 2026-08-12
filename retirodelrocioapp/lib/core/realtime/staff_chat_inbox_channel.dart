@@ -26,8 +26,8 @@ class StaffChatInboxChannel {
   Timer? _reconnect;
   bool _closed = false;
 
-  /// Calls [onMessage] whenever a new message lands for this role, carrying
-  /// the sender's own role (e.g. `'maintenance'`).
+  /// Calls [onMessage] whenever a new message lands for this staffer,
+  /// carrying the sender's own user ID as a string.
   void connect({required ValueChanged<String> onMessage}) {
     _closed = false;
     unawaited(_open(onMessage));
@@ -90,8 +90,8 @@ class StaffChatInboxChannel {
           final data = payload is String
               ? jsonDecode(payload) as Map<String, dynamic>
               : const {};
-          final from = data['from'] as String?;
-          if (from != null) onMessage(from);
+          final from = data['from_user_id'];
+          if (from != null) onMessage(from.toString());
       }
     } catch (error) {
       debugPrint('StaffChatInboxChannel: bad frame — $error');

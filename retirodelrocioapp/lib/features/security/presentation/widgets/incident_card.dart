@@ -32,7 +32,10 @@ class IncidentCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: accent.withValues(alpha: active ? 0.11 : 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withValues(alpha: active ? 0.21 : 0.25), width: 0.8),
+        border: Border.all(
+          color: accent.withValues(alpha: active ? 0.21 : 0.25),
+          width: 0.8,
+        ),
       ),
       child: Row(
         children: [
@@ -73,7 +76,9 @@ class IncidentCard extends StatelessWidget {
   }
 
   Widget _details(Color accent) {
-    final title = incident.isActive ? 'Guest Emergency Alert' : 'Responding — help on the way';
+    final title = incident.isActive
+        ? 'Guest Emergency Alert'
+        : 'Responding — help on the way';
     final officer = incident.acknowledgedBy;
 
     return Column(
@@ -123,7 +128,9 @@ class IncidentCard extends StatelessWidget {
 
   Widget _action(Color accent) {
     final label = incident.isActive ? 'Respond' : 'Resolve';
-    final icon = incident.isActive ? Icons.campaign_rounded : Icons.check_circle_outline_rounded;
+    final icon = incident.isActive
+        ? Icons.campaign_rounded
+        : Icons.check_circle_outline_rounded;
 
     return Material(
       color: accent,
@@ -139,7 +146,10 @@ class IncidentCard extends StatelessWidget {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,
@@ -184,12 +194,19 @@ class OpenIncidentsEmpty extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.07),
+          width: 0.8,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_outline_rounded, size: 26, color: AppColors.success),
+          Icon(
+            Icons.check_circle_outline_rounded,
+            size: 26,
+            color: AppColors.success,
+          ),
           const SizedBox(height: 8),
           Text(
             'All clear — no unacknowledged SOS alerts',

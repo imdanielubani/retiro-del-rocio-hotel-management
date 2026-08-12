@@ -33,10 +33,12 @@ class MaintenanceNotificationScreen extends ConsumerStatefulWidget {
   final MaintenanceNavItem current;
 
   @override
-  ConsumerState<MaintenanceNotificationScreen> createState() => _MaintenanceNotificationScreenState();
+  ConsumerState<MaintenanceNotificationScreen> createState() =>
+      _MaintenanceNotificationScreenState();
 }
 
-class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotificationScreen> {
+class _MaintenanceNotificationScreenState
+    extends ConsumerState<MaintenanceNotificationScreen> {
   Object _filter = _Filter.all;
   int? _busyId;
   bool _markingAll = false;
@@ -53,11 +55,14 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
   Future<void> _markAllRead() async {
     setState(() => _markingAll = true);
     try {
-      await ref.read(maintenanceNotificationActionsProvider(_token)).markAllRead();
+      await ref
+          .read(maintenanceNotificationActionsProvider(_token))
+          .markAllRead();
     } on MaintenanceNotificationException catch (e) {
       if (mounted) _toast(e.message, error: true);
     } catch (_) {
-      if (mounted) _toast('Something went wrong. Please try again.', error: true);
+      if (mounted)
+        _toast('Something went wrong. Please try again.', error: true);
     } finally {
       if (mounted) setState(() => _markingAll = false);
     }
@@ -67,11 +72,14 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
     if (n.read) return;
     setState(() => _busyId = n.id);
     try {
-      await ref.read(maintenanceNotificationActionsProvider(_token)).markRead(n.id);
+      await ref
+          .read(maintenanceNotificationActionsProvider(_token))
+          .markRead(n.id);
     } on MaintenanceNotificationException catch (e) {
       if (mounted) _toast(e.message, error: true);
     } catch (_) {
-      if (mounted) _toast('Something went wrong. Please try again.', error: true);
+      if (mounted)
+        _toast('Something went wrong. Please try again.', error: true);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -81,8 +89,13 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: error ? const Color(0xFF7F1D1D) : const Color(0xFF14532D),
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        backgroundColor: error
+            ? const Color(0xFF7F1D1D)
+            : const Color(0xFF14532D),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -95,12 +108,19 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
   }
 
   void _onNav(MaintenanceNavItem item) {
-    MaintenanceNavigation.select(context, widget.session, item, current: widget.current);
+    MaintenanceNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: widget.current,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final notificationsAsync = ref.watch(maintenanceNotificationsProvider(_token));
+    final notificationsAsync = ref.watch(
+      maintenanceNotificationsProvider(_token),
+    );
     final notifications = notificationsAsync.value ?? const [];
     final unreadCount = notifications.where((n) => !n.read).length;
 
@@ -124,8 +144,12 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
               data: (data) => _list(data),
               loading: () => notifications.isNotEmpty
                   ? _list(notifications)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-              error: (_, _) => notifications.isNotEmpty ? _list(notifications) : _errorState(),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
+              error: (_, _) => notifications.isNotEmpty
+                  ? _list(notifications)
+                  : _errorState(),
             ),
           ),
         ],
@@ -137,7 +161,14 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: AppColors.gold,
+            shape: BoxShape.circle,
+          ),
+        ),
         const SizedBox(width: 8),
         Text(
           unreadCount == 1 ? '1 unread' : '$unreadCount unread',
@@ -159,14 +190,26 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
           padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 0.8,
+            ),
           ),
           child: _markingAll
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.gold,
+                  ),
+                )
               : Text(
                   'Mark all read',
                   style: AppTypography.style(
-                    color: enabled ? AppColors.gold : AppColors.gold.withValues(alpha: 0.4),
+                    color: enabled
+                        ? AppColors.gold
+                        : AppColors.gold.withValues(alpha: 0.4),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -208,7 +251,9 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.2),
               width: 0.8,
             ),
           ),
@@ -218,7 +263,9 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
               Text(
                 label,
                 style: AppTypography.style(
-                  color: selected ? const Color(0xFF0A0F1E) : Colors.white.withValues(alpha: 0.6),
+                  color: selected
+                      ? const Color(0xFF0A0F1E)
+                      : Colors.white.withValues(alpha: 0.6),
                   fontSize: 13,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
@@ -226,9 +273,21 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
               if (badge != null && badge > 0) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
-                  child: Text('$badge', style: AppTypography.style(color: Colors.white, fontSize: 12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$badge',
+                    style: AppTypography.style(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -246,9 +305,19 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.notifications_off_outlined, size: 32, color: Colors.white.withValues(alpha: 0.3)),
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 32,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 12),
-            Text('No notifications here', style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 14)),
+            Text(
+              'No notifications here',
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       );
@@ -256,7 +325,8 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
 
     return RefreshIndicator(
       color: AppColors.gold,
-      onRefresh: () async => ref.invalidate(maintenanceNotificationsProvider(_token)),
+      onRefresh: () async =>
+          ref.invalidate(maintenanceNotificationsProvider(_token)),
       child: ListView.separated(
         padding: EdgeInsets.zero,
         itemCount: items.length,
@@ -268,11 +338,14 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
 
   Widget _card(MaintenanceNotification n) {
     final busy = _busyId == n.id;
-    final urgent = n.category == MaintenanceNotificationCategory.urgentWorkOrder;
+    final urgent =
+        n.category == MaintenanceNotificationCategory.urgentWorkOrder;
     final accent = urgent ? const Color(0xFFEF4444) : AppColors.gold;
 
     return Material(
-      color: n.read ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.08),
+      color: n.read
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.white.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: busy ? null : () => _open(n),
@@ -282,7 +355,9 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: n.read ? Colors.white.withValues(alpha: 0.2) : accent.withValues(alpha: 0.14),
+              color: n.read
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : accent.withValues(alpha: 0.14),
               width: 0.8,
             ),
           ),
@@ -293,9 +368,19 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
                 width: 44,
                 height: 44,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: accent.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: busy
-                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: accent))
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: accent,
+                        ),
+                      )
                     : Icon(n.category.icon, size: 20, color: accent),
               ),
               const SizedBox(width: 16),
@@ -309,24 +394,44 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
                           child: Text(
                             n.title,
                             style: AppTypography.style(
-                              color: n.read ? Colors.white.withValues(alpha: 0.7) : Colors.white,
+                              color: n.read
+                                  ? Colors.white.withValues(alpha: 0.7)
+                                  : Colors.white,
                               fontSize: 14,
-                              fontWeight: n.read ? FontWeight.w500 : FontWeight.w600,
+                              fontWeight: n.read
+                                  ? FontWeight.w500
+                                  : FontWeight.w600,
                             ),
                           ),
                         ),
                         if (!n.read) ...[
                           const SizedBox(width: 8),
-                          Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: accent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                         ],
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(n.message, style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 13)),
+                    Text(
+                      n.message,
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       _timeAgo(n.time),
-                      style: AppTypography.style(color: Colors.white.withValues(alpha: 0.25), fontSize: 11),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -343,22 +448,40 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.cloud_off_rounded, size: 30, color: Colors.white.withValues(alpha: 0.4)),
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 30,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
           Text(
             'Could not load the notifications.',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 16),
           Material(
             color: AppColors.gold,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              onTap: () => ref.invalidate(maintenanceNotificationsProvider(_token)),
+              onTap: () =>
+                  ref.invalidate(maintenanceNotificationsProvider(_token)),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Text('Retry', style: AppTypography.style(color: AppColors.onGold, fontSize: 14, fontWeight: FontWeight.w700)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                child: Text(
+                  'Retry',
+                  style: AppTypography.style(
+                    color: AppColors.onGold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ),
@@ -371,7 +494,8 @@ class _MaintenanceNotificationScreenState extends ConsumerState<MaintenanceNotif
     final diff = DateTime.now().difference(time);
     if (diff.inMinutes < 1) return 'Just now';
     if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return diff.inHours == 1 ? '1 hr ago' : '${diff.inHours} hrs ago';
+    if (diff.inHours < 24)
+      return diff.inHours == 1 ? '1 hr ago' : '${diff.inHours} hrs ago';
     return diff.inDays == 1 ? '1 day ago' : '${diff.inDays} days ago';
   }
 }

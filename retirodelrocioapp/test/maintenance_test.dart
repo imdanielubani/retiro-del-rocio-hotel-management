@@ -14,7 +14,12 @@ void main() {
   group('domain parsing', () {
     test('MaintenanceOverview parses stats and work orders', () {
       final overview = MaintenanceOverview.fromJson({
-        'stats': {'new': 2, 'in_progress': 1, 'urgent': 1, 'completed_today': 3},
+        'stats': {
+          'new': 2,
+          'in_progress': 1,
+          'urgent': 1,
+          'completed_today': 3,
+        },
         'work_orders': [
           {
             'id': 1,
@@ -64,7 +69,11 @@ void main() {
     });
 
     test('MaintenanceRoomOption parses the picker shape', () {
-      final room = MaintenanceRoomOption.fromJson({'id': 3, 'number': '305', 'room_name': 'Alba Suite'});
+      final room = MaintenanceRoomOption.fromJson({
+        'id': 3,
+        'number': '305',
+        'room_name': 'Alba Suite',
+      });
       expect(room.number, '305');
       expect(room.roomName, 'Alba Suite');
     });
@@ -169,7 +178,9 @@ void main() {
     statusLabel: 'Done',
   );
 
-  testWidgets('a new urgent order shows an Accept button and reports the tap', (tester) async {
+  testWidgets('a new urgent order shows an Accept button and reports the tap', (
+    tester,
+  ) async {
     var accepted = false;
     await tester.pumpWidget(
       _host(
@@ -191,10 +202,17 @@ void main() {
     expect(accepted, isTrue);
   });
 
-  testWidgets('a done order shows Done instead of an action button', (tester) async {
+  testWidgets('a done order shows Done instead of an action button', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _host(
-        WorkOrderCard(order: doneOrder, onAccept: () {}, onStart: () {}, onComplete: () {}),
+        WorkOrderCard(
+          order: doneOrder,
+          onAccept: () {},
+          onStart: () {},
+          onComplete: () {},
+        ),
       ),
     );
 
@@ -205,10 +223,18 @@ void main() {
     expect(find.text('Complete'), findsNothing);
   });
 
-  testWidgets('a busy order shows a spinner instead of an action button', (tester) async {
+  testWidgets('a busy order shows a spinner instead of an action button', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _host(
-        WorkOrderCard(order: newOrder, onAccept: () {}, onStart: () {}, onComplete: () {}, busy: true),
+        WorkOrderCard(
+          order: newOrder,
+          onAccept: () {},
+          onStart: () {},
+          onComplete: () {},
+          busy: true,
+        ),
       ),
     );
 
@@ -227,27 +253,54 @@ void main() {
     slaBreached: true,
   );
 
-  testWidgets('a work order card shows an SLA Breached pill when the order is overdue', (tester) async {
-    await tester.pumpWidget(
-      _host(WorkOrderCard(order: urgentBreachedOrder, onAccept: () {}, onStart: () {}, onComplete: () {})),
-    );
+  testWidgets(
+    'a work order card shows an SLA Breached pill when the order is overdue',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          WorkOrderCard(
+            order: urgentBreachedOrder,
+            onAccept: () {},
+            onStart: () {},
+            onComplete: () {},
+          ),
+        ),
+      );
 
-    expect(find.text('SLA Breached'), findsOneWidget);
-  });
+      expect(find.text('SLA Breached'), findsOneWidget);
+    },
+  );
 
-  testWidgets('a work order card with no breach shows no SLA pill', (tester) async {
+  testWidgets('a work order card with no breach shows no SLA pill', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      _host(WorkOrderCard(order: newOrder, onAccept: () {}, onStart: () {}, onComplete: () {})),
+      _host(
+        WorkOrderCard(
+          order: newOrder,
+          onAccept: () {},
+          onStart: () {},
+          onComplete: () {},
+        ),
+      ),
     );
 
     expect(find.text('SLA Breached'), findsNothing);
   });
 
-  testWidgets('tapping a work order card reports the tap via onTap', (tester) async {
+  testWidgets('tapping a work order card reports the tap via onTap', (
+    tester,
+  ) async {
     var tapped = false;
     await tester.pumpWidget(
       _host(
-        WorkOrderCard(order: newOrder, onAccept: () {}, onStart: () {}, onComplete: () {}, onTap: () => tapped = true),
+        WorkOrderCard(
+          order: newOrder,
+          onAccept: () {},
+          onStart: () {},
+          onComplete: () {},
+          onTap: () => tapped = true,
+        ),
       ),
     );
 
@@ -256,26 +309,29 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('tapping the Accept button reports its own tap, not the card tap', (tester) async {
-    var accepted = false;
-    var cardTapped = false;
-    await tester.pumpWidget(
-      _host(
-        WorkOrderCard(
-          order: newOrder,
-          onAccept: () => accepted = true,
-          onStart: () {},
-          onComplete: () {},
-          onTap: () => cardTapped = true,
+  testWidgets(
+    'tapping the Accept button reports its own tap, not the card tap',
+    (tester) async {
+      var accepted = false;
+      var cardTapped = false;
+      await tester.pumpWidget(
+        _host(
+          WorkOrderCard(
+            order: newOrder,
+            onAccept: () => accepted = true,
+            onStart: () {},
+            onComplete: () {},
+            onTap: () => cardTapped = true,
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('Accept'));
-    await tester.pump();
-    expect(accepted, isTrue);
-    expect(cardTapped, isFalse);
-  });
+      await tester.tap(find.text('Accept'));
+      await tester.pump();
+      expect(accepted, isTrue);
+      expect(cardTapped, isFalse);
+    },
+  );
 
   const dueAsset = Asset(
     id: 1,
@@ -286,9 +342,13 @@ void main() {
     isDueForService: true,
   );
 
-  testWidgets('an asset card flags service due and reports its tap', (tester) async {
+  testWidgets('an asset card flags service due and reports its tap', (
+    tester,
+  ) async {
     var tapped = false;
-    await tester.pumpWidget(_host(AssetCard(asset: dueAsset, onTap: () => tapped = true)));
+    await tester.pumpWidget(
+      _host(AssetCard(asset: dueAsset, onTap: () => tapped = true)),
+    );
 
     expect(find.text('Lobby Generator'), findsOneWidget);
     expect(find.text('Service Due'), findsOneWidget);
@@ -309,24 +369,31 @@ void main() {
     statusLabel: 'Pending',
   );
 
-  testWidgets('a pending parts request offers Fulfil and Deny, and reports each tap', (tester) async {
-    var fulfilled = false;
-    var denied = false;
-    await tester.pumpWidget(
-      _host(
-        PartsRequestCard(request: pendingRequest, onFulfill: () => fulfilled = true, onDeny: () => denied = true),
-      ),
-    );
+  testWidgets(
+    'a pending parts request offers Fulfil and Deny, and reports each tap',
+    (tester) async {
+      var fulfilled = false;
+      var denied = false;
+      await tester.pumpWidget(
+        _host(
+          PartsRequestCard(
+            request: pendingRequest,
+            onFulfill: () => fulfilled = true,
+            onDeny: () => denied = true,
+          ),
+        ),
+      );
 
-    expect(find.text('2 × Compressor capacitor'), findsOneWidget);
-    expect(find.text('Fulfill'), findsOneWidget);
-    expect(find.text('Deny'), findsOneWidget);
+      expect(find.text('2 × Compressor capacitor'), findsOneWidget);
+      expect(find.text('Fulfill'), findsOneWidget);
+      expect(find.text('Deny'), findsOneWidget);
 
-    await tester.tap(find.text('Fulfill'));
-    await tester.pump();
-    expect(fulfilled, isTrue);
-    expect(denied, isFalse);
-  });
+      await tester.tap(find.text('Fulfill'));
+      await tester.pump();
+      expect(fulfilled, isTrue);
+      expect(denied, isFalse);
+    },
+  );
 
   testWidgets('a fulfilled parts request offers no actions', (tester) async {
     const fulfilledRequest = PartsRequest(
@@ -338,7 +405,15 @@ void main() {
       statusLabel: 'Fulfilled',
     );
 
-    await tester.pumpWidget(_host(PartsRequestCard(request: fulfilledRequest, onFulfill: () {}, onDeny: () {})));
+    await tester.pumpWidget(
+      _host(
+        PartsRequestCard(
+          request: fulfilledRequest,
+          onFulfill: () {},
+          onDeny: () {},
+        ),
+      ),
+    );
 
     expect(find.text('Fulfilled'), findsOneWidget);
     expect(find.text('Fulfill'), findsNothing);

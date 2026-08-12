@@ -28,7 +28,8 @@ class DeviceSessionStore {
     try {
       final file = await _file();
       if (!await file.exists()) return null;
-      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      final json =
+          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       return ProvisionedDevice.fromJson(json);
     } catch (error) {
       debugPrint('DeviceSessionStore: read failed — $error');

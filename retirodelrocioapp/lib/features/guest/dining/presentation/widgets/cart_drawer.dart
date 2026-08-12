@@ -311,8 +311,10 @@ class CartDrawer extends StatelessWidget {
           _summaryRow('Subtotal', 'NGN ${_naira.format(_subtotal)}'),
           const SizedBox(height: 8),
           _summaryRow('VAT (7.5%)', 'NGN ${_naira.format(_vat)}'),
-          const SizedBox(height: 8),
-          _summaryRow('Room Service Fee', 'NGN ${_naira.format(serviceFee)}'),
+          if (serviceFee > 0) ...[
+            const SizedBox(height: 8),
+            _summaryRow('Room Service Fee', 'NGN ${_naira.format(serviceFee)}'),
+          ],
           const SizedBox(height: 12),
           Container(height: 1, color: Colors.white.withValues(alpha: 0.08)),
           const SizedBox(height: 12),

@@ -12,11 +12,14 @@ import 'package:path_provider/path_provider.dart';
 /// cache is refreshed automatically when the URL changes.
 class VideoCacheService {
   VideoCacheService({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 15),
               receiveTimeout: const Duration(minutes: 3),
-            ));
+            ),
+          );
 
   final Dio _dio;
 
@@ -27,7 +30,10 @@ class VideoCacheService {
 
   /// Returns the local cached file for [remoteUrl], downloading it first if the
   /// cache is missing or points at a different URL. Returns `null` on failure.
-  Future<File?> getCachedVideo(String remoteUrl, {String name = 'onboarding'}) async {
+  Future<File?> getCachedVideo(
+    String remoteUrl, {
+    String name = 'onboarding',
+  }) async {
     try {
       final dir = await getApplicationSupportDirectory();
       final file = File('${dir.path}/$name.mp4');
@@ -44,7 +50,9 @@ class VideoCacheService {
 
       final size = await tmp.exists() ? await tmp.length() : 0;
       if (size < _minValidBytes) {
-        debugPrint('VideoCache: download too small ($size bytes) — discarding.');
+        debugPrint(
+          'VideoCache: download too small ($size bytes) — discarding.',
+        );
         if (await tmp.exists()) await tmp.delete();
         return null;
       }
@@ -66,7 +74,10 @@ class VideoCacheService {
   Future<void> evict({String name = 'onboarding'}) async {
     try {
       final dir = await getApplicationSupportDirectory();
-      for (final f in [File('${dir.path}/$name.mp4'), File('${dir.path}/$name.url')]) {
+      for (final f in [
+        File('${dir.path}/$name.mp4'),
+        File('${dir.path}/$name.url'),
+      ]) {
         if (await f.exists()) await f.delete();
       }
       debugPrint('VideoCache: evicted "$name".');
@@ -76,7 +87,8 @@ class VideoCacheService {
   }
 
   Future<bool> _isValidCache(File file, File marker, String remoteUrl) async {
-    if (!await file.exists() || await file.length() < _minValidBytes) return false;
+    if (!await file.exists() || await file.length() < _minValidBytes)
+      return false;
     if (!await marker.exists()) return false;
     return (await marker.readAsString()).trim() == remoteUrl;
   }

@@ -77,12 +77,12 @@ class _ReceptionIntercomScreenState
     setState(() => _tab = tab);
   }
 
-  Future<void> _callStaff(String role) async {
+  Future<void> _callStaff(int userId) async {
     if (_placingCall) return;
     setState(() => _placingCall = true);
     try {
       await ref.read(staffIntercomCallRepositoryProvider).place(_token, {
-        'role': role,
+        'user_id': userId,
       });
       // Pull the just-placed call into this screen's own single source of
       // truth, the same provider the root-level ringing gate watches —
@@ -234,9 +234,10 @@ class _ReceptionIntercomScreenState
         final c = channels[i];
         return _card(
           avatar: StaffChatAvatar(role: c.role, online: c.online),
-          title: c.label,
+          title: c.name,
+          subtitle: c.roleLabel,
           online: c.online,
-          onCall: () => _callStaff(c.role),
+          onCall: () => _callStaff(c.userId),
         );
       },
     );

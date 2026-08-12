@@ -49,7 +49,7 @@
                 <tr><td class="k">Time</td><td class="v">{{ $r->timeLabel() }}</td></tr>
                 <tr><td class="k">Payment method</td><td class="v">{{ $r->methodLabel() }}</td></tr>
                 @if ($r->reference)<tr><td class="k">Reference</td><td class="v">{{ $r->reference }}</td></tr>@endif
-                <tr><td class="k">Refundable fee</td><td class="v">{{ $r->feeLabel() }}</td></tr>
+                <tr><td class="k">Usable Reservation fee</td><td class="v">{{ $r->feeLabel() }}</td></tr>
                 <tr><td class="k">VAT (7.5%)</td><td class="v">{{ $r->vatLabel() }}</td></tr>
                 <tr class="total"><td class="k">Amount Paid</td><td class="v">{{ $r->totalWithVatLabel() }}</td></tr>
             </table>

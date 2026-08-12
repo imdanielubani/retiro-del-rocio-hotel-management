@@ -71,8 +71,11 @@ class _PairingSuccessDialogState extends State<_PairingSuccessDialog> {
                       color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Icon(Icons.check_circle_rounded,
-                        color: AppColors.success, size: 55),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.success,
+                      size: 55,
+                    ),
                   ),
                   const SizedBox(height: 13),
                   Text(

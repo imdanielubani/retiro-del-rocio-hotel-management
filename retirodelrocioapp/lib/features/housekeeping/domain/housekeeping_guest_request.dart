@@ -33,17 +33,18 @@ class HousekeepingGuestRequest {
   final bool isPending;
   final String? createdLabel;
 
-  factory HousekeepingGuestRequest.fromJson(Map<String, dynamic> json) => HousekeepingGuestRequest(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    roomUnitId: (json['room_unit_id'] as num?)?.toInt() ?? 0,
-    roomNumber: json['room_number'] as String?,
-    roomName: json['room_name'] as String?,
-    guestName: json['guest_name'] as String?,
-    type: json['type'] as String? ?? 'other',
-    typeLabel: json['type_label'] as String? ?? 'Other',
-    notes: json['notes'] as String?,
-    status: json['status'] as String? ?? 'pending',
-    isPending: json['is_pending'] as bool? ?? true,
-    createdLabel: json['created_label'] as String?,
-  );
+  factory HousekeepingGuestRequest.fromJson(Map<String, dynamic> json) =>
+      HousekeepingGuestRequest(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        roomUnitId: (json['room_unit_id'] as num?)?.toInt() ?? 0,
+        roomNumber: json['room_number'] as String?,
+        roomName: json['room_name'] as String?,
+        guestName: json['guest_name'] as String?,
+        type: json['type'] as String? ?? 'other',
+        typeLabel: json['type_label'] as String? ?? 'Other',
+        notes: json['notes'] as String?,
+        status: json['status'] as String? ?? 'pending',
+        isPending: json['is_pending'] as bool? ?? true,
+        createdLabel: json['created_label'] as String?,
+      );
 }

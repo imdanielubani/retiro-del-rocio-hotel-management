@@ -38,7 +38,10 @@ class _FakeMyStayRepository implements MyStayRepository {
   ) async => throw UnimplementedError('not exercised in this test');
 
   @override
-  Future<GuestStay> chargeToRoom(String deviceToken, DateTime newCheckOut) async {
+  Future<GuestStay> chargeToRoom(
+    String deviceToken,
+    DateTime newCheckOut,
+  ) async {
     chargedToRoom = true;
     return GuestStay(
       reservation: stay.reservation,
@@ -50,7 +53,9 @@ class _FakeMyStayRepository implements MyStayRepository {
       currentBillDue: stay.currentBillDue,
       inclusions: stay.inclusions,
       extension: StayExtension(
-        additionalNights: newCheckOut.difference(stay.reservation.checkOut!).inDays,
+        additionalNights: newCheckOut
+            .difference(stay.reservation.checkOut!)
+            .inDays,
         additionalCost: 8500,
         additionalCostLabel: 'NGN 8,500',
         newCheckOut: newCheckOut,
@@ -158,10 +163,12 @@ void main() {
       expect(find.text('Payment Summary'), findsOneWidget);
       expect(find.text('BOOK NOW'), findsWidgets);
 
-      await tester.tap(find.descendant(
-        of: find.byType(Dialog),
-        matching: find.text('BOOK NOW'),
-      ));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text('BOOK NOW'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(repo.chargedToRoom, isTrue);

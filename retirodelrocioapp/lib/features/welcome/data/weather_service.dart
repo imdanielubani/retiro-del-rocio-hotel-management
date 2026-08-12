@@ -10,11 +10,14 @@ class WeatherService {
     this.latitude = 9.8965, // Jos, Nigeria
     this.longitude = 8.8583,
     this.city = 'Jos',
-  }) : _dio = dio ??
-            Dio(BaseOptions(
-              connectTimeout: const Duration(seconds: 8),
-              receiveTimeout: const Duration(seconds: 8),
-            ));
+  }) : _dio =
+           dio ??
+           Dio(
+             BaseOptions(
+               connectTimeout: const Duration(seconds: 8),
+               receiveTimeout: const Duration(seconds: 8),
+             ),
+           );
 
   final Dio _dio;
   final double latitude;
@@ -34,7 +37,12 @@ class WeatherService {
     final code = (current['weather_code'] as num).toInt();
     final (condition, emoji) = _describe(code);
 
-    return Weather(temperatureC: temp, condition: condition, emoji: emoji, city: city);
+    return Weather(
+      temperatureC: temp,
+      condition: condition,
+      emoji: emoji,
+      city: city,
+    );
   }
 
   /// Maps a WMO weather code to a human label + emoji.

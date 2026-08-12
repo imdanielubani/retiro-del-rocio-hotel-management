@@ -49,8 +49,9 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
     try {
       final payload = jsonDecode(raw);
       if (payload is! Map) throw ProvisioningException('Unrecognised QR code.');
-      final device =
-          await _repository.provisionWithQrPayload(payload.cast<String, dynamic>());
+      final device = await _repository.provisionWithQrPayload(
+        payload.cast<String, dynamic>(),
+      );
       if (mounted) Navigator.of(context).pop(device);
     } catch (error) {
       final message = error is ProvisioningException
@@ -119,23 +120,29 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.gold),
+                          strokeWidth: 2,
+                          color: AppColors.gold,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Text(
                         'Pairing…',
                         style: AppTypography.style(
-                            color: Colors.white, fontSize: 14),
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   )
                 : _error != null
-                    ? Text(
-                        _error!,
-                        style: AppTypography.style(
-                            color: const Color(0xFFF87171), fontSize: 14),
-                      )
-                    : null,
+                ? Text(
+                    _error!,
+                    style: AppTypography.style(
+                      color: const Color(0xFFF87171),
+                      fontSize: 14,
+                    ),
+                  )
+                : null,
           ),
         ],
       ),

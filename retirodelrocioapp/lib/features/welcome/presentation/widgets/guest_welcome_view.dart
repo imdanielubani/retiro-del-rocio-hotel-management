@@ -16,7 +16,11 @@ import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 /// Personalized greeting + guest name, room card (suite / number / stay dates),
 /// and a Quick Actions grid. Shown when a guest is checked in to the room.
 class GuestWelcomeView extends ConsumerWidget {
-  const GuestWelcomeView({super.key, required this.device, required this.status});
+  const GuestWelcomeView({
+    super.key,
+    required this.device,
+    required this.status,
+  });
 
   final ProvisionedDevice device;
   final RoomStatus status;
@@ -42,8 +46,12 @@ class GuestWelcomeView extends ConsumerWidget {
           Positioned(
             left: 24,
             top: 40,
-            child: Image.asset('assets/images/Rocio Logo Icon 1.png',
-                width: 74, height: 38, fit: BoxFit.contain),
+            child: Image.asset(
+              'assets/images/Rocio Logo Icon 1.png',
+              width: 74,
+              height: 38,
+              fit: BoxFit.contain,
+            ),
           ),
           Positioned(
             left: 24,
@@ -100,8 +108,7 @@ class GuestWelcomeView extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Welcome Back,',
-                  style: _title(Colors.white)),
+              Text('Welcome Back,', style: _title(Colors.white)),
               const SizedBox(height: 12),
               Text('${guest.name}.', style: _title(AppColors.gold)),
             ],
@@ -131,11 +138,11 @@ class GuestWelcomeView extends ConsumerWidget {
   }
 
   TextStyle _title(Color color) => AppTypography.style(
-        color: color,
-        fontSize: 60,
-        fontWeight: FontWeight.w700,
-        height: 0.95,
-      );
+    color: color,
+    fontSize: 60,
+    fontWeight: FontWeight.w700,
+    height: 0.95,
+  );
 
   Widget _enterSuiteButton(BuildContext context) {
     return Material(
@@ -159,7 +166,11 @@ class GuestWelcomeView extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Icon(Icons.arrow_forward_rounded, color: AppColors.onGold, size: 20),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: AppColors.onGold,
+                size: 20,
+              ),
             ],
           ),
         ),
@@ -182,7 +193,11 @@ class GuestWelcomeView extends ConsumerWidget {
                   color: AppColors.gold.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.king_bed_outlined, color: AppColors.gold, size: 29),
+                child: const Icon(
+                  Icons.king_bed_outlined,
+                  color: AppColors.gold,
+                  size: 29,
+                ),
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -231,7 +246,11 @@ class GuestWelcomeView extends ConsumerWidget {
             children: [
               Expanded(child: _dateChunk('CHECK-IN', guest.checkIn)),
               const SizedBox(width: 16),
-              Container(width: 1, height: 34, color: Colors.white.withValues(alpha: 0.1)),
+              Container(
+                width: 1,
+                height: 34,
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
               const SizedBox(width: 16),
               Expanded(child: _dateChunk('CHECK-OUT', guest.checkOut)),
             ],
@@ -276,7 +295,11 @@ class GuestWelcomeView extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.bolt_rounded, size: 14, color: Colors.white.withValues(alpha: 0.5)),
+              Icon(
+                Icons.bolt_rounded,
+                size: 14,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
               const SizedBox(width: 8),
               Text(
                 'QUICK ACTIONS',
@@ -291,17 +314,33 @@ class GuestWelcomeView extends ConsumerWidget {
           const SizedBox(height: 17),
           Row(
             children: [
-              Expanded(child: _quickAction(context, Icons.restaurant_rounded, 'Order Food')),
+              Expanded(
+                child: _quickAction(
+                  context,
+                  Icons.restaurant_rounded,
+                  'Order Food',
+                ),
+              ),
               const SizedBox(width: 13),
-              Expanded(child: _quickAction(context, Icons.settings_remote_rounded, 'Smart Room')),
+              Expanded(
+                child: _quickAction(
+                  context,
+                  Icons.settings_remote_rounded,
+                  'Smart Room',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 22),
           Row(
             children: [
-              Expanded(child: _quickAction(context, Icons.spa_rounded, 'Book Spa')),
+              Expanded(
+                child: _quickAction(context, Icons.spa_rounded, 'Book Spa'),
+              ),
               const SizedBox(width: 13),
-              Expanded(child: _quickAction(context, Icons.call_rounded, 'Reception')),
+              Expanded(
+                child: _quickAction(context, Icons.call_rounded, 'Reception'),
+              ),
             ],
           ),
         ],
@@ -320,7 +359,10 @@ class GuestWelcomeView extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
           ),
           child: Column(
             children: [
@@ -348,7 +390,10 @@ class GuestWelcomeView extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.12),
+          width: 0.8,
+        ),
       ),
       child: child,
     );
@@ -364,8 +409,8 @@ class GuestWelcomeView extends ConsumerWidget {
   }
 
   void _open(BuildContext context, String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ComingSoonScreen(title: title)));
   }
 }

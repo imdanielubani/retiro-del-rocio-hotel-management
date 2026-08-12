@@ -27,7 +27,8 @@ class _FakeSpaRepository implements SpaRepository {
   Future<SpaCatalog> fetch(String deviceToken) async => catalog;
 
   @override
-  Future<List<SpaAppointment>> appointments(String deviceToken) async => const [];
+  Future<List<SpaAppointment>> appointments(String deviceToken) async =>
+      const [];
 
   @override
   Future<SpaBookingConfirmation> bookToRoom(
@@ -109,7 +110,9 @@ void main() {
         categoryColor: '#16a34a',
       ),
     ],
-    categories: [SpaCategory(id: 1, slug: 'massages', name: 'Massages', color: '#16a34a')],
+    categories: [
+      SpaCategory(id: 1, slug: 'massages', name: 'Massages', color: '#16a34a'),
+    ],
     availableTimes: ['9:00 AM', '10:30 AM', '12:00 PM'],
   );
 
@@ -147,9 +150,7 @@ void main() {
     return repo;
   }
 
-  testWidgets('renders the catalogue and the fixed time slots', (
-    tester,
-  ) async {
+  testWidgets('renders the catalogue and the fixed time slots', (tester) async {
     await pumpScreen(tester);
 
     expect(find.text('Spa & Wellness'), findsOneWidget);
@@ -194,10 +195,12 @@ void main() {
       // popup, and the popup's confirm button. Only the latter is reachable.
       expect(find.text('BOOK NOW'), findsNWidgets(2));
 
-      await tester.tap(find.descendant(
-        of: find.byType(Dialog),
-        matching: find.text('BOOK NOW'),
-      ));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text('BOOK NOW'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(repo.bookedToRoom, isTrue);

@@ -38,8 +38,10 @@ class _FakeMyStayRepository implements MyStayRepository {
   ) async => throw UnimplementedError();
 
   @override
-  Future<GuestStay> chargeToRoom(String deviceToken, DateTime newCheckOut) async =>
-      throw UnimplementedError();
+  Future<GuestStay> chargeToRoom(
+    String deviceToken,
+    DateTime newCheckOut,
+  ) async => throw UnimplementedError();
 }
 
 class _FakeBillsRepository implements BillsRepository {
@@ -102,8 +104,16 @@ void main() {
     guests: const StayGuests(primaryName: 'Daniel Ubani', partySize: 2),
     visitors: const [],
     summaryLines: const [
-      StaySummaryLine(label: 'Room Rate', sub: 'NGN 4,250 × 5', amountLabel: 'NGN 21,250'),
-      StaySummaryLine(label: 'Stay Extension', sub: null, amountLabel: 'NGN 4,250'),
+      StaySummaryLine(
+        label: 'Room Rate',
+        sub: 'NGN 4,250 × 5',
+        amountLabel: 'NGN 21,250',
+      ),
+      StaySummaryLine(
+        label: 'Stay Extension',
+        sub: null,
+        amountLabel: 'NGN 4,250',
+      ),
     ],
     summaryTotalLabel: 'NGN 25,500',
     currentBillLabel: 'NGN 4,569',
@@ -121,7 +131,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            myStayRepositoryProvider.overrideWithValue(_FakeMyStayRepository(stay)),
+            myStayRepositoryProvider.overrideWithValue(
+              _FakeMyStayRepository(stay),
+            ),
             billsRepositoryProvider.overrideWithValue(_FakeBillsRepository()),
             guestNotificationRepositoryProvider.overrideWithValue(
               _EmptyGuestNotificationRepository(),
@@ -169,7 +181,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          myStayRepositoryProvider.overrideWithValue(_FakeMyStayRepository(stay)),
+          myStayRepositoryProvider.overrideWithValue(
+            _FakeMyStayRepository(stay),
+          ),
           billsRepositoryProvider.overrideWithValue(_FakeBillsRepository()),
           guestNotificationRepositoryProvider.overrideWithValue(
             _EmptyGuestNotificationRepository(),

@@ -135,6 +135,9 @@ class KitchenTabletTest extends TestCase
             ->assertJsonPath('data.status', 'preparing')
             ->assertJsonPath('data.board_column', 'preparing');
 
+        // A plain guest-tablet food order has no waiter to hand off to, so
+        // Kitchen's own "Mark Ready" still finalises it directly, same as
+        // before the bar/waiter ready-for-pickup flow existed.
         $this->withToken($token)
             ->postJson("/api/v1/kitchen/orders/{$order->id}/serve")
             ->assertOk()
@@ -160,7 +163,7 @@ class KitchenTabletTest extends TestCase
         $this->withToken($token)
             ->postJson("/api/v1/kitchen/orders/{$order->id}/void-item", ['item_index' => 0, 'reason' => 'Out of stock'])
             ->assertOk()
-            ->assertJsonPath('data.total_label', '₦5,838'); // 4500 + 338 VAT (7.5%, rounded) + 1000 service fee
+            ->assertJsonPath('data.total_label', '₦4,838'); // 4500 + 338 VAT (7.5%, rounded), no service fee
     }
 
     public function test_assigning_a_non_kitchen_user_to_a_ticket_is_rejected(): void
@@ -281,5 +284,118 @@ class KitchenTabletTest extends TestCase
             ->getJson('/api/v1/kitchen/history?search=Grace')
             ->json('data');
         $this->assertCount(1, $found);
+    }
+
+    public function test_kitchen_can_set_an_eta_and_the_bar_tablet_sees_it(): void
+    {
+        $food = $this->food();
+        $drink = $this->drink();
+        [$guestToken] = $this->guestToken();
+        $kitchenToken = $this->chefToken();
+
+        $this->withToken($guestToken)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [
+                ['menu_item_id' => $food->id, 'qty' => 1],
+                ['menu_item_id' => $drink->id, 'qty' => 1],
+            ],
+        ])->assertCreated();
+        $order = DiningOrder::forKitchen()->firstOrFail();
+
+        $this->withToken($kitchenToken)
+            ->postJson("/api/v1/kitchen/orders/{$order->id}/eta", ['minutes' => 10])
+            ->assertOk()
+            ->assertJsonPath('data.estimated_ready_minutes', 10);
+
+        // Bar & Lounge staff see the same order (it also has a drink) with the same ETA.
+        Role::findOrCreate('bar', 'web');
+        $bartender = User::factory()->create(['status' => 'active']);
+        $bartender->assignRole('bar');
+        $barToken = app(JwtService::class)->issue(['sub' => $bartender->id])['token'];
+
+        $this->withToken($barToken)
+            ->getJson("/api/v1/bar/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.estimated_ready_minutes', 10);
+    }
+
+    public function test_the_kitchen_can_increase_the_eta_by_calling_it_again(): void
+    {
+        $food = $this->food();
+        [$guestToken] = $this->guestToken();
+        $token = $this->chefToken();
+
+        $this->withToken($guestToken)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [['menu_item_id' => $food->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::forKitchen()->firstOrFail();
+
+        $this->withToken($token)->postJson("/api/v1/kitchen/orders/{$order->id}/eta", ['minutes' => 10])->assertOk();
+        $firstEta = $order->fresh()->estimated_ready_at;
+
+        $this->withToken($token)
+            ->postJson("/api/v1/kitchen/orders/{$order->id}/eta", ['minutes' => 20])
+            ->assertOk()
+            ->assertJsonPath('data.estimated_ready_minutes', 20);
+
+        $this->assertTrue($order->fresh()->estimated_ready_at->gt($firstEta));
+    }
+
+    public function test_an_eta_cannot_be_set_once_the_ticket_is_ready_for_pickup(): void
+    {
+        $food = $this->food();
+        [$guestToken] = $this->guestToken();
+        $token = $this->chefToken();
+
+        $this->withToken($guestToken)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [['menu_item_id' => $food->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::forKitchen()->firstOrFail();
+
+        $this->withToken($token)->postJson("/api/v1/kitchen/orders/{$order->id}/serve")->assertOk();
+
+        $this->withToken($token)
+            ->postJson("/api/v1/kitchen/orders/{$order->id}/eta", ['minutes' => 5])
+            ->assertStatus(422);
+    }
+
+    /**
+     * A plain guest-tablet food order (no waiter involved) has nowhere to
+     * hand off to, so Kitchen finalises it directly — the ready-for-pickup
+     * hand-off only exists for a bar/waiter-run order: one rung up on a
+     * tab and mixed with a drink, so the waiter is already at the table.
+     */
+    public function test_a_mixed_food_and_drink_tab_order_is_ready_for_pickup_before_the_waiter_serves_it(): void
+    {
+        $food = $this->food();
+        $drink = $this->drink();
+        Role::findOrCreate('bar', 'web');
+        $bartender = User::factory()->create(['status' => 'active']);
+        $bartender->assignRole('bar');
+        $barToken = app(JwtService::class)->issue(['sub' => $bartender->id])['token'];
+        $kitchenToken = $this->chefToken();
+
+        $tab = $this->withToken($barToken)->postJson('/api/v1/bar/tabs', ['table_label' => 'Table 9'])->json('data');
+        $this->withToken($barToken)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [
+                ['menu_item_id' => $food->id, 'qty' => 1],
+                ['menu_item_id' => $drink->id, 'qty' => 1],
+            ],
+        ])->assertCreated();
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+
+        // Kitchen readies it — still on the live board, not yet served.
+        $this->withToken($kitchenToken)
+            ->postJson("/api/v1/kitchen/orders/{$order->id}/serve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'ready')
+            ->assertJsonPath('data.board_column', 'ready');
+        $this->assertCount(1, $this->withToken($kitchenToken)->getJson('/api/v1/kitchen/orders')->json('data'));
+
+        // The waiter picks it up and serves it — that's the Bar Tablet's own action.
+        $this->withToken($barToken)
+            ->postJson("/api/v1/bar/orders/{$order->id}/serve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'delivered')
+            ->assertJsonPath('data.board_column', 'served');
     }
 }

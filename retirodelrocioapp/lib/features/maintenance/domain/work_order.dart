@@ -89,27 +89,33 @@ class WorkOrderAttachment {
 
   bool get isVideo => type == 'video';
 
-  factory WorkOrderAttachment.fromJson(Map<String, dynamic> json) => WorkOrderAttachment(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    type: json['type'] as String? ?? 'photo',
-    url: json['url'] as String? ?? '',
-    uploadedBy: json['uploaded_by'] as String?,
-    createdLabel: json['created_label'] as String?,
-  );
+  factory WorkOrderAttachment.fromJson(Map<String, dynamic> json) =>
+      WorkOrderAttachment(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        type: json['type'] as String? ?? 'photo',
+        url: json['url'] as String? ?? '',
+        uploadedBy: json['uploaded_by'] as String?,
+        createdLabel: json['created_label'] as String?,
+      );
 }
 
 /// A room in the fault-report picker (`GET /maintenance/rooms`).
 @immutable
 class MaintenanceRoomOption {
-  const MaintenanceRoomOption({required this.id, required this.number, this.roomName});
+  const MaintenanceRoomOption({
+    required this.id,
+    required this.number,
+    this.roomName,
+  });
 
   final int id;
   final String number;
   final String? roomName;
 
-  factory MaintenanceRoomOption.fromJson(Map<String, dynamic> json) => MaintenanceRoomOption(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    number: json['number'] as String? ?? '—',
-    roomName: json['room_name'] as String?,
-  );
+  factory MaintenanceRoomOption.fromJson(Map<String, dynamic> json) =>
+      MaintenanceRoomOption(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        number: json['number'] as String? ?? '—',
+        roomName: json['room_name'] as String?,
+      );
 }

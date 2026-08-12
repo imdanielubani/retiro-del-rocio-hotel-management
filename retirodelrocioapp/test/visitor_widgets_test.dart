@@ -9,10 +9,8 @@ import 'package:retirodelrocioapp/features/security/presentation/widgets/visitor
 /// labels are the whole point of the rows: a visitor with no chip and no
 /// presence pill reads as a rendering fault rather than as "not here yet".
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: SizedBox(width: 420, child: child),
-      ),
-    );
+  home: Scaffold(body: SizedBox(width: 420, child: child)),
+);
 
 void main() {
   group('VisitorRow (Visitors Today)', () {

@@ -124,7 +124,9 @@ class _ReceptionNotificationScreenState
 
   @override
   Widget build(BuildContext context) {
-    final notificationsAsync = ref.watch(receptionNotificationsProvider(_token));
+    final notificationsAsync = ref.watch(
+      receptionNotificationsProvider(_token),
+    );
     final notifications = notificationsAsync.value ?? const [];
     final unreadCount = notifications.where((n) => !n.read).length;
 

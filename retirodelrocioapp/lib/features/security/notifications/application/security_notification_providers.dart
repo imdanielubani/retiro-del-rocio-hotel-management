@@ -94,9 +94,7 @@ class SecurityNotificationActions {
   }
 
   Future<void> markAllRead() async {
-    await _ref
-        .read(securityNotificationRepositoryProvider)
-        .markAllRead(_token);
+    await _ref.read(securityNotificationRepositoryProvider).markAllRead(_token);
     _ref.invalidate(securityNotificationsProvider(_token));
   }
 }

@@ -22,6 +22,8 @@ class BarTab {
     this.paymentMethod,
     this.paymentStatus,
     this.notes,
+    this.reservationCode,
+    this.chargedRoomLabel,
     this.orders = const [],
   });
 
@@ -44,6 +46,12 @@ class BarTab {
   final String? paymentMethod;
   final String? paymentStatus;
   final String? notes;
+
+  /// The table/lounge reservation this tab was opened from, if any.
+  final String? reservationCode;
+
+  /// "Room 204", if this tab was settled "Charge to Room".
+  final String? chargedRoomLabel;
   final List<BarOrder> orders;
 
   bool get isOpen => status == 'open';
@@ -65,6 +73,8 @@ class BarTab {
     paymentMethod: json['payment_method'] as String?,
     paymentStatus: json['payment_status'] as String?,
     notes: json['notes'] as String?,
+    reservationCode: json['reservation_code'] as String?,
+    chargedRoomLabel: json['charged_room_label'] as String?,
     orders: ((json['orders'] as List?) ?? const [])
         .map((o) => BarOrder.fromJson((o as Map).cast()))
         .toList(),

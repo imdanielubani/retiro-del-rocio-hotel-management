@@ -61,7 +61,7 @@ class HousekeepingScaffold extends ConsumerWidget {
     // uses this shell — not just the dashboard.
     ref.watch(housekeepingNotificationChimeProvider(session.token));
     ref.watch(staffChatChimeProvider(session.token));
-    ref.watch(staffChatRealtimeProvider((session.token, session.role)));
+    ref.watch(staffChatRealtimeProvider((session.token, session.userId)));
     watchStaffIntercomCall(context, ref, session);
 
     return SessionGuard(

@@ -11,30 +11,33 @@ final staffIntercomCallRepositoryProvider = Provider<IntercomCallRepository>(
   (ref) => IntercomCallRepository(basePath: 'staff/intercom/calls'),
 );
 
-/// A staff tablet's own Intercom call, either side — calling another
-/// station, or being called by one (or by a guest, if this station is
-/// Reception — see `reception_intercom_call_providers.dart`, which serves
-/// that case with its own dedicated endpoint over the same underlying
-/// table). Keyed by (token, role) since a single generic notifier serves
-/// Housekeeping, Maintenance and Security alike.
+/// A staff member's own Intercom call, either side — calling another
+/// individual staffer, or being called by one (or by a guest, if this
+/// station is Reception — see `reception_intercom_call_providers.dart`,
+/// which serves that case with its own dedicated endpoint over the same
+/// underlying table). Keyed by (token, userId) — a single generic notifier
+/// serves every department, and two people holding the same role are
+/// addressed separately since a call rings one specific person, not "any
+/// device signed in as this role".
 ///
-/// Owns its own `StaffIntercomChannel` subscription (`staff-intercom.
-/// {role}`) so an incoming call rings the moment it's placed, and a light
-/// poll every few seconds as a backstop — the same "accelerator, not a
-/// dependency" pattern every other realtime feature here follows.
+/// Owns its own `StaffIntercomChannel` subscription
+/// (`staff-intercom.user.{userId}`) so an incoming call rings the moment
+/// it's placed, and a light poll every few seconds as a backstop — the
+/// same "accelerator, not a dependency" pattern every other realtime
+/// feature here follows.
 final staffIntercomCallProvider =
     NotifierProvider.family<
       StaffIntercomCallNotifier,
       IntercomCall?,
-      (String token, String role)
+      (String token, int userId)
     >(StaffIntercomCallNotifier.new);
 
 class StaffIntercomCallNotifier extends Notifier<IntercomCall?> {
   StaffIntercomCallNotifier(this.arg);
 
-  final (String token, String role) arg;
+  final (String token, int userId) arg;
   String get _token => arg.$1;
-  String get _role => arg.$2;
+  int get _userId => arg.$2;
 
   Timer? _poll;
   StaffIntercomChannel? _channel;
@@ -61,7 +64,10 @@ class StaffIntercomCallNotifier extends Notifier<IntercomCall?> {
     final config = (await ref.read(appConfigProvider.future)).realtime;
     if (config == null) return;
 
-    final channel = StaffIntercomChannel(config: config, role: _role);
+    final channel = StaffIntercomChannel(
+      config: config,
+      channel: 'staff-intercom.user.$_userId',
+    );
     _channel = channel;
     channel.connect(onSignal: () => unawaited(refresh()));
   }
@@ -70,10 +76,10 @@ class StaffIntercomCallNotifier extends Notifier<IntercomCall?> {
     state = await ref.read(staffIntercomCallRepositoryProvider).current(_token);
   }
 
-  /// Call another station.
-  Future<void> place(String targetRole) async {
+  /// Call another staff member.
+  Future<void> place(int targetUserId) async {
     state = await ref.read(staffIntercomCallRepositoryProvider).place(_token, {
-      'role': targetRole,
+      'user_id': targetUserId,
     });
   }
 

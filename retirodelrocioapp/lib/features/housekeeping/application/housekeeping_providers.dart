@@ -18,55 +18,59 @@ final housekeepingRepositoryProvider = Provider<HousekeepingRepository>(
 /// The whole dashboard, keyed by the housekeeper's staff token. Polled every
 /// 15 seconds so a room a guest just checked out of, or a fresh request,
 /// appears without a manual refresh.
-final housekeepingOverviewProvider = FutureProvider.family<HousekeepingOverview, String>((ref, token) async {
-  final repo = ref.watch(housekeepingRepositoryProvider);
+final housekeepingOverviewProvider =
+    FutureProvider.family<HousekeepingOverview, String>((ref, token) async {
+      final repo = ref.watch(housekeepingRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.overview(token);
-});
+      return repo.overview(token);
+    });
 
 /// The full room grid, keyed by the housekeeper's token. Client-side status
 /// and search filtering keep this one provider serving the whole Rooms
 /// screen, same shape as [housekeepingOverviewProvider].
-final housekeepingRoomsProvider = FutureProvider.family<List<HousekeepingRoom>, String>((ref, token) async {
-  final repo = ref.watch(housekeepingRepositoryProvider);
+final housekeepingRoomsProvider =
+    FutureProvider.family<List<HousekeepingRoom>, String>((ref, token) async {
+      final repo = ref.watch(housekeepingRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.rooms(token);
-});
+      return repo.rooms(token);
+    });
 
 /// Every guest request, keyed by the housekeeper's token.
-final housekeepingRequestsProvider = FutureProvider.family<List<HousekeepingGuestRequest>, String>((
-  ref,
-  token,
-) async {
-  final repo = ref.watch(housekeepingRepositoryProvider);
+final housekeepingRequestsProvider =
+    FutureProvider.family<List<HousekeepingGuestRequest>, String>((
+      ref,
+      token,
+    ) async {
+      final repo = ref.watch(housekeepingRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.requests(token);
-});
+      return repo.requests(token);
+    });
 
 /// Just the pre-checkout inspection requests reception has raised, keyed by
 /// the housekeeper's token — the dedicated Inspection screen's own list, kept
 /// separate from [housekeepingRequestsProvider] so a busy day of towel/DND
 /// asks can never push an inspection off the general Requests feed.
-final housekeepingInspectionRequestsProvider = FutureProvider.family<List<HousekeepingGuestRequest>, String>((
-  ref,
-  token,
-) async {
-  final repo = ref.watch(housekeepingRepositoryProvider);
+final housekeepingInspectionRequestsProvider =
+    FutureProvider.family<List<HousekeepingGuestRequest>, String>((
+      ref,
+      token,
+    ) async {
+      final repo = ref.watch(housekeepingRepositoryProvider);
 
-  final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+      final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+      ref.onDispose(timer.cancel);
 
-  return repo.requests(token, type: 'checkout_inspection');
-});
+      return repo.requests(token, type: 'checkout_inspection');
+    });
 
 /// Subscribes the tablet to the hotel-wide `housekeeping` channel and
 /// refreshes the notification feed, the Requests list and the dashboard the
@@ -75,26 +79,33 @@ final housekeepingInspectionRequestsProvider = FutureProvider.family<List<Housek
 /// waiting on the 15s poll. Pure accelerator: if no broadcaster is
 /// configured, or the socket drops, those providers' own periodic polls
 /// still carry the feed.
-final housekeepingNotificationsRealtimeProvider = FutureProvider.family<void, String>((ref, token) async {
-  final config = (await ref.watch(appConfigProvider.future)).realtime;
-  if (config == null) {
-    debugPrint('housekeepingNotificationsRealtime: no broadcaster configured — polling only.');
-    return;
-  }
+final housekeepingNotificationsRealtimeProvider =
+    FutureProvider.family<void, String>((ref, token) async {
+      final config = (await ref.watch(appConfigProvider.future)).realtime;
+      if (config == null) {
+        debugPrint(
+          'housekeepingNotificationsRealtime: no broadcaster configured — polling only.',
+        );
+        return;
+      }
 
-  final channel = SosChannel(config: config, channel: 'housekeeping', events: const {});
-  channel.connect(
-    onChanged: () {},
-    onNotification: () {
-      ref.invalidate(housekeepingNotificationsProvider(token));
-      ref.invalidate(housekeepingRequestsProvider(token));
-      ref.invalidate(housekeepingInspectionRequestsProvider(token));
-      ref.invalidate(housekeepingOverviewProvider(token));
-    },
-  );
+      final channel = SosChannel(
+        config: config,
+        channel: 'housekeeping',
+        events: const {},
+      );
+      channel.connect(
+        onChanged: () {},
+        onNotification: () {
+          ref.invalidate(housekeepingNotificationsProvider(token));
+          ref.invalidate(housekeepingRequestsProvider(token));
+          ref.invalidate(housekeepingInspectionRequestsProvider(token));
+          ref.invalidate(housekeepingOverviewProvider(token));
+        },
+      );
 
-  ref.onDispose(channel.dispose);
-});
+      ref.onDispose(channel.dispose);
+    });
 
 class HousekeepingActions {
   const HousekeepingActions(this._ref, this._token);
@@ -105,7 +116,9 @@ class HousekeepingActions {
   /// Mark a room clean, inspected, dirty again, or out of order, then
   /// refresh the room grid and the dashboard so both reflect it.
   Future<HousekeepingRoom> updateRoomStatus(int unitId, String status) async {
-    final room = await _ref.read(housekeepingRepositoryProvider).updateRoomStatus(_token, unitId, status);
+    final room = await _ref
+        .read(housekeepingRepositoryProvider)
+        .updateRoomStatus(_token, unitId, status);
     _ref.invalidate(housekeepingRoomsProvider(_token));
     _ref.invalidate(housekeepingOverviewProvider(_token));
     return room;
@@ -118,14 +131,21 @@ class HousekeepingActions {
   }) async {
     final request = await _ref
         .read(housekeepingRepositoryProvider)
-        .createRequest(_token, roomUnitId: roomUnitId, type: type, notes: notes);
+        .createRequest(
+          _token,
+          roomUnitId: roomUnitId,
+          type: type,
+          notes: notes,
+        );
     _ref.invalidate(housekeepingRequestsProvider(_token));
     _ref.invalidate(housekeepingOverviewProvider(_token));
     return request;
   }
 
   Future<HousekeepingGuestRequest> completeRequest(int id) async {
-    final request = await _ref.read(housekeepingRepositoryProvider).completeRequest(_token, id);
+    final request = await _ref
+        .read(housekeepingRepositoryProvider)
+        .completeRequest(_token, id);
     _ref.invalidate(housekeepingRequestsProvider(_token));
     _ref.invalidate(housekeepingInspectionRequestsProvider(_token));
     _ref.invalidate(housekeepingOverviewProvider(_token));
@@ -144,10 +164,17 @@ class HousekeepingActions {
   }) {
     return _ref
         .read(housekeepingRepositoryProvider)
-        .reportFault(_token, roomUnitId: roomUnitId, title: title, description: description, priority: priority);
+        .reportFault(
+          _token,
+          roomUnitId: roomUnitId,
+          title: title,
+          description: description,
+          priority: priority,
+        );
   }
 }
 
-final housekeepingActionsProvider = Provider.family<HousekeepingActions, String>(
-  (ref, token) => HousekeepingActions(ref, token),
-);
+final housekeepingActionsProvider =
+    Provider.family<HousekeepingActions, String>(
+      (ref, token) => HousekeepingActions(ref, token),
+    );

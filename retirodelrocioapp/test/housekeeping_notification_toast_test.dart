@@ -34,31 +34,32 @@ void main() {
     );
   });
 
-  testWidgets('shows a dismissible toast with the notification title and message', (
-    tester,
-  ) async {
-    await pumpApp(tester);
+  testWidgets(
+    'shows a dismissible toast with the notification title and message',
+    (tester) async {
+      await pumpApp(tester);
 
-    showHousekeepingNotificationToast(
-      HousekeepingNotification(
-        id: 1,
-        category: HousekeepingNotificationCategory.guest,
-        title: 'New Housekeeping Request',
-        message: 'Daniel Ubani in Room 101 requested Towels.',
-        time: DateTime.now(),
-      ),
-    );
-    await tester.pump();
+      showHousekeepingNotificationToast(
+        HousekeepingNotification(
+          id: 1,
+          category: HousekeepingNotificationCategory.guest,
+          title: 'New Housekeeping Request',
+          message: 'Daniel Ubani in Room 101 requested Towels.',
+          time: DateTime.now(),
+        ),
+      );
+      await tester.pump();
 
-    expect(find.text('New Housekeeping Request'), findsOneWidget);
-    expect(
-      find.text('Daniel Ubani in Room 101 requested Towels.'),
-      findsOneWidget,
-    );
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.byType(Dialog), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.text('New Housekeeping Request'), findsOneWidget);
+      expect(
+        find.text('Daniel Ubani in Room 101 requested Towels.'),
+        findsOneWidget,
+      );
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('a second notification replaces the first rather than stacking', (
     tester,

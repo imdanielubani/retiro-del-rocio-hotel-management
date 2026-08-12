@@ -45,7 +45,9 @@ class HousekeepingRepository {
         options: _auth(token),
       );
       final data = (response.data?['data'] as Map?)?.cast<String, dynamic>();
-      return data != null ? HousekeepingOverview.fromJson(data) : HousekeepingOverview.empty;
+      return data != null
+          ? HousekeepingOverview.fromJson(data)
+          : HousekeepingOverview.empty;
     } catch (error) {
       debugPrint('HousekeepingRepository: overview failed — $error');
       return HousekeepingOverview.empty;
@@ -54,19 +56,26 @@ class HousekeepingRepository {
 
   /// Every room, optionally narrowed by [status] (clean/dirty/inspected/
   /// out_of_order) or [search] (room number).
-  Future<List<HousekeepingRoom>> rooms(String token, {String? status, String? search}) async {
+  Future<List<HousekeepingRoom>> rooms(
+    String token, {
+    String? status,
+    String? search,
+  }) async {
     try {
       final query = {
         if (status != null && status.isNotEmpty) 'status': status,
         if (search != null && search.isNotEmpty) 'search': search,
       };
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('housekeeping/rooms'))
-            .replace(queryParameters: query.isEmpty ? null : query),
+        Uri.parse(
+          ApiConfig.endpoint('housekeeping/rooms'),
+        ).replace(queryParameters: query.isEmpty ? null : query),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
-      return rows.map((r) => HousekeepingRoom.fromJson((r as Map).cast())).toList();
+      return rows
+          .map((r) => HousekeepingRoom.fromJson((r as Map).cast()))
+          .toList();
     } catch (error) {
       debugPrint('HousekeepingRepository: rooms failed — $error');
       return const [];
@@ -74,14 +83,20 @@ class HousekeepingRepository {
   }
 
   /// Mark a room clean, inspected, dirty again, or out of order.
-  Future<HousekeepingRoom> updateRoomStatus(String token, int unitId, String status) async {
+  Future<HousekeepingRoom> updateRoomStatus(
+    String token,
+    int unitId,
+    String status,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('housekeeping/rooms/$unitId/status')),
         data: {'status': status},
         options: _auth(token),
       );
-      return HousekeepingRoom.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return HousekeepingRoom.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw HousekeepingException(_messageFrom(error));
     } catch (error) {
@@ -93,19 +108,26 @@ class HousekeepingRepository {
   /// Guest requests, newest pending first. Optional [status] narrows to
   /// pending or completed; [type] narrows to one request type (e.g.
   /// `checkout_inspection` for the dedicated Inspection screen).
-  Future<List<HousekeepingGuestRequest>> requests(String token, {String? status, String? type}) async {
+  Future<List<HousekeepingGuestRequest>> requests(
+    String token, {
+    String? status,
+    String? type,
+  }) async {
     try {
       final query = {
         if (status != null && status.isNotEmpty) 'status': status,
         if (type != null && type.isNotEmpty) 'type': type,
       };
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('housekeeping/requests'))
-            .replace(queryParameters: query.isEmpty ? null : query),
+        Uri.parse(
+          ApiConfig.endpoint('housekeeping/requests'),
+        ).replace(queryParameters: query.isEmpty ? null : query),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
-      return rows.map((r) => HousekeepingGuestRequest.fromJson((r as Map).cast())).toList();
+      return rows
+          .map((r) => HousekeepingGuestRequest.fromJson((r as Map).cast()))
+          .toList();
     } catch (error) {
       debugPrint('HousekeepingRepository: requests failed — $error');
       return const [];
@@ -129,7 +151,9 @@ class HousekeepingRepository {
         },
         options: _auth(token),
       );
-      return HousekeepingGuestRequest.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return HousekeepingGuestRequest.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw HousekeepingException(_messageFrom(error));
     } catch (error) {
@@ -145,7 +169,9 @@ class HousekeepingRepository {
         Uri.parse(ApiConfig.endpoint('housekeeping/requests/$id/complete')),
         options: _auth(token),
       );
-      return HousekeepingGuestRequest.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return HousekeepingGuestRequest.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw HousekeepingException(_messageFrom(error));
     } catch (error) {
@@ -169,12 +195,15 @@ class HousekeepingRepository {
         data: {
           'room_unit_id': roomUnitId,
           'title': title,
-          if (description != null && description.isNotEmpty) 'description': description,
+          if (description != null && description.isNotEmpty)
+            'description': description,
           'priority': priority,
         },
         options: _auth(token),
       );
-      return WorkOrder.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return WorkOrder.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw HousekeepingException(_messageFrom(error));
     } catch (error) {
@@ -185,10 +214,13 @@ class HousekeepingRepository {
 
   String _messageFrom(DioException error) {
     final data = error.response?.data;
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
-    if (error.type == DioExceptionType.connectionError || error.type == DioExceptionType.connectionTimeout) {
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout) {
       return 'No connection. Check the station network.';
     }
     return 'Something went wrong. Please try again.';

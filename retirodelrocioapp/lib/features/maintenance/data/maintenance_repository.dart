@@ -46,7 +46,9 @@ class MaintenanceRepository {
         options: _auth(token),
       );
       final data = (response.data?['data'] as Map?)?.cast<String, dynamic>();
-      return data != null ? MaintenanceOverview.fromJson(data) : MaintenanceOverview.empty;
+      return data != null
+          ? MaintenanceOverview.fromJson(data)
+          : MaintenanceOverview.empty;
     } catch (error) {
       debugPrint('MaintenanceRepository: overview failed — $error');
       return MaintenanceOverview.empty;
@@ -54,15 +56,20 @@ class MaintenanceRepository {
   }
 
   /// Every work order, optionally narrowed by [status] or [priority].
-  Future<List<WorkOrder>> workOrders(String token, {String? status, String? priority}) async {
+  Future<List<WorkOrder>> workOrders(
+    String token, {
+    String? status,
+    String? priority,
+  }) async {
     try {
       final query = {
         if (status != null && status.isNotEmpty) 'status': status,
         if (priority != null && priority.isNotEmpty) 'priority': priority,
       };
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('maintenance/work-orders'))
-            .replace(queryParameters: query.isEmpty ? null : query),
+        Uri.parse(
+          ApiConfig.endpoint('maintenance/work-orders'),
+        ).replace(queryParameters: query.isEmpty ? null : query),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
@@ -90,15 +97,20 @@ class MaintenanceRepository {
         data: {
           if (roomUnitId != null) 'room_unit_id': roomUnitId,
           if (assetId != null) 'asset_id': assetId,
-          if (assetLabel != null && assetLabel.isNotEmpty) 'asset_label': assetLabel,
+          if (assetLabel != null && assetLabel.isNotEmpty)
+            'asset_label': assetLabel,
           'title': title,
-          if (description != null && description.isNotEmpty) 'description': description,
+          if (description != null && description.isNotEmpty)
+            'description': description,
           'priority': priority,
-          if (reportedBy != null && reportedBy.isNotEmpty) 'reported_by': reportedBy,
+          if (reportedBy != null && reportedBy.isNotEmpty)
+            'reported_by': reportedBy,
         },
         options: _auth(token),
       );
-      return WorkOrder.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return WorkOrder.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
@@ -123,15 +135,25 @@ class MaintenanceRepository {
   }
 
   /// Attach a photo or video a technician just captured to a work order.
-  Future<WorkOrder> uploadAttachment(String token, int id, String filePath) async {
+  Future<WorkOrder> uploadAttachment(
+    String token,
+    int id,
+    String filePath,
+  ) async {
     try {
-      final form = FormData.fromMap({'file': await MultipartFile.fromFile(filePath)});
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
       final response = await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('maintenance/work-orders/$id/attachments')),
+        Uri.parse(
+          ApiConfig.endpoint('maintenance/work-orders/$id/attachments'),
+        ),
         data: form,
         options: _auth(token),
       );
-      return WorkOrder.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return WorkOrder.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
@@ -140,11 +162,14 @@ class MaintenanceRepository {
     }
   }
 
-  Future<WorkOrder> acceptWorkOrder(String token, int id) => _act(token, id, 'accept');
+  Future<WorkOrder> acceptWorkOrder(String token, int id) =>
+      _act(token, id, 'accept');
 
-  Future<WorkOrder> startWorkOrder(String token, int id) => _act(token, id, 'start');
+  Future<WorkOrder> startWorkOrder(String token, int id) =>
+      _act(token, id, 'start');
 
-  Future<WorkOrder> completeWorkOrder(String token, int id) => _act(token, id, 'complete');
+  Future<WorkOrder> completeWorkOrder(String token, int id) =>
+      _act(token, id, 'complete');
 
   Future<WorkOrder> _act(String token, int id, String action) async {
     try {
@@ -152,7 +177,9 @@ class MaintenanceRepository {
         Uri.parse(ApiConfig.endpoint('maintenance/work-orders/$id/$action')),
         options: _auth(token),
       );
-      return WorkOrder.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return WorkOrder.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
@@ -162,16 +189,23 @@ class MaintenanceRepository {
   }
 
   /// The room picker for "report a fault against a room".
-  Future<List<MaintenanceRoomOption>> rooms(String token, {String? search}) async {
+  Future<List<MaintenanceRoomOption>> rooms(
+    String token, {
+    String? search,
+  }) async {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('maintenance/rooms')).replace(
-          queryParameters: (search != null && search.isNotEmpty) ? {'search': search} : null,
+          queryParameters: (search != null && search.isNotEmpty)
+              ? {'search': search}
+              : null,
         ),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
-      return rows.map((r) => MaintenanceRoomOption.fromJson((r as Map).cast())).toList();
+      return rows
+          .map((r) => MaintenanceRoomOption.fromJson((r as Map).cast()))
+          .toList();
     } catch (error) {
       debugPrint('MaintenanceRepository: rooms failed — $error');
       return const [];
@@ -180,7 +214,12 @@ class MaintenanceRepository {
 
   /// The Assets tab list. Optional `search` (name), `category`, and
   /// `dueOnly` (preventive-maintenance due/overdue only).
-  Future<List<Asset>> assets(String token, {String? search, String? category, bool dueOnly = false}) async {
+  Future<List<Asset>> assets(
+    String token, {
+    String? search,
+    String? category,
+    bool dueOnly = false,
+  }) async {
     try {
       final query = {
         if (search != null && search.isNotEmpty) 'search': search,
@@ -188,7 +227,9 @@ class MaintenanceRepository {
         if (dueOnly) 'due': '1',
       };
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('maintenance/assets')).replace(queryParameters: query.isEmpty ? null : query),
+        Uri.parse(
+          ApiConfig.endpoint('maintenance/assets'),
+        ).replace(queryParameters: query.isEmpty ? null : query),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
@@ -216,13 +257,17 @@ class MaintenanceRepository {
           'name': name,
           if (category != null && category.isNotEmpty) 'category': category,
           if (roomUnitId != null) 'room_unit_id': roomUnitId,
-          if (locationLabel != null && locationLabel.isNotEmpty) 'location_label': locationLabel,
+          if (locationLabel != null && locationLabel.isNotEmpty)
+            'location_label': locationLabel,
           if (notes != null && notes.isNotEmpty) 'notes': notes,
-          if (serviceIntervalDays != null) 'service_interval_days': serviceIntervalDays,
+          if (serviceIntervalDays != null)
+            'service_interval_days': serviceIntervalDays,
         },
         options: _auth(token),
       );
-      return Asset.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return Asset.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
@@ -253,7 +298,9 @@ class MaintenanceRepository {
         Uri.parse(ApiConfig.endpoint('maintenance/assets/$id/mark-serviced')),
         options: _auth(token),
       );
-      return Asset.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return Asset.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
@@ -263,12 +310,16 @@ class MaintenanceRepository {
   }
 
   /// The Requests tab list. Optional `status` narrows it.
-  Future<List<PartsRequest>> partsRequests(String token, {String? status}) async {
+  Future<List<PartsRequest>> partsRequests(
+    String token, {
+    String? status,
+  }) async {
     try {
       final query = {if (status != null && status.isNotEmpty) 'status': status};
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('maintenance/parts-requests'))
-            .replace(queryParameters: query.isEmpty ? null : query),
+        Uri.parse(
+          ApiConfig.endpoint('maintenance/parts-requests'),
+        ).replace(queryParameters: query.isEmpty ? null : query),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
@@ -289,7 +340,11 @@ class MaintenanceRepository {
   }) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('maintenance/work-orders/$workOrderId/parts-requests')),
+        Uri.parse(
+          ApiConfig.endpoint(
+            'maintenance/work-orders/$workOrderId/parts-requests',
+          ),
+        ),
         data: {
           'part_name': partName,
           'quantity': quantity,
@@ -297,7 +352,9 @@ class MaintenanceRepository {
         },
         options: _auth(token),
       );
-      return PartsRequest.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return PartsRequest.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
@@ -306,9 +363,11 @@ class MaintenanceRepository {
     }
   }
 
-  Future<PartsRequest> fulfillPartsRequest(String token, int id) => _partsAct(token, id, 'fulfill');
+  Future<PartsRequest> fulfillPartsRequest(String token, int id) =>
+      _partsAct(token, id, 'fulfill');
 
-  Future<PartsRequest> denyPartsRequest(String token, int id) => _partsAct(token, id, 'deny');
+  Future<PartsRequest> denyPartsRequest(String token, int id) =>
+      _partsAct(token, id, 'deny');
 
   Future<PartsRequest> _partsAct(String token, int id, String action) async {
     try {
@@ -316,43 +375,62 @@ class MaintenanceRepository {
         Uri.parse(ApiConfig.endpoint('maintenance/parts-requests/$id/$action')),
         options: _auth(token),
       );
-      return PartsRequest.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return PartsRequest.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
-      debugPrint('MaintenanceRepository: $action (parts request) failed — $error');
+      debugPrint(
+        'MaintenanceRepository: $action (parts request) failed — $error',
+      );
       throw MaintenanceException('Could not update this request.');
     }
   }
 
-  Future<WorkOrder> escalateWorkOrder(String token, int id) => _act(token, id, 'escalate');
+  Future<WorkOrder> escalateWorkOrder(String token, int id) =>
+      _act(token, id, 'escalate');
 
   /// The manual status override — the Status Update bottom sheet.
-  Future<WorkOrder> updateWorkOrderStatus(String token, int id, String status) async {
+  Future<WorkOrder> updateWorkOrderStatus(
+    String token,
+    int id,
+    String status,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('maintenance/work-orders/$id/status')),
         data: {'status': status},
         options: _auth(token),
       );
-      return WorkOrder.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return WorkOrder.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
-      debugPrint('MaintenanceRepository: updateWorkOrderStatus failed — $error');
+      debugPrint(
+        'MaintenanceRepository: updateWorkOrderStatus failed — $error',
+      );
       throw MaintenanceException('Could not update this order.');
     }
   }
 
   /// Assign the order to a named technician — the Assign Technician bottom sheet.
-  Future<WorkOrder> assignWorkOrder(String token, int id, int technicianId) async {
+  Future<WorkOrder> assignWorkOrder(
+    String token,
+    int id,
+    int technicianId,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('maintenance/work-orders/$id/assign')),
         data: {'technician_id': technicianId},
         options: _auth(token),
       );
-      return WorkOrder.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return WorkOrder.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw MaintenanceException(_messageFrom(error));
     } catch (error) {
@@ -378,10 +456,13 @@ class MaintenanceRepository {
 
   String _messageFrom(DioException error) {
     final data = error.response?.data;
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
-    if (error.type == DioExceptionType.connectionError || error.type == DioExceptionType.connectionTimeout) {
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout) {
       return 'No connection. Check the station network.';
     }
     return 'Something went wrong. Please try again.';

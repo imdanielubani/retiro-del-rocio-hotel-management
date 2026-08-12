@@ -60,7 +60,10 @@ class ReceptionIntercomCallNotifier extends Notifier<IntercomCall?> {
     final config = (await ref.read(appConfigProvider.future)).realtime;
     if (config == null) return;
 
-    final channel = StaffIntercomChannel(config: config, role: 'reception');
+    final channel = StaffIntercomChannel(
+      config: config,
+      channel: 'staff-intercom.reception',
+    );
     _channel = channel;
     channel.connect(onSignal: () => unawaited(refresh()));
   }

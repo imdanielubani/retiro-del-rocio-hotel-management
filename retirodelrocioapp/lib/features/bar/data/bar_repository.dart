@@ -7,6 +7,8 @@ import 'package:retirodelrocioapp/features/bar/domain/bar_order.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_overview.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bar_tab.dart';
 import 'package:retirodelrocioapp/features/bar/domain/bartender.dart';
+import 'package:retirodelrocioapp/features/bar/domain/in_house_booking.dart';
+import 'package:retirodelrocioapp/features/bar/domain/restaurant_reservation_lookup.dart';
 
 /// Raised when a bar action could not be completed, carrying a user-facing
 /// [message].
@@ -176,6 +178,78 @@ class BarRepository {
     }
   }
 
+  /* ---------------- Reservations ---------------- */
+
+  /// Look up a table/lounge reservation by its code — the door check before
+  /// pushing it into a tab. Returns null on a 404 (unknown code) or any
+  /// other failure, letting the dialog show "not found" either way.
+  Future<RestaurantReservationLookup?> lookupReservation(
+    String token,
+    String code,
+  ) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(
+          ApiConfig.endpoint('bar/reservations/${Uri.encodeComponent(code)}'),
+        ),
+        options: _auth(token),
+      );
+      final data = (response.data?['data'] as Map?)?.cast<String, dynamic>();
+      return data != null ? RestaurantReservationLookup.fromJson(data) : null;
+    } catch (error) {
+      debugPrint('BarRepository: lookupReservation failed — $error');
+      return null;
+    }
+  }
+
+  /// Confirm a reservation straight into a new, pre-filled open tab.
+  Future<BarTab> confirmReservationToTab(
+    String token,
+    int reservationId,
+  ) async {
+    try {
+      final response = await _dio.postUri<Map<String, dynamic>>(
+        Uri.parse(
+          ApiConfig.endpoint('bar/reservations/$reservationId/confirm'),
+        ),
+        options: _auth(token),
+      );
+      return BarTab.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (error) {
+      throw BarException(_messageFrom(error));
+    } catch (error) {
+      debugPrint('BarRepository: confirmReservationToTab failed — $error');
+      throw BarException('Could not open a tab from this reservation.');
+    }
+  }
+
+  /// The "Charge to Room" room picker — every checked-in guest, optionally
+  /// narrowed by [search] (guest name or room number).
+  Future<List<InHouseBooking>> inHouseBookings(
+    String token, {
+    String? search,
+  }) async {
+    try {
+      final response = await _dio.getUri<Map<String, dynamic>>(
+        Uri.parse(ApiConfig.endpoint('bar/bookings/in-house')).replace(
+          queryParameters: (search != null && search.isNotEmpty)
+              ? {'search': search}
+              : null,
+        ),
+        options: _auth(token),
+      );
+      final rows = (response.data?['data'] as List?) ?? const [];
+      return rows
+          .map((r) => InHouseBooking.fromJson((r as Map).cast()))
+          .toList();
+    } catch (error) {
+      debugPrint('BarRepository: inHouseBookings failed — $error');
+      return const [];
+    }
+  }
+
   /* ---------------- Tabs / POS ---------------- */
 
   Future<List<BarTab>> tabs(String token, {String status = 'open'}) async {
@@ -262,11 +336,20 @@ class BarRepository {
   }
 
   /// Close and settle a tab — the Close Tab confirm → Settle Payment flow.
-  Future<BarTab> closeTab(String token, int tabId, String paymentMethod) async {
+  /// [bookingId] is required when [paymentMethod] is `room_charge`.
+  Future<BarTab> closeTab(
+    String token,
+    int tabId,
+    String paymentMethod, {
+    int? bookingId,
+  }) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('bar/tabs/$tabId/close')),
-        data: {'payment_method': paymentMethod},
+        data: {
+          'payment_method': paymentMethod,
+          if (bookingId != null) 'booking_id': bookingId,
+        },
         options: _auth(token),
       );
       return BarTab.fromJson(

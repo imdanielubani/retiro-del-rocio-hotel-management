@@ -292,6 +292,53 @@ class _BarOrderDetailScreenState extends ConsumerState<BarOrderDetailScreen> {
               ],
             ),
           ),
+          if (order.hasFood &&
+              order.estimatedReadyLabel != null &&
+              (order.boardColumn == 'preparing' ||
+                  order.boardColumn == 'ready')) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color:
+                    (order.estimatedReadyOverdue
+                            ? const Color(0xFFEF4444)
+                            : AppColors.gold)
+                        .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    order.boardColumn == 'ready'
+                        ? Icons.restaurant_rounded
+                        : Icons.schedule_rounded,
+                    size: 18,
+                    color: order.estimatedReadyOverdue
+                        ? const Color(0xFFEF4444)
+                        : AppColors.gold,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      order.boardColumn == 'ready'
+                          ? 'The kitchen has this ready — go pick it up.'
+                          : order.estimatedReadyOverdue
+                          ? 'Running late — was due ${order.estimatedReadyLabel}'
+                          : 'The kitchen says ready by ${order.estimatedReadyLabel}',
+                      style: AppTypography.style(
+                        color: order.estimatedReadyOverdue
+                            ? const Color(0xFFEF4444)
+                            : Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
@@ -328,7 +375,8 @@ class _BarOrderDetailScreenState extends ConsumerState<BarOrderDetailScreen> {
               _busy ? null : _startPreparing,
             )
           else if (order.boardColumn == 'new' ||
-              order.boardColumn == 'preparing')
+              order.boardColumn == 'preparing' ||
+              order.boardColumn == 'ready')
             ServeButton(
               needsAgeCheck: order.needsAgeCheck,
               onTap: _busy ? () {} : () => _serve(order),

@@ -5,29 +5,32 @@ import 'package:flutter/foundation.dart';
 import 'package:retirodelrocioapp/core/realtime/realtime_config.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-/// Listens for Intercom call signals on a staff role's own public channel
-/// (`staff-intercom.{role}`) — the staff-side counterpart of the
-/// `intercom.ringing`/`intercom.updated` handling {@see RoomChannel} does
-/// for a guest's room. Same handshake discipline as every other realtime
-/// channel here: wait for the socket, wait for
-/// `pusher:connection_established`, only then subscribe; answer
-/// `pusher:ping` so Reverb doesn't hang up.
+/// Listens for Intercom call signals on a staff public channel — either an
+/// individual staffer's own (`staff-intercom.user.{id}`, for a staff-to-
+/// staff call addressed to them specifically) or a whole department's
+/// (`staff-intercom.{role}`, for a guest calling the front desk as a
+/// whole) — the staff-side counterpart of the `intercom.ringing`/
+/// `intercom.updated` handling {@see RoomChannel} does for a guest's room.
+/// Same handshake discipline as every other realtime channel here: wait
+/// for the socket, wait for `pusher:connection_established`, only then
+/// subscribe; answer `pusher:ping` so Reverb doesn't hang up.
 ///
 /// Both signals mean the same thing to a caller — "go re-fetch the current
 /// call" — so they share one callback rather than two, unlike `RoomChannel`
 /// which keeps them distinct for readability alongside its other events.
 class StaffIntercomChannel {
-  StaffIntercomChannel({required this.config, required this.role});
+  StaffIntercomChannel({required this.config, required this.channel});
 
   final RealtimeConfig config;
-  final String role;
+
+  /// The full public channel name, e.g. `staff-intercom.user.12` or
+  /// `staff-intercom.reception`.
+  final String channel;
 
   WebSocketChannel? _socket;
   StreamSubscription<dynamic>? _subscription;
   Timer? _reconnect;
   bool _closed = false;
-
-  String get _channel => 'staff-intercom.$role';
 
   void connect({required VoidCallback onSignal}) {
     _closed = false;
@@ -75,12 +78,12 @@ class StaffIntercomChannel {
         case 'pusher:connection_established':
           _send({
             'event': 'pusher:subscribe',
-            'data': {'channel': _channel},
+            'data': {'channel': channel},
           });
 
         case 'pusher_internal:subscription_succeeded':
           debugPrint(
-            'StaffIntercomChannel: subscribed to $_channel — updates are live.',
+            'StaffIntercomChannel: subscribed to $channel — updates are live.',
           );
 
         case 'pusher:ping':
@@ -88,7 +91,7 @@ class StaffIntercomChannel {
 
         case 'intercom.ringing':
         case 'intercom.updated':
-          debugPrint('StaffIntercomChannel: $_channel call signal.');
+          debugPrint('StaffIntercomChannel: $channel call signal.');
           onSignal();
       }
     } catch (error) {

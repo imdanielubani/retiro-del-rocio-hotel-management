@@ -30,11 +30,7 @@ class StaffNavRailEntry {
 /// built directly on this one so the four tablets stay visually identical
 /// without hand-copying the same file a third and fourth time.
 class StaffNavRail extends StatelessWidget {
-  const StaffNavRail({
-    super.key,
-    required this.items,
-    required this.onLogout,
-  });
+  const StaffNavRail({super.key, required this.items, required this.onLogout});
 
   final List<StaffNavRailEntry> items;
   final VoidCallback onLogout;
@@ -107,10 +103,14 @@ class _StaffNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tint = entry.active ? AppColors.gold : Colors.white.withValues(alpha: 0.5);
+    final tint = entry.active
+        ? AppColors.gold
+        : Colors.white.withValues(alpha: 0.5);
 
     return Material(
-      color: entry.active ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
+      color: entry.active
+          ? Colors.white.withValues(alpha: 0.1)
+          : Colors.transparent,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: entry.onTap,

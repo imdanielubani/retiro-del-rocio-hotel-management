@@ -72,8 +72,7 @@ class VisitorPassRecord {
 
   factory VisitorPassRecord.fromJson(Map<String, dynamic> json) {
     final online = json['online_code'] as String?;
-    final offline =
-        json['offline_code'] as String? ?? json['code'] as String?;
+    final offline = json['offline_code'] as String? ?? json['code'] as String?;
 
     return VisitorPassRecord(
       id: (json['id'] as num).toInt(),
@@ -97,8 +96,9 @@ class VisitorPassRecord {
       email: json['email'] as String?,
       phone: json['phone'] as String?,
       submittedLabel: json['submitted_label'] as String?,
-      createdAt:
-          DateTime.tryParse(json['created_at'] as String? ?? '')?.toLocal(),
+      createdAt: DateTime.tryParse(
+        json['created_at'] as String? ?? '',
+      )?.toLocal(),
       isInside: json['is_inside'] as bool? ?? false,
       arrivalLabel: json['arrival_label'] as String?,
     );

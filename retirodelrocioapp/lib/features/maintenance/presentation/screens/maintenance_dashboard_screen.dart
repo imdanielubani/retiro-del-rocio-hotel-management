@@ -104,7 +104,7 @@ class _MaintenanceDashboardScreenState
     ref.watch(maintenanceNotificationChimeProvider(_token));
     ref.watch(maintenanceSlaBreachChimeProvider(_token));
     ref.watch(staffChatChimeProvider(_token));
-    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.userId)));
     watchStaffIntercomCall(context, ref, widget.session);
 
     final overviewAsync = ref.watch(maintenanceOverviewProvider(_token));

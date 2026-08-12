@@ -329,7 +329,7 @@
                                     <p class="flex justify-between gap-3"><span class="text-white/50">Time</span><span x-text="prettyTime"></span></p>
                                 </div>
                                 <div class="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-4 text-body">
-                                    <div class="flex items-center justify-between"><span class="text-white/60">Refundable reservation fee</span><span class="font-medium text-white" x-text="money(fee)"></span></div>
+                                    <div class="flex items-center justify-between"><span class="text-white/60">Usable reservation fee</span><span class="font-medium text-white" x-text="money(fee)"></span></div>
                                     <div class="flex items-center justify-between"><span class="text-white/60">VAT (7.5%)</span><span class="font-medium text-white" x-text="money(vat)"></span></div>
                                 </div>
                                 <div class="mt-3 flex items-center justify-between border-t border-white/10 pt-3">

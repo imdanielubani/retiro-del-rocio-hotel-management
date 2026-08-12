@@ -16,12 +16,15 @@ class ProvisioningException implements Exception {
 /// the resulting session.
 class ProvisioningRepository {
   ProvisioningRepository({Dio? dio, DeviceSessionStore? store})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 10),
-            )),
-        _store = store ?? DeviceSessionStore();
+            ),
+          ),
+      _store = store ?? DeviceSessionStore();
 
   final Dio _dio;
   final DeviceSessionStore _store;
@@ -29,7 +32,9 @@ class ProvisioningRepository {
   /// Pairs using the JSON payload decoded from a provisioning QR. This is the
   /// only way in: pairing by a typed code was removed, so a device can never be
   /// bound without the token the dashboard mints.
-  Future<ProvisionedDevice> provisionWithQrPayload(Map<String, dynamic> payload) {
+  Future<ProvisionedDevice> provisionWithQrPayload(
+    Map<String, dynamic> payload,
+  ) {
     final deviceCode = payload['device_code'] as String?;
     if (deviceCode == null || deviceCode.isEmpty) {
       throw ProvisioningException('This QR code is not a valid setup code.');

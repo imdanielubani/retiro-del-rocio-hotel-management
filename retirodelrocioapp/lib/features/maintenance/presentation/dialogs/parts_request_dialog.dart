@@ -8,7 +8,11 @@ import 'package:retirodelrocioapp/features/maintenance/domain/parts_request.dart
 
 /// "Parts Request" — a technician asks for a part against the order they're
 /// working. Returns the created request, or null if cancelled.
-Future<PartsRequest?> showPartsRequestDialog(BuildContext context, {required String token, required int workOrderId}) {
+Future<PartsRequest?> showPartsRequestDialog(
+  BuildContext context, {
+  required String token,
+  required int workOrderId,
+}) {
   return showDialog<PartsRequest>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -17,7 +21,11 @@ Future<PartsRequest?> showPartsRequestDialog(BuildContext context, {required Str
 }
 
 class PartsRequestDialog extends ConsumerStatefulWidget {
-  const PartsRequestDialog({super.key, required this.token, required this.workOrderId});
+  const PartsRequestDialog({
+    super.key,
+    required this.token,
+    required this.workOrderId,
+  });
 
   final String token;
   final int workOrderId;
@@ -60,7 +68,9 @@ class _PartsRequestDialogState extends ConsumerState<PartsRequestDialog> {
             widget.workOrderId,
             partName: partName,
             quantity: quantity < 1 ? 1 : quantity,
-            note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+            note: _noteController.text.trim().isEmpty
+                ? null
+                : _noteController.text.trim(),
           );
       if (mounted) Navigator.of(context).pop(request);
     } on MaintenanceException catch (e) {
@@ -88,25 +98,54 @@ class _PartsRequestDialogState extends ConsumerState<PartsRequestDialog> {
               children: [
                 Text(
                   'Request Parts',
-                  style: AppTypography.style(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                _field(controller: _partController, label: 'Part needed, e.g. "Compressor capacitor"'),
+                _field(
+                  controller: _partController,
+                  label: 'Part needed, e.g. "Compressor capacitor"',
+                ),
                 const SizedBox(height: 12),
-                _field(controller: _quantityController, label: 'Quantity', keyboardType: TextInputType.number),
+                _field(
+                  controller: _quantityController,
+                  label: 'Quantity',
+                  keyboardType: TextInputType.number,
+                ),
                 const SizedBox(height: 12),
-                _field(controller: _noteController, label: 'Note (optional)', maxLines: 3),
+                _field(
+                  controller: _noteController,
+                  label: 'Note (optional)',
+                  maxLines: 3,
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: 10),
-                  Text(_error!, style: AppTypography.style(color: const Color(0xFFFF6B6B), fontSize: 12)),
+                  Text(
+                    _error!,
+                    style: AppTypography.style(
+                      color: const Color(0xFFFF6B6B),
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                        child: Text('Cancel', style: AppTypography.style(color: Colors.white70, fontSize: 14)),
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        child: Text(
+                          'Cancel',
+                          style: AppTypography.style(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -124,7 +163,10 @@ class _PartsRequestDialogState extends ConsumerState<PartsRequestDialog> {
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
                                   )
                                 : Text(
                                     'Submit',
@@ -161,10 +203,16 @@ class _PartsRequestDialogState extends ConsumerState<PartsRequestDialog> {
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),

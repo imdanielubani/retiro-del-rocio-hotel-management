@@ -114,9 +114,7 @@ void main() {
     await tester.pump(); // let the FutureProvider resolve
   }
 
-  testWidgets('renders the feed with the seeded unread count', (
-    tester,
-  ) async {
+  testWidgets('renders the feed with the seeded unread count', (tester) async {
     await pumpScreen(tester, _FakeGuestNotificationRepository(seed()));
 
     expect(find.text('Notification'), findsOneWidget);
@@ -150,22 +148,23 @@ void main() {
     expect(find.text('Spa Appointment'), findsNWidgets(2));
   });
 
-  testWidgets('tapping an unread card marks it read on the server and clears the badge', (
-    tester,
-  ) async {
-    final repo = _FakeGuestNotificationRepository(seed());
-    await pumpScreen(tester, repo);
+  testWidgets(
+    'tapping an unread card marks it read on the server and clears the badge',
+    (tester) async {
+      final repo = _FakeGuestNotificationRepository(seed());
+      await pumpScreen(tester, repo);
 
-    expect(find.text('1 unread'), findsOneWidget);
+      expect(find.text('1 unread'), findsOneWidget);
 
-    await tester.tap(find.text('Order Ready'));
-    await tester.pump(); // busy spinner
-    await tester.pump(); // markRead resolves + refetch
-    await tester.pump();
+      await tester.tap(find.text('Order Ready'));
+      await tester.pump(); // busy spinner
+      await tester.pump(); // markRead resolves + refetch
+      await tester.pump();
 
-    expect(find.text('0 unread'), findsOneWidget);
-    expect(repo.notifications.firstWhere((n) => n.id == 1).read, isTrue);
-  });
+      expect(find.text('0 unread'), findsOneWidget);
+      expect(repo.notifications.firstWhere((n) => n.id == 1).read, isTrue);
+    },
+  );
 
   testWidgets('Mark all read clears every unread notification on the server', (
     tester,
@@ -214,8 +213,10 @@ void main() {
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          GuestNotificationScreen(device: device, status: status),
+                      builder: (_) => GuestNotificationScreen(
+                        device: device,
+                        status: status,
+                      ),
                     ),
                   ),
                   child: const Text('open'),

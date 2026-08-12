@@ -37,22 +37,23 @@ class ReceptionVisitor {
   final String? arrivalLabel;
   final bool isInside;
 
-  factory ReceptionVisitor.fromJson(Map<String, dynamic> json) => ReceptionVisitor(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    reference: json['reference'] as String? ?? '',
-    visitorName: json['visitor_name'] as String? ?? 'Visitor',
-    initials: json['initials'] as String? ?? '?',
-    hostName: json['host_name'] as String?,
-    roomNumber: json['room_number'] as String?,
-    suiteName: json['suite_name'] as String?,
-    email: json['email'] as String?,
-    phone: json['phone'] as String?,
-    status: json['status'] as String? ?? 'pending',
-    statusLabel: json['status_label'] as String? ?? 'Pending',
-    invitedLabel: json['invited_label'] as String?,
-    arrivalLabel: json['arrival_label'] as String?,
-    isInside: json['is_inside'] as bool? ?? false,
-  );
+  factory ReceptionVisitor.fromJson(Map<String, dynamic> json) =>
+      ReceptionVisitor(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        reference: json['reference'] as String? ?? '',
+        visitorName: json['visitor_name'] as String? ?? 'Visitor',
+        initials: json['initials'] as String? ?? '?',
+        hostName: json['host_name'] as String?,
+        roomNumber: json['room_number'] as String?,
+        suiteName: json['suite_name'] as String?,
+        email: json['email'] as String?,
+        phone: json['phone'] as String?,
+        status: json['status'] as String? ?? 'pending',
+        statusLabel: json['status_label'] as String? ?? 'Pending',
+        invitedLabel: json['invited_label'] as String?,
+        arrivalLabel: json['arrival_label'] as String?,
+        isInside: json['is_inside'] as bool? ?? false,
+      );
 }
 
 /// The Visitor Pass list plus its headline counters.
@@ -78,7 +79,8 @@ class ReceptionVisitorsOverview {
   );
 
   factory ReceptionVisitorsOverview.fromJson(Map<String, dynamic> json) {
-    final summary = (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final summary =
+        (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
 
     return ReceptionVisitorsOverview(
       expected: (summary['expected'] as num?)?.toInt() ?? 0,

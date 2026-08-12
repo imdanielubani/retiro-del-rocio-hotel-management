@@ -97,12 +97,17 @@ class _ReceptionBookingsScreenState
           const SizedBox(height: 16),
           Expanded(
             child: bookingsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.gold),
+              ),
               error: (_, _) => Center(
                 child: TextButton(
-                  onPressed: () => ref.invalidate(receptionBookingsProvider(_token)),
-                  child: const Text('Could not load bookings. Retry',
-                      style: TextStyle(color: AppColors.gold)),
+                  onPressed: () =>
+                      ref.invalidate(receptionBookingsProvider(_token)),
+                  child: const Text(
+                    'Could not load bookings. Retry',
+                    style: TextStyle(color: AppColors.gold),
+                  ),
                 ),
               ),
               data: (all) {
@@ -115,17 +120,20 @@ class _ReceptionBookingsScreenState
                 }
                 return RefreshIndicator(
                   color: AppColors.gold,
-                  onRefresh: () async => ref.invalidate(receptionBookingsProvider(_token)),
+                  onRefresh: () async =>
+                      ref.invalidate(receptionBookingsProvider(_token)),
                   child: GridView.builder(
                     padding: const EdgeInsets.only(bottom: 24),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 420,
-                      mainAxisExtent: 150,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 420,
+                          mainAxisExtent: 150,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
                     itemCount: rows.length,
-                    itemBuilder: (_, i) => ReceptionBookingRowCard(row: rows[i]),
+                    itemBuilder: (_, i) =>
+                        ReceptionBookingRowCard(row: rows[i]),
                   ),
                 );
               },
@@ -152,10 +160,7 @@ class _ReceptionBookingsScreenState
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          for (final f in _filters) ...[
-            _chip(f),
-            const SizedBox(width: 10),
-          ],
+          for (final f in _filters) ...[_chip(f), const SizedBox(width: 10)],
         ],
       ),
     );
@@ -164,7 +169,9 @@ class _ReceptionBookingsScreenState
   Widget _chip(_Filter f) {
     final selected = _status == f.status;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.15)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _status = f.status),
@@ -183,7 +190,9 @@ class _ReceptionBookingsScreenState
           child: Text(
             f.label,
             style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.6),
               fontSize: 13,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             ),

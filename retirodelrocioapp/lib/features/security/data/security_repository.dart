@@ -21,18 +21,20 @@ class SecurityException implements MessagedException {
 /// server-side on every call.
 class SecurityRepository {
   SecurityRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 8),
               receiveTimeout: const Duration(seconds: 8),
-            ));
+            ),
+          );
 
   final Dio _dio;
 
-  Options _auth(String token) => Options(headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      });
+  Options _auth(String token) => Options(
+    headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+  );
 
   /// The whole dashboard in one call. Throws [SecurityException] on failure so
   /// the screen can show a retry rather than a blank slate during an emergency.
@@ -57,12 +59,15 @@ class SecurityRepository {
   /// The SOS Alert Logs — every incident, newest first. [status] optionally
   /// narrows the list server-side (active | acknowledged | resolved | cancelled
   /// | open).
-  Future<List<SecurityIncident>> incidents(String token, {String? status}) async {
+  Future<List<SecurityIncident>> incidents(
+    String token, {
+    String? status,
+  }) async {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('security/incidents')).replace(
-          queryParameters: status != null ? {'status': status} : null,
-        ),
+        Uri.parse(
+          ApiConfig.endpoint('security/incidents'),
+        ).replace(queryParameters: status != null ? {'status': status} : null),
         options: _auth(token),
       );
       final list = (response.data?['data'] as List?) ?? const [];
@@ -86,7 +91,11 @@ class SecurityRepository {
   Future<SecurityIncident> resolve(String token, int incidentId) =>
       _act(token, incidentId, 'resolve');
 
-  Future<SecurityIncident> _act(String token, int incidentId, String action) async {
+  Future<SecurityIncident> _act(
+    String token,
+    int incidentId,
+    String action,
+  ) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('security/incidents/$incidentId/$action')),
@@ -153,7 +162,12 @@ class SecurityRepository {
 
   /// Mark a verified visitor as having left the property.
   Future<VisitorPassRecord> exitVisitor(String token, int passId) =>
-      _visitorAction(token, passId, 'exit', 'Could not check out this visitor.');
+      _visitorAction(
+        token,
+        passId,
+        'exit',
+        'Could not check out this visitor.',
+      );
 
   Future<VisitorPassRecord> _visitorAction(
     String token,

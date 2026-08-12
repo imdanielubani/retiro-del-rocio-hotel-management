@@ -232,7 +232,7 @@ class _SecurityDashboardScreenState
     // announcer below.
     ref.watch(securityNotificationChimeProvider(_token));
     ref.watch(staffChatChimeProvider(_token));
-    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.userId)));
     watchStaffIntercomCall(context, ref, widget.session);
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on
