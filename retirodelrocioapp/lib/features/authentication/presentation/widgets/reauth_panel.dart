@@ -8,7 +8,11 @@ import 'package:retirodelrocioapp/features/authentication/data/auth_repository.d
 /// Password re-entry form that re-verifies the current staffer (refreshes the
 /// JWT). Shared by the session lock screen and the re-authenticate dialog.
 class ReauthPanel extends ConsumerStatefulWidget {
-  const ReauthPanel({super.key, required this.onSuccess, this.actionLabel = 'Unlock'});
+  const ReauthPanel({
+    super.key,
+    required this.onSuccess,
+    this.actionLabel = 'Unlock',
+  });
 
   final VoidCallback onSuccess;
   final String actionLabel;
@@ -40,7 +44,9 @@ class _ReauthPanelState extends ConsumerState<ReauthPanel> {
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).reauthenticate(_password.text);
+      await ref
+          .read(authControllerProvider.notifier)
+          .reauthenticate(_password.text);
       widget.onSuccess();
     } on AuthException catch (e) {
       if (mounted) {
@@ -62,12 +68,19 @@ class _ReauthPanelState extends ConsumerState<ReauthPanel> {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 0.8,
+            ),
           ),
           child: Row(
             children: [
               const SizedBox(width: 14),
-              Icon(Icons.lock_outline_rounded, color: Colors.white.withValues(alpha: 0.5), size: 20),
+              Icon(
+                Icons.lock_outline_rounded,
+                color: Colors.white.withValues(alpha: 0.5),
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
@@ -92,7 +105,9 @@ class _ReauthPanelState extends ConsumerState<ReauthPanel> {
               IconButton(
                 onPressed: () => setState(() => _obscure = !_obscure),
                 icon: Icon(
-                  _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  _obscure
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
                   color: Colors.white.withValues(alpha: 0.5),
                   size: 20,
                 ),
@@ -126,7 +141,10 @@ class _ReauthPanelState extends ConsumerState<ReauthPanel> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.onGold),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.onGold,
+                        ),
                       )
                     : Text(
                         widget.actionLabel,

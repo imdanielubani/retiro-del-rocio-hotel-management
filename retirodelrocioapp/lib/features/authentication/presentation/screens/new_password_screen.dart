@@ -58,7 +58,11 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
       _error = null;
     });
     try {
-      await _repository.resetPassword(email: widget.email, otp: widget.otp, password: password);
+      await _repository.resetPassword(
+        email: widget.email,
+        otp: widget.otp,
+        password: password,
+      );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const PasswordResetSuccessScreen()),
@@ -74,13 +78,13 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   }
 
   Widget _toggle(bool obscure, VoidCallback onTap) => IconButton(
-        onPressed: onTap,
-        icon: Icon(
-          obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-          color: Colors.white.withValues(alpha: 0.5),
-          size: 20,
-        ),
-      );
+    onPressed: onTap,
+    icon: Icon(
+      obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+      color: Colors.white.withValues(alpha: 0.5),
+      size: 20,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -97,20 +101,31 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                 color: AppColors.gold.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.password_rounded, color: AppColors.gold, size: 28),
+              child: const Icon(
+                Icons.password_rounded,
+                color: AppColors.gold,
+                size: 28,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'New Password',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Choose a new password for your account.',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 28),
           AuthTextField(
@@ -119,7 +134,10 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
             hint: 'At least 8 characters',
             icon: Icons.lock_outline_rounded,
             obscure: _obscure1,
-            trailing: _toggle(_obscure1, () => setState(() => _obscure1 = !_obscure1)),
+            trailing: _toggle(
+              _obscure1,
+              () => setState(() => _obscure1 = !_obscure1),
+            ),
           ),
           const SizedBox(height: 16),
           AuthTextField(
@@ -129,18 +147,29 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
             icon: Icons.lock_outline_rounded,
             obscure: _obscure2,
             onSubmitted: (_) => _submit(),
-            trailing: _toggle(_obscure2, () => setState(() => _obscure2 = !_obscure2)),
+            trailing: _toggle(
+              _obscure2,
+              () => setState(() => _obscure2 = !_obscure2),
+            ),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: AppTypography.style(color: const Color(0xFFF87171), fontSize: 13, fontWeight: FontWeight.w500),
+              style: AppTypography.style(
+                color: const Color(0xFFF87171),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
           const SizedBox(height: 22),
-          AuthPrimaryButton(label: 'Reset Password', loading: _loading, onTap: _submit),
+          AuthPrimaryButton(
+            label: 'Reset Password',
+            loading: _loading,
+            onTap: _submit,
+          ),
         ],
       ),
     );

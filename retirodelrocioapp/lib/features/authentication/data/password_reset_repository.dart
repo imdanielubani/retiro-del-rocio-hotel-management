@@ -12,11 +12,14 @@ class PasswordResetException implements Exception {
 /// OTP password-reset flow: request a code, verify it, set a new password.
 class PasswordResetRepository {
   PasswordResetRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 10),
-            ));
+            ),
+          );
 
   final Dio _dio;
 
@@ -30,13 +33,12 @@ class PasswordResetRepository {
     required String email,
     required String otp,
     required String password,
-  }) =>
-      _post('auth/reset-password', {
-        'email': email.trim(),
-        'otp': otp.trim(),
-        'password': password,
-        'password_confirmation': password,
-      });
+  }) => _post('auth/reset-password', {
+    'email': email.trim(),
+    'otp': otp.trim(),
+    'password': password,
+    'password_confirmation': password,
+  });
 
   Future<void> _post(String path, Map<String, dynamic> data) async {
     try {

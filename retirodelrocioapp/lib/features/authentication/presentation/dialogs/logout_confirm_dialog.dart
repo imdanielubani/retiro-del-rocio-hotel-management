@@ -29,7 +29,10 @@ class _LogoutConfirmDialog extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF1A1712),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.12),
+                width: 0.8,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -41,7 +44,11 @@ class _LogoutConfirmDialog extends StatelessWidget {
                     color: const Color(0xFFF87171).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.logout_rounded, color: Color(0xFFF87171), size: 28),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFF87171),
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -92,7 +99,11 @@ class _LogoutConfirmDialog extends StatelessWidget {
 }
 
 class _DialogButton extends StatelessWidget {
-  const _DialogButton({required this.label, required this.filled, required this.onTap});
+  const _DialogButton({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
 
   final String label;
   final bool filled;
@@ -103,7 +114,9 @@ class _DialogButton extends StatelessWidget {
     return SizedBox(
       height: 48,
       child: Material(
-        color: filled ? const Color(0xFFF87171) : Colors.white.withValues(alpha: 0.08),
+        color: filled
+            ? const Color(0xFFF87171)
+            : Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -112,7 +125,9 @@ class _DialogButton extends StatelessWidget {
             child: Text(
               label,
               style: AppTypography.style(
-                color: filled ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                color: filled
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.8),
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
               ),

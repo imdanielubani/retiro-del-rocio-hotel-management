@@ -9,7 +9,11 @@ import 'package:retirodelrocioapp/features/authentication/presentation/widgets/a
 
 /// Step 2 — enter the 6-digit code emailed to [email].
 class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({super.key, required this.email, this.repository});
+  const OtpVerificationScreen({
+    super.key,
+    required this.email,
+    this.repository,
+  });
 
   final String email;
   final PasswordResetRepository? repository;
@@ -110,19 +114,31 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 color: AppColors.gold.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.mark_email_read_outlined, color: AppColors.gold, size: 30),
+              child: const Icon(
+                Icons.mark_email_read_outlined,
+                color: AppColors.gold,
+                size: 30,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'Enter Code',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           Text.rich(
             TextSpan(
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 14, height: 1.4),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 14,
+                height: 1.4,
+              ),
               children: [
                 const TextSpan(text: 'We sent a 6-digit code to\n'),
                 TextSpan(
@@ -152,7 +168,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: AppTypography.style(color: const Color(0xFFF87171), fontSize: 13, fontWeight: FontWeight.w500),
+              style: AppTypography.style(
+                color: const Color(0xFFF87171),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
           const SizedBox(height: 22),
@@ -163,7 +183,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               onPressed: _resending ? null : _resend,
               child: Text(
                 _resending ? 'Sending…' : 'Didn’t get it? Resend code',
-                style: AppTypography.style(color: AppColors.gold, fontSize: 13, fontWeight: FontWeight.w500),
+                style: AppTypography.style(
+                  color: AppColors.gold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
@@ -215,7 +239,11 @@ class _OtpBoxes extends StatelessWidget {
                 ),
                 child: Text(
                   filled ? text[i] : '',
-                  style: AppTypography.style(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               );
             }),
@@ -233,7 +261,10 @@ class _OtpBoxes extends StatelessWidget {
                 ],
                 showCursor: false,
                 onChanged: onChanged,
-                decoration: const InputDecoration(border: InputBorder.none, counterText: ''),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  counterText: '',
+                ),
               ),
             ),
           ),

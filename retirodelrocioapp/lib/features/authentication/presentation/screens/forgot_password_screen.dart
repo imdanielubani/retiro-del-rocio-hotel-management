@@ -74,20 +74,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 color: AppColors.gold.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.lock_reset_rounded, color: AppColors.gold, size: 30),
+              child: const Icon(
+                Icons.lock_reset_rounded,
+                color: AppColors.gold,
+                size: 30,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'Forgot Password',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Enter your account email and we’ll send you a code to reset your password.',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 14, height: 1.4),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 28),
           AuthTextField(
@@ -103,11 +115,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: AppTypography.style(color: const Color(0xFFF87171), fontSize: 13, fontWeight: FontWeight.w500),
+              style: AppTypography.style(
+                color: const Color(0xFFF87171),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
           const SizedBox(height: 22),
-          AuthPrimaryButton(label: 'Send Code', loading: _loading, onTap: _submit),
+          AuthPrimaryButton(
+            label: 'Send Code',
+            loading: _loading,
+            onTap: _submit,
+          ),
         ],
       ),
     );

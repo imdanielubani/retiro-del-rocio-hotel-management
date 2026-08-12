@@ -19,7 +19,7 @@ use Throwable;
 class Index extends Component
 {
     /** The stations the admin dashboard can message. */
-    private const ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar'];
+    private const ROLES = ['reception', 'housekeeping', 'maintenance', 'security', 'bar', 'kitchen'];
 
     public string $selectedRole = '';
 

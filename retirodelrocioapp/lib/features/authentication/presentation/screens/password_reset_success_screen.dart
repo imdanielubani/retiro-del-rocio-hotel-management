@@ -11,7 +11,8 @@ class PasswordResetSuccessScreen extends StatelessWidget {
 
   void _backToSignIn(BuildContext context) {
     Navigator.of(context).popUntil(
-      (route) => route.settings.name == StaffLoginScreen.routeName || route.isFirst,
+      (route) =>
+          route.settings.name == StaffLoginScreen.routeName || route.isFirst,
     );
   }
 
@@ -31,23 +32,38 @@ class PasswordResetSuccessScreen extends StatelessWidget {
                 color: AppColors.success.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 52),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.success,
+                size: 52,
+              ),
             ),
           ),
           const SizedBox(height: 22),
           Text(
             'Password Reset',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Your password has been updated. You can now sign in with your new password.',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.55), fontSize: 14, height: 1.5),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 14,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 28),
-          AuthPrimaryButton(label: 'Back to Sign In', onTap: () => _backToSignIn(context)),
+          AuthPrimaryButton(
+            label: 'Back to Sign In',
+            onTap: () => _backToSignIn(context),
+          ),
         ],
       ),
     );

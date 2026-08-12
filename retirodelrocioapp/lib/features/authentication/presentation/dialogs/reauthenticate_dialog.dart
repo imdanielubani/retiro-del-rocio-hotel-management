@@ -29,7 +29,10 @@ class _ReAuthenticateDialog extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF1A1712),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.12),
+                width: 0.8,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

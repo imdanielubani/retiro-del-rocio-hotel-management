@@ -8,6 +8,7 @@ import 'package:retirodelrocioapp/features/authentication/presentation/dialogs/l
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_guard.dart';
 import 'package:retirodelrocioapp/features/bar/presentation/bar_shell.dart';
 import 'package:retirodelrocioapp/features/housekeeping/presentation/screens/housekeeping_dashboard_screen.dart';
+import 'package:retirodelrocioapp/features/kitchen/presentation/screens/kitchen_live_board_screen.dart';
 import 'package:retirodelrocioapp/features/maintenance/presentation/screens/maintenance_dashboard_screen.dart';
 import 'package:retirodelrocioapp/features/reception/presentation/screens/reception_dashboard_screen.dart';
 import 'package:retirodelrocioapp/features/security/presentation/screens/security_dashboard_screen.dart';
@@ -43,6 +44,9 @@ class StaffDashboardScreen extends ConsumerWidget {
     }
     if (session.role == 'bar') {
       return BarShell(session: session);
+    }
+    if (session.role == 'kitchen') {
+      return KitchenLiveBoardScreen(session: session);
     }
 
     return SessionGuard(

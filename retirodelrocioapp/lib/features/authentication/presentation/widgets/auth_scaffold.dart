@@ -29,11 +29,17 @@ class AuthScaffold extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: Container(
                 width: width,
-                padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 44,
+                  vertical: 40,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    width: 0.8,
+                  ),
                 ),
                 child: child,
               ),

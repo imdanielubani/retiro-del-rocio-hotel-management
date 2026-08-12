@@ -17,11 +17,14 @@ class AuthException implements Exception {
 /// (`POST /v1/tablets/staff-login`, authenticated by the device token).
 class AuthRepository {
   AuthRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 10),
-            ));
+            ),
+          );
 
   final Dio _dio;
 
@@ -35,10 +38,12 @@ class AuthRepository {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('tablets/staff-login')),
         data: {'email': email.trim(), 'password': password},
-        options: Options(headers: {
-          'Authorization': 'Bearer $deviceToken',
-          'Accept': 'application/json',
-        }),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $deviceToken',
+            'Accept': 'application/json',
+          },
+        ),
       );
       return StaffSession.fromLoginResponse(response.data!, activeRole);
     } on DioException catch (error) {
@@ -58,7 +63,9 @@ class AuthRepository {
       );
     }
     if (status == 403) {
-      return AuthException('Your account is not active. Contact an administrator.');
+      return AuthException(
+        'Your account is not active. Contact an administrator.',
+      );
     }
 
     final data = error.response?.data;
@@ -66,7 +73,8 @@ class AuthRepository {
       final errors = data['errors'];
       if (errors is Map && errors.isNotEmpty) {
         final first = errors.values.first;
-        if (first is List && first.isNotEmpty) return AuthException(first.first.toString());
+        if (first is List && first.isNotEmpty)
+          return AuthException(first.first.toString());
       }
       final message = data['message'];
       if (message is String && message.isNotEmpty && status != 401) {

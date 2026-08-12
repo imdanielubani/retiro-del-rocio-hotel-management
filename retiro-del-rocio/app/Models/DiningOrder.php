@@ -30,23 +30,31 @@ class DiningOrder extends Model
     ];
 
     /**
-     * New orders with a drink in them (whether placed from the guest tablet
-     * or the Bar Tablet's own POS) alert the Bar Tablet — a single hook so
-     * the notification always fires no matter which flow created the order.
+     * New orders with a drink and/or food item in them (whether placed from
+     * the guest tablet or a staff tablet's own POS) alert the relevant
+     * station — a single hook so each notification always fires no matter
+     * which flow created the order. A mixed order alerts both stations.
      */
     protected static function booted(): void
     {
         static::created(function (self $order) {
-            if (! $order->has_drinks) {
-                return;
+            if ($order->has_drinks) {
+                BarNotification::notify(
+                    'new_order',
+                    'New Bar Order — '.$order->orderCode(),
+                    $order->itemsLabel().($order->tableLabel() ? ' ('.$order->tableLabel().')' : ''),
+                    $order,
+                );
             }
 
-            BarNotification::notify(
-                'new_order',
-                'New Bar Order — '.$order->orderCode(),
-                $order->itemsLabel().($order->tableLabel() ? ' ('.$order->tableLabel().')' : ''),
-                $order,
-            );
+            if ($order->has_food) {
+                KitchenNotification::notify(
+                    'new_order',
+                    'New Kitchen Order — '.$order->orderCode(),
+                    $order->itemsLabel().($order->tableLabel() ? ' ('.$order->tableLabel().')' : ''),
+                    $order,
+                );
+            }
         });
     }
 
@@ -361,6 +369,57 @@ class DiningOrder extends Model
             'assigned_to_name' => $bartender?->name,
             'requires_age_verification' => $this->requiresAgeVerification(),
             'age_verified' => $this->age_verified_at !== null,
+            'payment_status' => $this->payment_status,
+            'payment_status_label' => $this->paymentLabel(),
+        ];
+    }
+
+    /**
+     * The Kitchen Tablet's ticket board/detail payload — same underlying
+     * order as {@see toBarOrderArray()}, minus the tab/VIP/age-verification
+     * fields that only make sense for the Bar's own POS. "Table/room"
+     * identity for a Kitchen ticket comes from whichever of the tab, the
+     * room booking, or the guest's own name is actually set, in that order.
+     */
+    public function toKitchenOrderArray(): array
+    {
+        $tab = $this->relationLoaded('barTab') ? $this->barTab : $this->barTab()->first();
+        $booking = $this->relationLoaded('booking') ? $this->booking : $this->booking()->first();
+        $chef = $this->relationLoaded('assignedBartender') ? $this->assignedBartender : $this->assignedBartender()->first();
+
+        $roomLabel = $booking?->roomUnit?->number ?? $booking?->room_name;
+
+        return [
+            'id' => $this->id,
+            'code' => $this->orderCode(),
+            'reference' => $this->reference,
+            'table_label' => $tab?->table_label,
+            'room_label' => $roomLabel ? 'Room '.$roomLabel : null,
+            'guest_name' => $tab?->guest_name ?: $this->customer_name,
+            'source' => $this->bar_tab_id ? 'pos' : 'guest_tablet',
+            'has_drinks' => (bool) $this->has_drinks,
+            'items' => collect($this->items ?? [])->map(fn (array $i) => [
+                'menu_item_id' => $i['menu_item_id'] ?? null,
+                'name' => $i['name'] ?? '',
+                'price' => (int) ($i['price'] ?? 0),
+                'qty' => (int) ($i['qty'] ?? 1),
+                'note' => $i['note'] ?? null,
+                'category' => $i['category'] ?? null,
+                'voided' => (bool) ($i['voided'] ?? false),
+            ])->values(),
+            'items_label' => $this->itemsLabel(),
+            'item_count' => $this->item_count,
+            'placed_at_label' => optional($this->created_at)->format('D, M j, Y • g:i A'),
+            'placed_at_short' => optional($this->created_at)->diffForHumans(),
+            'status' => $this->status,
+            'status_label' => $this->statusLabel(),
+            'board_column' => $this->barBoardColumn(),
+            'board_column_label' => $this->barBoardColumnLabel(),
+            'subtotal_label' => $this->subtotalLabel(),
+            'vat_label' => $this->vatLabel(),
+            'service_fee_label' => $this->serviceFeeLabel(),
+            'total_label' => $this->totalLabel(),
+            'assigned_to_name' => $chef?->name,
             'payment_status' => $this->payment_status,
             'payment_status_label' => $this->paymentLabel(),
         ];

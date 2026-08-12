@@ -191,15 +191,17 @@ class GuestTopBar extends StatelessWidget {
       width: 35,
       height: 35,
       child: Material(
-        color: red.withValues(alpha: 0.12),
-        shape: CircleBorder(
-          side: BorderSide(color: red.withValues(alpha: 0.35), width: 0.8),
-        ),
+        color: red,
+        shape: CircleBorder(side: BorderSide(color: red, width: 0.8)),
         child: InkWell(
           onTap: onEmergency,
           customBorder: const CircleBorder(),
           child: const Center(
-            child: Icon(Icons.warning_amber_rounded, size: 16, color: red),
+            child: Icon(
+              Icons.warning_amber_rounded,
+              size: 16,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
