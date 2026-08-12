@@ -59,9 +59,11 @@ class SecurityIncident {
 
   String get guestLabel => guestName ?? 'Guest';
 
-  String get roomLabel => roomNumber != null ? 'Room $roomNumber' : 'Unknown room';
+  String get roomLabel =>
+      roomNumber != null ? 'Room $roomNumber' : 'Unknown room';
 
-  factory SecurityIncident.fromJson(Map<String, dynamic> json) => SecurityIncident(
+  factory SecurityIncident.fromJson(Map<String, dynamic> json) =>
+      SecurityIncident(
         id: (json['id'] as num).toInt(),
         status: switch (json['status'] as String?) {
           'acknowledged' => IncidentStatus.acknowledged,
@@ -73,13 +75,19 @@ class SecurityIncident {
         roomNumber: json['room_number'] as String?,
         suiteName: json['suite_name'] as String?,
         guestName: json['guest_name'] as String?,
-        raisedAt: DateTime.tryParse(json['raised_at'] as String? ?? '')?.toLocal(),
-        acknowledgedAt:
-            DateTime.tryParse(json['acknowledged_at'] as String? ?? '')?.toLocal(),
+        raisedAt: DateTime.tryParse(
+          json['raised_at'] as String? ?? '',
+        )?.toLocal(),
+        acknowledgedAt: DateTime.tryParse(
+          json['acknowledged_at'] as String? ?? '',
+        )?.toLocal(),
         acknowledgedBy: json['acknowledged_by'] as String?,
-        resolvedAt: DateTime.tryParse(json['resolved_at'] as String? ?? '')?.toLocal(),
+        resolvedAt: DateTime.tryParse(
+          json['resolved_at'] as String? ?? '',
+        )?.toLocal(),
         resolvedBy: json['resolved_by'] as String?,
-        cancelledAt:
-            DateTime.tryParse(json['cancelled_at'] as String? ?? '')?.toLocal(),
+        cancelledAt: DateTime.tryParse(
+          json['cancelled_at'] as String? ?? '',
+        )?.toLocal(),
       );
 }

@@ -5,7 +5,11 @@ import 'package:video_player/video_player.dart';
 /// Full-bleed background that renders the shared ambient [controller] (cover
 /// fit) when it's ready, or [fallback] (default: a dark gradient) otherwise.
 class AmbientVideoBackground extends StatelessWidget {
-  const AmbientVideoBackground({super.key, required this.controller, this.fallback});
+  const AmbientVideoBackground({
+    super.key,
+    required this.controller,
+    this.fallback,
+  });
 
   final VideoPlayerController? controller;
   final Widget? fallback;

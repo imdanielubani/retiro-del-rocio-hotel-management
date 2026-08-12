@@ -48,7 +48,11 @@ class SosAlarm {
 
     try {
       await _player.setReleaseMode(ReleaseMode.loop);
-      await _player.play(BytesSource(_sirenWav()), volume: 1, ctx: audioContext);
+      await _player.play(
+        BytesSource(_sirenWav()),
+        volume: 1,
+        ctx: audioContext,
+      );
     } catch (error) {
       debugPrint('SosAlarm: audio failed — $error');
     }

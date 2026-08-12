@@ -30,6 +30,9 @@ class KitchenOrder {
     required this.assignedToName,
     required this.paymentStatus,
     required this.paymentStatusLabel,
+    this.estimatedReadyLabel,
+    this.estimatedReadyMinutes,
+    this.estimatedReadyOverdue = false,
   });
 
   final int id;
@@ -60,7 +63,10 @@ class KitchenOrder {
   final String status;
   final String statusLabel;
 
-  /// new · preparing · served — the Live Board's 3 columns.
+  /// new · preparing · ready · served — the Live Board's columns. "ready"
+  /// means cooked and waiting at the pass for the waiter to pick up; a
+  /// plain guest-tablet ticket with no waiter involved skips straight to
+  /// "served" instead.
   final String boardColumn;
   final String boardColumnLabel;
 
@@ -68,6 +74,15 @@ class KitchenOrder {
   final String? assignedToName;
   final String paymentStatus;
   final String paymentStatusLabel;
+
+  /// "7:45 PM", set (and increased) by the Kitchen while preparing.
+  final String? estimatedReadyLabel;
+
+  /// Minutes remaining until [estimatedReadyLabel], or 0 once due.
+  final int? estimatedReadyMinutes;
+
+  /// True once the estimate has passed and the ticket still isn't ready.
+  final bool estimatedReadyOverdue;
 
   bool get isPos => source == 'pos';
 
@@ -98,5 +113,8 @@ class KitchenOrder {
     assignedToName: json['assigned_to_name'] as String?,
     paymentStatus: json['payment_status'] as String? ?? 'pending',
     paymentStatusLabel: json['payment_status_label'] as String? ?? 'Pending',
+    estimatedReadyLabel: json['estimated_ready_label'] as String?,
+    estimatedReadyMinutes: (json['estimated_ready_minutes'] as num?)?.toInt(),
+    estimatedReadyOverdue: json['estimated_ready_overdue'] as bool? ?? false,
   );
 }

@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\DeviceType;
 use App\Models\DiningOrder;
 use App\Models\MenuItem;
+use App\Models\RestaurantReservation;
 use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Models\User;
@@ -88,6 +89,41 @@ class BarTabletTest extends TestCase
         return $device->createToken('tablet')->plainTextToken;
     }
 
+    private function reservation(array $overrides = []): RestaurantReservation
+    {
+        return RestaurantReservation::create(array_merge([
+            'code' => RestaurantReservation::makeCode(),
+            'area' => 'dining',
+            'table_label' => 'Table 12',
+            'guests' => 2,
+            'reserved_date' => now()->toDateString(),
+            'reserved_time' => '19:00',
+            'customer_name' => 'Marie Curie',
+            'customer_email' => 'marie@example.test',
+            'status' => 'confirmed',
+        ], $overrides));
+    }
+
+    /** A checked-in booking, for a "Charge to Room" settlement. */
+    private function inHouseBooking(array $overrides = []): Booking
+    {
+        $room = Room::create([
+            'name' => 'Delta Room', 'slug' => 'delta-room-'.Str::random(6),
+            'type' => 'standard', 'price' => 5000, 'guests' => 2,
+        ]);
+        $unit = RoomUnit::create(['room_id' => $room->id, 'number' => (string) random_int(100, 999), 'status' => 'occupied']);
+        $booking = Booking::create(array_merge([
+            'reference' => 'BK-'.Str::upper(Str::random(8)),
+            'customer_name' => 'Ada Lovelace', 'customer_email' => 'ada@example.test',
+            'room_id' => $room->id, 'room_name' => $room->name, 'room_unit_id' => $unit->id,
+            'check_in' => now()->subDay()->toDateString(), 'check_out' => now()->addDays(3)->toDateString(),
+            'nights' => 4, 'guests' => 2, 'amount' => 30000, 'status' => 'checked_in', 'checked_in_at' => now()->subDay(),
+        ], $overrides));
+        $unit->update(['booking_id' => $booking->id]);
+
+        return $booking;
+    }
+
     public function test_a_non_bar_user_is_rejected(): void
     {
         Role::findOrCreate('housekeeping', 'web');
@@ -115,9 +151,9 @@ class BarTabletTest extends TestCase
                 'items' => [['menu_item_id' => $drink->id, 'qty' => 2, 'price' => 1]],
             ])
             ->assertCreated()
-            ->assertJsonPath('data.orders.0.total_label', '₦8,525'); // (3500*2) + 525 VAT + 1000 service fee
+            ->assertJsonPath('data.orders.0.total_label', '₦7,525'); // (3500*2) + 525 VAT, no service fee
 
-        $this->assertDatabaseHas('dining_orders', ['bar_tab_id' => $open['id'], 'subtotal' => 7000, 'vat' => 525, 'total' => 8525]);
+        $this->assertDatabaseHas('dining_orders', ['bar_tab_id' => $open['id'], 'subtotal' => 7000, 'vat' => 525, 'total' => 7525]);
     }
 
     public function test_voiding_an_item_recomputes_the_order_and_tab_totals(): void
@@ -137,10 +173,10 @@ class BarTabletTest extends TestCase
         $this->withToken($token)
             ->postJson("/api/v1/bar/orders/{$order['id']}/void-item", ['item_index' => 0, 'reason' => 'Wrong drink'])
             ->assertOk()
-            ->assertJsonPath('data.total_label', '₦7,450'); // 6000 + 450 VAT + 1000 fee, chapman voided
+            ->assertJsonPath('data.total_label', '₦6,450'); // 6000 + 450 VAT, no service fee, chapman voided
 
         $tabAfter = $this->withToken($token)->getJson("/api/v1/bar/tabs/{$tab['id']}")->json('data');
-        $this->assertSame('₦7,450', $tabAfter['total_label']);
+        $this->assertSame('₦6,450', $tabAfter['total_label']);
     }
 
     public function test_closing_a_tab_settles_it_and_marks_every_order_paid(): void
@@ -260,6 +296,33 @@ class BarTabletTest extends TestCase
             ->postJson("/api/v1/bar/orders/{$order['id']}/assign", ['bartender_id' => $otherBartender->id])
             ->assertOk()
             ->assertJsonPath('data.assigned_to_name', 'Second Shift');
+    }
+
+    public function test_a_food_only_order_rung_up_on_a_bar_tab_is_still_visible_and_actionable_on_the_bar_board(): void
+    {
+        $food = $this->food();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $food->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+        $this->assertFalse((bool) $order->has_drinks);
+
+        // Shows up on the waiter's own board, not just Kitchen's.
+        $board = $this->withToken($token)->getJson('/api/v1/bar/orders')->json('data');
+        $this->assertCount(1, $board);
+
+        $this->withToken($token)
+            ->getJson("/api/v1/bar/orders/{$order->id}")
+            ->assertOk();
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order->id}/prepare")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'preparing')
+            ->assertJsonPath('data.board_column', 'preparing');
     }
 
     public function test_a_new_drink_order_creates_a_bar_notification(): void
@@ -383,5 +446,127 @@ class BarTabletTest extends TestCase
             ->postJson("/api/v1/bar/orders/{$order['id']}/serve")
             ->assertOk()
             ->assertJsonPath('data.status', 'delivered');
+    }
+
+    public function test_looking_up_an_unknown_reservation_code_returns_404(): void
+    {
+        $this->withToken($this->bartenderToken())
+            ->getJson('/api/v1/bar/reservations/RES-000000-RDR')
+            ->assertNotFound();
+    }
+
+    public function test_looking_up_a_confirmed_reservation_returns_its_details(): void
+    {
+        $reservation = $this->reservation(['area' => 'lounge', 'floor' => 'Rooftop', 'table_label' => 'Lounge 3']);
+
+        $this->withToken($this->bartenderToken())
+            ->getJson("/api/v1/bar/reservations/{$reservation->code}")
+            ->assertOk()
+            ->assertJsonPath('data.table_label', 'Lounge 3')
+            ->assertJsonPath('data.customer_name', 'Marie Curie')
+            ->assertJsonPath('data.can_open_tab', true);
+    }
+
+    public function test_confirming_a_reservation_pushes_it_into_a_prefilled_open_tab(): void
+    {
+        $reservation = $this->reservation(['table_label' => 'Table 7', 'customer_name' => 'Rosalind Franklin']);
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)
+            ->postJson("/api/v1/bar/reservations/{$reservation->id}/confirm")
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertSame('open', $tab['status']);
+        $this->assertSame('Table 7', $tab['table_label']);
+        $this->assertSame('Rosalind Franklin', $tab['guest_name']);
+        $this->assertSame($reservation->code, $tab['reservation_code']);
+        $this->assertSame('seated', $reservation->fresh()->status);
+
+        // Pushed straight into the tab — no second reservation-owned tab possible.
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/reservations/{$reservation->id}/confirm")
+            ->assertStatus(422);
+    }
+
+    public function test_closing_a_tab_with_bank_transfer_settles_it(): void
+    {
+        $drink = $this->drink();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->assertCreated();
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/tabs/{$tab['id']}/close", ['payment_method' => 'bank_transfer'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'settled')
+            ->assertJsonPath('data.payment_status', 'paid');
+    }
+
+    public function test_closing_a_tab_with_charge_to_room_requires_a_checked_in_booking(): void
+    {
+        $drink = $this->drink();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->assertCreated();
+
+        // No booking_id at all.
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/tabs/{$tab['id']}/close", ['payment_method' => 'room_charge'])
+            ->assertStatus(422);
+
+        // A booking that isn't checked in.
+        $notInHouse = $this->inHouseBooking(['status' => 'checked_out', 'checked_in_at' => now()->subDays(2)]);
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/tabs/{$tab['id']}/close", ['payment_method' => 'room_charge', 'booking_id' => $notInHouse->id])
+            ->assertStatus(422);
+    }
+
+    public function test_closing_a_tab_with_charge_to_room_stamps_the_order_for_the_booking_folio(): void
+    {
+        $drink = $this->drink(['price' => 3500]);
+        $token = $this->bartenderToken();
+        $booking = $this->inHouseBooking();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->assertCreated();
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/tabs/{$tab['id']}/close", ['payment_method' => 'room_charge', 'booking_id' => $booking->id])
+            ->assertOk()
+            ->assertJsonPath('data.payment_status', 'pending')
+            ->assertJsonPath('data.charged_room_label', 'Room '.$booking->roomUnit->number);
+
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+        $this->assertSame('room_charge', $order->payment_method);
+        $this->assertSame('pending', $order->payment_status);
+        $this->assertSame($booking->id, $order->booking_id);
+
+        // Picked up by the exact same shared bill computation My Bills/Reception use.
+        $bookingBills = DiningOrder::where('booking_id', $booking->id)->where('payment_method', 'room_charge')->get();
+        $this->assertCount(1, $bookingBills);
+    }
+
+    public function test_the_in_house_bookings_search_only_returns_checked_in_guests(): void
+    {
+        $token = $this->bartenderToken();
+        $this->inHouseBooking(['customer_name' => 'Grace Hopper']);
+        $this->inHouseBooking(['customer_name' => 'Not Checked In', 'status' => 'checked_out', 'checked_in_at' => now()->subDays(2)]);
+
+        $names = $this->withToken($token)
+            ->getJson('/api/v1/bar/bookings/in-house')
+            ->assertOk()
+            ->json('data.*.guest_name');
+
+        $this->assertContains('Grace Hopper', $names);
+        $this->assertNotContains('Not Checked In', $names);
     }
 }

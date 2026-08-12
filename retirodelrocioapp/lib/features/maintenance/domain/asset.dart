@@ -42,7 +42,9 @@ class Asset {
     locationLabel: json['location_label'] as String? ?? 'Hotel-wide',
     notes: json['notes'] as String?,
     serviceIntervalDays: (json['service_interval_days'] as num?)?.toInt(),
-    lastServicedAt: json['last_serviced_at'] != null ? DateTime.tryParse(json['last_serviced_at'] as String) : null,
+    lastServicedAt: json['last_serviced_at'] != null
+        ? DateTime.tryParse(json['last_serviced_at'] as String)
+        : null,
     lastServicedLabel: json['last_serviced_label'] as String?,
     nextServiceDueAt: json['next_service_due_at'] != null
         ? DateTime.tryParse(json['next_service_due_at'] as String)

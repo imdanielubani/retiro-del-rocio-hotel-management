@@ -60,7 +60,9 @@ class HousekeepingNotificationRepository {
     } on DioException catch (error) {
       throw HousekeepingNotificationException(_messageFrom(error));
     } catch (error) {
-      debugPrint('HousekeepingNotificationRepository: markRead failed — $error');
+      debugPrint(
+        'HousekeepingNotificationRepository: markRead failed — $error',
+      );
       throw HousekeepingNotificationException(
         'Could not update that notification.',
       );

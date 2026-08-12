@@ -40,12 +40,16 @@ class LostFoundRepository {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('housekeeping/lost-found')).replace(
-          queryParameters: (status != null && status.isNotEmpty) ? {'status': status} : null,
+          queryParameters: (status != null && status.isNotEmpty)
+              ? {'status': status}
+              : null,
         ),
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
-      return rows.map((r) => LostFoundItem.fromJson((r as Map).cast())).toList();
+      return rows
+          .map((r) => LostFoundItem.fromJson((r as Map).cast()))
+          .toList();
     } catch (error) {
       debugPrint('LostFoundRepository: items failed — $error');
       return const [];
@@ -70,7 +74,9 @@ class LostFoundRepository {
         },
         options: _auth(token),
       );
-      return LostFoundItem.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return LostFoundItem.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw LostFoundException(_messageFrom(error));
     } catch (error) {
@@ -91,12 +97,16 @@ class LostFoundRepository {
         Uri.parse(ApiConfig.endpoint('housekeeping/lost-found/$id/status')),
         data: {
           'action': 'returned',
-          if (claimantName != null && claimantName.isNotEmpty) 'claimant_name': claimantName,
-          if (claimantContact != null && claimantContact.isNotEmpty) 'claimant_contact': claimantContact,
+          if (claimantName != null && claimantName.isNotEmpty)
+            'claimant_name': claimantName,
+          if (claimantContact != null && claimantContact.isNotEmpty)
+            'claimant_contact': claimantContact,
         },
         options: _auth(token),
       );
-      return LostFoundItem.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return LostFoundItem.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw LostFoundException(_messageFrom(error));
     } catch (error) {
@@ -113,7 +123,9 @@ class LostFoundRepository {
         data: {'action': 'disposed'},
         options: _auth(token),
       );
-      return LostFoundItem.fromJson((response.data!['data'] as Map).cast<String, dynamic>());
+      return LostFoundItem.fromJson(
+        (response.data!['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (error) {
       throw LostFoundException(_messageFrom(error));
     } catch (error) {
@@ -124,10 +136,13 @@ class LostFoundRepository {
 
   String _messageFrom(DioException error) {
     final data = error.response?.data;
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
-    if (error.type == DioExceptionType.connectionError || error.type == DioExceptionType.connectionTimeout) {
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout) {
       return 'No connection. Check the station network.';
     }
     return 'Something went wrong. Please try again.';

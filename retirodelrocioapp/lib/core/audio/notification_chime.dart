@@ -50,7 +50,11 @@ class NotificationChime {
     try {
       await _player.stop();
       await _player.setReleaseMode(ReleaseMode.stop);
-      await _player.play(BytesSource(_chimeWav()), volume: 0.7, ctx: audioContext);
+      await _player.play(
+        BytesSource(_chimeWav()),
+        volume: 0.7,
+        ctx: audioContext,
+      );
     } catch (error) {
       debugPrint('NotificationChime: audio failed — $error');
     }

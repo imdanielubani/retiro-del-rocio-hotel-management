@@ -211,7 +211,7 @@ class _ReceptionDashboardScreenState
     // the socket above or the plain poll if it's down.
     ref.watch(receptionNotificationChimeProvider(_token));
     ref.watch(staffChatChimeProvider(_token));
-    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.userId)));
     watchReceptionIntercomCall(context, ref, widget.session);
 
     // Surface any new unacknowledged emergency as the priority overlay. Fires on

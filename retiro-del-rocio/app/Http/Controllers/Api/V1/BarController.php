@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\BarNotification;
 use App\Models\BarTab;
+use App\Models\Booking;
 use App\Models\DiningOrder;
 use App\Models\MenuItem;
+use App\Models\RestaurantReservation;
 use App\Models\User;
 use App\Support\DiningOrderPricer;
 use Illuminate\Http\JsonResponse;
@@ -77,7 +79,7 @@ class BarController extends Controller
     public function orderDetail(Request $request, DiningOrder $order): JsonResponse
     {
         $this->bartender($request);
-        abort_unless($order->has_drinks, 404);
+        abort_unless($order->belongsToBarLounge(), 404);
 
         $order->load(['barTab', 'assignedBartender']);
 
@@ -88,7 +90,7 @@ class BarController extends Controller
     public function markPreparing(Request $request, DiningOrder $order): JsonResponse
     {
         $this->bartender($request);
-        abort_unless($order->has_drinks, 404);
+        abort_unless($order->belongsToBarLounge(), 404);
         abort_unless($order->has_food, 422, 'Drink-only orders move straight from New to Served — there is no preparing stage.');
 
         $order->markPreparing();
@@ -100,7 +102,7 @@ class BarController extends Controller
     public function markServed(Request $request, DiningOrder $order): JsonResponse
     {
         $this->bartender($request);
-        abort_unless($order->has_drinks, 404);
+        abort_unless($order->belongsToBarLounge(), 404);
         abort_if($order->requiresAgeVerification() && ! $order->age_verified_at, 422, 'Verify the guest\'s age before serving this order.');
 
         $order->markServed();
@@ -112,7 +114,7 @@ class BarController extends Controller
     public function voidItem(Request $request, DiningOrder $order): JsonResponse
     {
         $staff = $this->bartender($request);
-        abort_unless($order->has_drinks, 404);
+        abort_unless($order->belongsToBarLounge(), 404);
 
         $data = $request->validate([
             'item_index' => ['required', 'integer', 'min:0'],
@@ -128,7 +130,7 @@ class BarController extends Controller
     public function verifyAge(Request $request, DiningOrder $order): JsonResponse
     {
         $staff = $this->bartender($request);
-        abort_unless($order->has_drinks, 404);
+        abort_unless($order->belongsToBarLounge(), 404);
 
         $order->verifyAge($staff);
 
@@ -139,7 +141,7 @@ class BarController extends Controller
     public function assignOrder(Request $request, DiningOrder $order): JsonResponse
     {
         $this->bartender($request);
-        abort_unless($order->has_drinks, 404);
+        abort_unless($order->belongsToBarLounge(), 404);
 
         $data = $request->validate(['bartender_id' => ['required', 'integer', 'exists:users,id']]);
 
@@ -159,6 +161,61 @@ class BarController extends Controller
         $bartenders = User::role('bar')->where('status', 'active')->orderBy('name')->get(['id', 'name']);
 
         return response()->json(['data' => $bartenders->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->values()]);
+    }
+
+    /* ---------------- Reservations ---------------- */
+
+    /**
+     * GET /bar/reservations/{code} — a waiter looks up the table/lounge
+     * reservation code a walk-in guest gives them at the door, before
+     * pushing it into a tab. Any status is returned (so the tablet can show
+     * "already seated" etc.); {@see RestaurantReservation::toBarLookupArray()}'s
+     * `can_open_tab` tells the tablet whether it's still usable.
+     */
+    public function lookupReservation(Request $request, string $code): JsonResponse
+    {
+        $this->bartender($request);
+
+        $reservation = RestaurantReservation::whereIn('area', ['dining', 'lounge'])
+            ->where(fn ($q) => $q->where('code', trim($code))->orWhere('reference', trim($code)))
+            ->first();
+
+        abort_unless($reservation, 404, 'No table or lounge reservation found with that code.');
+
+        return response()->json(['data' => $reservation->toBarLookupArray()]);
+    }
+
+    /**
+     * POST /bar/reservations/{reservation}/confirm — turns a confirmed
+     * reservation straight into an open tab (pre-filled with its table/
+     * lounge and guest name) so the waiter never has to re-enter what the
+     * reservation already captured, then flips the reservation to `seated`
+     * so it can't be pushed into a second tab.
+     */
+    public function confirmReservationToTab(Request $request, RestaurantReservation $reservation): JsonResponse
+    {
+        $staff = $this->bartender($request);
+
+        abort_unless(
+            $reservation->status === 'confirmed',
+            422,
+            'This reservation is '.strtolower($reservation->statusLabel()).' and can no longer be opened as a tab.'
+        );
+
+        $tab = BarTab::create([
+            'code' => BarTab::makeCode(),
+            'restaurant_reservation_id' => $reservation->id,
+            'table_label' => $reservation->table_label ?: $reservation->areaLabel(),
+            'guest_name' => $reservation->customer_name,
+            'is_vip' => false,
+            'opened_by' => $staff->id,
+            'assigned_to' => $staff->id,
+            'status' => 'open',
+        ]);
+
+        $reservation->update(['status' => 'seated']);
+
+        return response()->json(['data' => $tab->fresh(['bartender', 'openedBy', 'orders', 'reservation'])->toBarDetailArray()], 201);
     }
 
     /* ---------------- Tabs / POS ---------------- */
@@ -262,12 +319,18 @@ class BarController extends Controller
         abort_unless($tab->status === 'open', 422, 'This tab is already closed.');
 
         $data = $request->validate([
-            'payment_method' => ['required', 'string', 'in:cash,card,room_charge'],
+            'payment_method' => ['required', 'string', 'in:cash,card,bank_transfer,room_charge'],
+            'booking_id' => ['required_if:payment_method,room_charge', 'nullable', 'integer', 'exists:bookings,id'],
         ]);
 
-        $tab->settle($data['payment_method']);
+        if ($data['payment_method'] === 'room_charge') {
+            $booking = Booking::find($data['booking_id']);
+            abort_unless($booking?->status === 'checked_in', 422, 'That room is not currently checked in.');
+        }
 
-        return response()->json(['data' => $tab->fresh(['bartender', 'openedBy', 'orders'])->toBarDetailArray()]);
+        $tab->settle($data['payment_method'], $data['booking_id'] ?? null);
+
+        return response()->json(['data' => $tab->fresh(['bartender', 'openedBy', 'orders', 'booking'])->toBarDetailArray()]);
     }
 
     /** POST /bar/tabs/{tab}/vip — the VIP flag toggle. */
@@ -278,6 +341,34 @@ class BarController extends Controller
         $tab->toggleVip();
 
         return response()->json(['data' => $tab->fresh(['bartender', 'openedBy', 'orders'])->toBarArray()]);
+    }
+
+    /**
+     * GET /bar/bookings/in-house — the "Charge to Room" room picker: every
+     * currently checked-in guest, optionally narrowed by `?search=` (guest
+     * name or room number), the same "in-house" test Reception's own Bills
+     * screen uses.
+     */
+    public function inHouseBookings(Request $request): JsonResponse
+    {
+        $this->bartender($request);
+
+        $search = trim((string) $request->query('search', ''));
+
+        $bookings = Booking::with('roomUnit')
+            ->where('status', 'checked_in')
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('customer_name', 'like', "%{$search}%")
+                ->orWhere('room_name', 'like', "%{$search}%")))
+            ->orderBy('customer_name')
+            ->limit(50)
+            ->get();
+
+        return response()->json(['data' => $bookings->map(fn (Booking $b) => [
+            'booking_id' => $b->id,
+            'guest_name' => $b->customer_name,
+            'room_label' => $b->roomUnit?->number ? 'Room '.$b->roomUnit->number : ($b->room_name ?: '—'),
+        ])->values()]);
     }
 
     /* ---------------- Menu ---------------- */

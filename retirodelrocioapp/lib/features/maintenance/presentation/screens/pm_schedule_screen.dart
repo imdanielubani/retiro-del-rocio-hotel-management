@@ -33,7 +33,12 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
   String get _token => widget.session.token;
 
   void _onNav(MaintenanceNavItem item) {
-    MaintenanceNavigation.select(context, widget.session, item, current: MaintenanceNavItem.assets);
+    MaintenanceNavigation.select(
+      context,
+      widget.session,
+      item,
+      current: MaintenanceNavItem.assets,
+    );
   }
 
   Future<void> _logout() async {
@@ -46,7 +51,9 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
   Future<void> _markServiced(Asset asset) async {
     setState(() => _markingId = asset.id);
     try {
-      await ref.read(maintenanceActionsProvider(_token)).markAssetServiced(asset.id);
+      await ref
+          .read(maintenanceActionsProvider(_token))
+          .markAssetServiced(asset.id);
     } on MaintenanceException catch (e) {
       _showFailure(e.message);
     } catch (_) {
@@ -62,21 +69,29 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
       SnackBar(
         backgroundColor: const Color(0xFF7F1D1D),
         behavior: SnackBarBehavior.floating,
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
 
   void _openDetail(Asset asset) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AssetDetailScreen(session: widget.session, assetId: asset.id)),
+      MaterialPageRoute(
+        builder: (_) =>
+            AssetDetailScreen(session: widget.session, assetId: asset.id),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final assetsAsync = ref.watch(maintenanceAssetsProvider(_token));
-    final assets = (assetsAsync.value ?? const <Asset>[]).where((a) => a.isOnScheduledMaintenance).toList();
+    final assets = (assetsAsync.value ?? const <Asset>[])
+        .where((a) => a.isOnScheduledMaintenance)
+        .toList();
 
     return MaintenanceScaffold(
       session: widget.session,
@@ -87,13 +102,19 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
       title: 'PM Schedule',
       body: assetsAsync.when(
         data: (_) => _content(assets),
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.gold),
+        ),
         error: (_, _) => assets.isNotEmpty
             ? _content(assets)
             : Center(
                 child: TextButton(
-                  onPressed: () => ref.invalidate(maintenanceAssetsProvider(_token)),
-                  child: const Text('Could not load the schedule. Retry', style: TextStyle(color: AppColors.gold)),
+                  onPressed: () =>
+                      ref.invalidate(maintenanceAssetsProvider(_token)),
+                  child: const Text(
+                    'Could not load the schedule. Retry',
+                    style: TextStyle(color: AppColors.gold),
+                  ),
                 ),
               ),
       ),
@@ -123,7 +144,11 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
       }
     }
     for (final group in [overdue, dueSoon, scheduled]) {
-      group.sort((a, b) => (a.nextServiceDueAt ?? DateTime(9999)).compareTo(b.nextServiceDueAt ?? DateTime(9999)));
+      group.sort(
+        (a, b) => (a.nextServiceDueAt ?? DateTime(9999)).compareTo(
+          b.nextServiceDueAt ?? DateTime(9999),
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -133,7 +158,8 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           if (overdue.isNotEmpty) _group('OVERDUE', overdue, kMtRed),
-          if (dueSoon.isNotEmpty) _group('DUE WITHIN 7 DAYS', dueSoon, AppColors.gold),
+          if (dueSoon.isNotEmpty)
+            _group('DUE WITHIN 7 DAYS', dueSoon, AppColors.gold),
           if (scheduled.isNotEmpty) _group('SCHEDULED', scheduled, kMtSlate),
         ],
       ),
@@ -148,18 +174,41 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
         children: [
           Row(
             children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
+              ),
               const SizedBox(width: 8),
               Text(
                 label,
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
               ),
               const SizedBox(width: 6),
-              Text('${assets.length}', style: AppTypography.style(color: Colors.white.withValues(alpha: 0.3), fontSize: 12)),
+              Text(
+                '${assets.length}',
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          ...assets.map((asset) => Padding(padding: const EdgeInsets.only(bottom: 10), child: _row(asset, accent))),
+          ...assets.map(
+            (asset) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _row(asset, accent),
+            ),
+          ),
         ],
       ),
     );
@@ -182,7 +231,10 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: accent.withValues(alpha: 0.25), width: 0.8),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.25),
+              width: 0.8,
+            ),
           ),
           child: Row(
             children: [
@@ -194,14 +246,21 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
                       asset.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${asset.locationLabel}  ·  Due $dueLabel',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -214,16 +273,26 @@ class _PmScheduleScreenState extends ConsumerState<PmScheduleScreen> {
                   onTap: busy ? null : () => _markServiced(asset),
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     child: busy
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.gold,
+                            ),
                           )
                         : Text(
                             'Mark Serviced',
-                            style: AppTypography.style(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w700),
+                            style: AppTypography.style(
+                              color: AppColors.gold,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                   ),
                 ),

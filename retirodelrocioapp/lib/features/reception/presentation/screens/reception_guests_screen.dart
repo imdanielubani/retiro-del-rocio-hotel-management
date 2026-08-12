@@ -119,13 +119,19 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
             child: guestsAsync.when(
               loading: () => all.isNotEmpty
                   ? _list(all)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => all.isNotEmpty
                   ? _list(all)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(receptionGuestsProvider(_token)),
-                        child: const Text('Could not load guests. Retry', style: TextStyle(color: AppColors.gold)),
+                        onPressed: () =>
+                            ref.invalidate(receptionGuestsProvider(_token)),
+                        child: const Text(
+                          'Could not load guests. Retry',
+                          style: TextStyle(color: AppColors.gold),
+                        ),
                       ),
                     ),
               data: _list,
@@ -161,7 +167,9 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
           return ReceptionGuestCard(
             guest: guest,
             onTap: () => _openProfile(guest),
-            onCheckOut: guest.activeBookingId != null ? () => _checkOut(guest) : null,
+            onCheckOut: guest.activeBookingId != null
+                ? () => _checkOut(guest)
+                : null,
           );
         },
       ),
@@ -174,9 +182,21 @@ class _ReceptionGuestsScreenState extends ConsumerState<ReceptionGuestsScreen> {
     final inHouse = all.where((g) => g.inHouse).length;
     return Row(
       children: [
-        Expanded(child: ReceptionStatCard(label: 'TOTAL GUESTS', value: all.length, accent: AppColors.gold)),
+        Expanded(
+          child: ReceptionStatCard(
+            label: 'TOTAL GUESTS',
+            value: all.length,
+            accent: AppColors.gold,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: ReceptionStatCard(label: 'IN HOUSE', value: inHouse, accent: kReceptionBlue)),
+        Expanded(
+          child: ReceptionStatCard(
+            label: 'IN HOUSE',
+            value: inHouse,
+            accent: kReceptionBlue,
+          ),
+        ),
       ],
     );
   }

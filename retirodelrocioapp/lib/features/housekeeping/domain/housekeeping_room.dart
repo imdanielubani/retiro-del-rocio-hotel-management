@@ -43,17 +43,19 @@ class HousekeepingRoom {
       housekeepingStatus == 'out_of_order' ||
       needsInspection;
 
-  factory HousekeepingRoom.fromJson(Map<String, dynamic> json) => HousekeepingRoom(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    number: json['number'] as String? ?? '—',
-    roomName: json['room_name'] as String?,
-    occupancy: json['occupancy'] as String? ?? 'available',
-    occupancyLabel: json['occupancy_label'] as String? ?? 'Available',
-    housekeepingStatus: json['housekeeping_status'] as String? ?? 'clean',
-    housekeepingStatusLabel: json['housekeeping_status_label'] as String? ?? 'Clean',
-    guestName: json['guest_name'] as String?,
-    checkoutToday: json['checkout_today'] as bool? ?? false,
-    needsInspection: json['needs_inspection'] as bool? ?? false,
-    updatedLabel: json['updated_label'] as String?,
-  );
+  factory HousekeepingRoom.fromJson(Map<String, dynamic> json) =>
+      HousekeepingRoom(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        number: json['number'] as String? ?? '—',
+        roomName: json['room_name'] as String?,
+        occupancy: json['occupancy'] as String? ?? 'available',
+        occupancyLabel: json['occupancy_label'] as String? ?? 'Available',
+        housekeepingStatus: json['housekeeping_status'] as String? ?? 'clean',
+        housekeepingStatusLabel:
+            json['housekeeping_status_label'] as String? ?? 'Clean',
+        guestName: json['guest_name'] as String?,
+        checkoutToday: json['checkout_today'] as bool? ?? false,
+        needsInspection: json['needs_inspection'] as bool? ?? false,
+        updatedLabel: json['updated_label'] as String?,
+      );
 }

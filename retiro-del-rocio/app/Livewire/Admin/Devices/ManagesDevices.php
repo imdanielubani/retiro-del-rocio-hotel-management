@@ -9,6 +9,7 @@ use App\Models\Room;
 use App\Models\RoomUnit;
 use App\Services\DeviceCommandService;
 use App\Services\DeviceProvisioningService;
+use Database\Seeders\StaffRolesSeeder;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\Rule;
 use Livewire\WithPagination;
@@ -78,7 +79,7 @@ trait ManagesDevices
     public ?int $qrId = null;
 
     /* --------------------------------------------------------------------- */
-    /* Contract implemented by the consuming component                        */
+    /* Contract implemented by the consuming component */
     /* --------------------------------------------------------------------- */
 
     abstract protected function typeSlug(): string;      // 'tablet' | 'smart-tv'
@@ -99,14 +100,18 @@ trait ManagesDevices
         return false;
     }
 
-    /** Roles a staff tablet may be locked to. */
+    /**
+     * Roles a staff tablet may be locked to. Admin-portal roles (manager,
+     * admin, super-admin, it-administrator) are excluded — they get web
+     * dashboard access only, never a tablet station.
+     */
     protected function staffRoles(): array
     {
-        return array_merge(\Database\Seeders\StaffRolesSeeder::ROLES, ['manager']);
+        return StaffRolesSeeder::ROLES;
     }
 
     /* --------------------------------------------------------------------- */
-    /* Authorisation                                                          */
+    /* Authorisation */
     /* --------------------------------------------------------------------- */
 
     /** view/create/edit/delete are per-type; operational actions are shared. */
@@ -147,7 +152,7 @@ trait ManagesDevices
     }
 
     /* --------------------------------------------------------------------- */
-    /* Register / Edit                                                        */
+    /* Register / Edit */
     /* --------------------------------------------------------------------- */
 
     public function openCreate(): void
@@ -273,7 +278,7 @@ trait ManagesDevices
     }
 
     /* --------------------------------------------------------------------- */
-    /* Allocation (room number for guest devices, role for staff tablets)     */
+    /* Allocation (room number for guest devices, role for staff tablets) */
     /* --------------------------------------------------------------------- */
 
     public function openAssign(int $id): void
@@ -358,7 +363,7 @@ trait ManagesDevices
     }
 
     /* --------------------------------------------------------------------- */
-    /* Device commands                                                        */
+    /* Device commands */
     /* --------------------------------------------------------------------- */
 
     public function restart(int $id, DeviceCommandService $commands): void
@@ -398,7 +403,7 @@ trait ManagesDevices
     }
 
     /* --------------------------------------------------------------------- */
-    /* QR provisioning                                                        */
+    /* QR provisioning */
     /* --------------------------------------------------------------------- */
 
     public function openQr(int $id): void
@@ -418,7 +423,7 @@ trait ManagesDevices
     }
 
     /* --------------------------------------------------------------------- */
-    /* Export                                                  */
+    /* Export */
     /* --------------------------------------------------------------------- */
 
     public function export()
@@ -454,7 +459,7 @@ trait ManagesDevices
     }
 
     /* --------------------------------------------------------------------- */
-    /* Queries + render                                                       */
+    /* Queries + render */
     /* --------------------------------------------------------------------- */
 
     protected function typeId(): int

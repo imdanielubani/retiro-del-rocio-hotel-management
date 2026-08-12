@@ -11,7 +11,8 @@ void showMaintenanceNotificationToast(MaintenanceNotification notification) {
   final messenger = rootScaffoldMessengerKey.currentState;
   if (messenger == null) return;
 
-  final urgent = notification.category == MaintenanceNotificationCategory.urgentWorkOrder;
+  final urgent =
+      notification.category == MaintenanceNotificationCategory.urgentWorkOrder;
 
   messenger
     ..hideCurrentSnackBar()
@@ -23,7 +24,8 @@ void showMaintenanceNotificationToast(MaintenanceNotification notification) {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(
-            color: (urgent ? const Color(0xFFEF4444) : AppColors.gold).withValues(alpha: 0.25),
+            color: (urgent ? const Color(0xFFEF4444) : AppColors.gold)
+                .withValues(alpha: 0.25),
             width: 0.8,
           ),
         ),
@@ -35,7 +37,8 @@ void showMaintenanceNotificationToast(MaintenanceNotification notification) {
               height: 36,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: (urgent ? const Color(0xFFEF4444) : AppColors.gold).withValues(alpha: 0.12),
+                color: (urgent ? const Color(0xFFEF4444) : AppColors.gold)
+                    .withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -54,14 +57,21 @@ void showMaintenanceNotificationToast(MaintenanceNotification notification) {
                     notification.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: AppTypography.style(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     notification.message,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.style(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),

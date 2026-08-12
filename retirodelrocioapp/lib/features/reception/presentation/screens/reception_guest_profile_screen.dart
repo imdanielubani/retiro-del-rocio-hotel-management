@@ -44,8 +44,9 @@ class _ReceptionGuestProfileScreenState
     _future = _load();
   }
 
-  Future<ReceptionGuestProfile> _load() =>
-      ref.read(receptionRepositoryProvider).guestProfile(_token, widget.guestKey);
+  Future<ReceptionGuestProfile> _load() => ref
+      .read(receptionRepositoryProvider)
+      .guestProfile(_token, widget.guestKey);
 
   void _retry() => setState(() => _future = _load());
 
@@ -123,14 +124,18 @@ class _ReceptionGuestProfileScreenState
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.gold));
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.gold),
+            );
           }
           if (snapshot.hasError || !snapshot.hasData) {
             return Center(
               child: TextButton(
                 onPressed: _retry,
-                child: const Text('Could not load the guest. Retry',
-                    style: TextStyle(color: AppColors.gold)),
+                child: const Text(
+                  'Could not load the guest. Retry',
+                  style: TextStyle(color: AppColors.gold),
+                ),
               ),
             );
           }
@@ -170,7 +175,8 @@ class _ReceptionGuestProfileScreenState
                     padding: EdgeInsets.zero,
                     itemCount: p.history.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => ReceptionBookingRowCard(row: p.history[i]),
+                    itemBuilder: (_, i) =>
+                        ReceptionBookingRowCard(row: p.history[i]),
                   ),
           ),
         ),
@@ -189,7 +195,10 @@ class _ReceptionGuestProfileScreenState
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -219,7 +228,10 @@ class _ReceptionGuestProfileScreenState
                         ),
                         if (p.inHouse) ...[
                           const SizedBox(width: 10),
-                          const ReceptionStatusPill(status: 'checked_in', label: 'In-House'),
+                          const ReceptionStatusPill(
+                            status: 'checked_in',
+                            label: 'In-House',
+                          ),
                         ],
                       ],
                     ),
@@ -286,13 +298,25 @@ class _ReceptionGuestProfileScreenState
   Widget _statsRow(ReceptionGuestProfile p) {
     return Row(
       children: [
-        Expanded(child: _statTile('${p.stats.totalStays}', 'Stays', AppColors.gold)),
+        Expanded(
+          child: _statTile('${p.stats.totalStays}', 'Stays', AppColors.gold),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: _statTile('${p.stats.totalNights}', 'Nights', kReceptionBlue)),
+        Expanded(
+          child: _statTile('${p.stats.totalNights}', 'Nights', kReceptionBlue),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: _statTile(p.stats.totalSpendLabel, 'Spend', kReceptionGreen)),
+        Expanded(
+          child: _statTile(p.stats.totalSpendLabel, 'Spend', kReceptionGreen),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: _statTile(p.stats.firstSeenLabel ?? '—', 'Guest since', kReceptionSlate)),
+        Expanded(
+          child: _statTile(
+            p.stats.firstSeenLabel ?? '—',
+            'Guest since',
+            kReceptionSlate,
+          ),
+        ),
       ],
     );
   }
@@ -343,7 +367,7 @@ class _ReceptionGuestProfileScreenState
         (
           Icons.groups_rounded,
           'Usual party size',
-          '${prefs.usualPartySize} ${prefs.usualPartySize == 1 ? 'guest' : 'guests'}'
+          '${prefs.usualPartySize} ${prefs.usualPartySize == 1 ? 'guest' : 'guests'}',
         ),
       (
         Icons.flight_takeoff_rounded,
@@ -361,7 +385,11 @@ class _ReceptionGuestProfileScreenState
             if (i > 0) const SizedBox(height: 12),
             Row(
               children: [
-                Icon(rows[i].$1, size: 16, color: AppColors.gold.withValues(alpha: 0.8)),
+                Icon(
+                  rows[i].$1,
+                  size: 16,
+                  color: AppColors.gold.withValues(alpha: 0.8),
+                ),
                 const SizedBox(width: 12),
                 Text(
                   rows[i].$2,

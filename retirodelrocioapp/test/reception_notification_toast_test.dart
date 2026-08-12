@@ -34,32 +34,33 @@ void main() {
     );
   });
 
-  testWidgets('shows a dismissible toast with the notification title and message', (
-    tester,
-  ) async {
-    await pumpApp(tester);
+  testWidgets(
+    'shows a dismissible toast with the notification title and message',
+    (tester) async {
+      await pumpApp(tester);
 
-    showReceptionNotificationToast(
-      ReceptionNotification(
-        id: 1,
-        category: ReceptionNotificationCategory.payment,
-        title: 'Stay Extension Paid',
-        message: 'Daniel Ubani in Room 101 extended their stay.',
-        time: DateTime.now(),
-      ),
-    );
-    await tester.pump();
+      showReceptionNotificationToast(
+        ReceptionNotification(
+          id: 1,
+          category: ReceptionNotificationCategory.payment,
+          title: 'Stay Extension Paid',
+          message: 'Daniel Ubani in Room 101 extended their stay.',
+          time: DateTime.now(),
+        ),
+      );
+      await tester.pump();
 
-    expect(find.text('Stay Extension Paid'), findsOneWidget);
-    expect(
-      find.text('Daniel Ubani in Room 101 extended their stay.'),
-      findsOneWidget,
-    );
-    // A SnackBar, not a full-screen blocking overlay.
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.byType(Dialog), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.text('Stay Extension Paid'), findsOneWidget);
+      expect(
+        find.text('Daniel Ubani in Room 101 extended their stay.'),
+        findsOneWidget,
+      );
+      // A SnackBar, not a full-screen blocking overlay.
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('a second notification replaces the first rather than stacking', (
     tester,

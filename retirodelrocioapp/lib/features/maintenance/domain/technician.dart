@@ -9,6 +9,8 @@ class Technician {
   final int id;
   final String name;
 
-  factory Technician.fromJson(Map<String, dynamic> json) =>
-      Technician(id: (json['id'] as num?)?.toInt() ?? 0, name: json['name'] as String? ?? 'Technician');
+  factory Technician.fromJson(Map<String, dynamic> json) => Technician(
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name'] as String? ?? 'Technician',
+  );
 }

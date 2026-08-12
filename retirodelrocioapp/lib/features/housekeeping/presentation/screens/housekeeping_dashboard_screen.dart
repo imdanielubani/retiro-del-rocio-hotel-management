@@ -113,7 +113,7 @@ class _HousekeepingDashboardScreenState
     ref.watch(housekeepingNotificationsRealtimeProvider(_token));
     ref.watch(housekeepingNotificationChimeProvider(_token));
     ref.watch(staffChatChimeProvider(_token));
-    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.userId)));
     watchStaffIntercomCall(context, ref, widget.session);
 
     final overviewAsync = ref.watch(housekeepingOverviewProvider(_token));

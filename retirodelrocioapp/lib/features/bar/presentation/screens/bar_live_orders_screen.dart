@@ -25,7 +25,7 @@ class BarLiveOrdersScreen extends ConsumerStatefulWidget {
 
 class _BarLiveOrdersScreenState extends ConsumerState<BarLiveOrdersScreen> {
   String _search = '';
-  String _column = ''; // '' | new | preparing | served
+  String _column = ''; // '' | new | preparing | ready | served
 
   String get _token => widget.session.token;
 
@@ -90,6 +90,11 @@ class _BarLiveOrdersScreenState extends ConsumerState<BarLiveOrdersScreen> {
                 label: 'Preparing',
                 selected: _column == 'preparing',
                 onTap: () => setState(() => _column = 'preparing'),
+              ),
+              BarFilterChip(
+                label: 'Ready',
+                selected: _column == 'ready',
+                onTap: () => setState(() => _column = 'ready'),
               ),
               BarFilterChip(
                 label: 'Served',

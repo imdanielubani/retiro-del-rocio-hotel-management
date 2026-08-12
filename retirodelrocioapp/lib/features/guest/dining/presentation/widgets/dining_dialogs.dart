@@ -158,8 +158,10 @@ class _DiningPaymentDialogState extends State<_DiningPaymentDialog> {
                   _row(widget.itemsLabel, widget.subtotalLabel),
                   const SizedBox(height: 12),
                   _row('VAT (7.5%)', widget.vatLabel),
-                  const SizedBox(height: 12),
-                  _row('Room Service Fee', widget.serviceFeeLabel),
+                  if (widget.serviceFeeLabel != 'NGN 0') ...[
+                    const SizedBox(height: 12),
+                    _row('Room Service Fee', widget.serviceFeeLabel),
+                  ],
                   const SizedBox(height: 16),
                   Container(
                     height: 1,

@@ -25,7 +25,7 @@ Future<bool> handleMarkReady(
   if (!confirmed || !context.mounted) return false;
 
   try {
-    await ref.read(kitchenActionsProvider(token)).markServed(order.id);
+    await ref.read(kitchenActionsProvider(token)).markReady(order.id);
     return true;
   } on KitchenException catch (e) {
     if (context.mounted) _showFailure(context, e.message);

@@ -15,13 +15,17 @@ const String kAmbientVideoUrl =
 /// from the local file — so after the first launch it plays fully offline.
 /// Kept alive for the whole session so it loops and plays continuously across
 /// every screen without restarting.
-final ambientVideoProvider = FutureProvider<VideoPlayerController?>((ref) async {
+final ambientVideoProvider = FutureProvider<VideoPlayerController?>((
+  ref,
+) async {
   final cache = VideoCacheService();
 
   // Download-once → local file (offline on every subsequent launch).
   final file = await cache.getCachedVideo(kAmbientVideoUrl);
   if (file == null) {
-    debugPrint('AmbientVideo: not available yet (no cache/network) — fallback.');
+    debugPrint(
+      'AmbientVideo: not available yet (no cache/network) — fallback.',
+    );
     return null;
   }
 

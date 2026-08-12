@@ -499,6 +499,14 @@ $api->group(function () {
         Route::get('bar/bartenders', [BarController::class, 'bartenders'])
             ->name('api.v1.bar.bartenders');
 
+        Route::get('bar/reservations/{code}', [BarController::class, 'lookupReservation'])
+            ->name('api.v1.bar.reservations.lookup');
+        Route::post('bar/reservations/{reservation}/confirm', [BarController::class, 'confirmReservationToTab'])
+            ->middleware('throttle:30,1')->name('api.v1.bar.reservations.confirm');
+
+        Route::get('bar/bookings/in-house', [BarController::class, 'inHouseBookings'])
+            ->name('api.v1.bar.bookings.in-house');
+
         Route::get('bar/tabs', [BarController::class, 'tabs'])
             ->name('api.v1.bar.tabs');
         Route::get('bar/tabs/{tab}', [BarController::class, 'tabDetail'])
@@ -540,8 +548,10 @@ $api->group(function () {
             ->name('api.v1.kitchen.orders.show');
         Route::post('kitchen/orders/{order}/prepare', [KitchenController::class, 'markPreparing'])
             ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.prepare');
-        Route::post('kitchen/orders/{order}/serve', [KitchenController::class, 'markServed'])
+        Route::post('kitchen/orders/{order}/serve', [KitchenController::class, 'markReady'])
             ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.serve');
+        Route::post('kitchen/orders/{order}/eta', [KitchenController::class, 'setEta'])
+            ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.eta');
         Route::post('kitchen/orders/{order}/void-item', [KitchenController::class, 'voidItem'])
             ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.void-item');
         Route::post('kitchen/orders/{order}/assign', [KitchenController::class, 'assignOrder'])
@@ -565,21 +575,21 @@ $api->group(function () {
             ->whereNumber('notification')->name('api.v1.kitchen.notifications.read');
 
         // --- Staff Chat (shared by every staff tablet's Chat screen) ---
-        // Reception, Housekeeping, Maintenance and Security all message each
-        // other — and the Admin dashboard — through this one set of routes.
-        // The caller's own station is read off their JWT, never the URL.
+        // Every tablet role messages any other individual staff member — and
+        // any admin-portal user — through this one set of routes. The
+        // caller's own identity is read off their JWT, never the URL.
         Route::get('staff/chat/channels', [StaffChatController::class, 'channels'])
             ->name('api.v1.staff.chat.channels');
-        Route::get('staff/chat/channels/{role}/messages', [StaffChatController::class, 'messages'])
-            ->name('api.v1.staff.chat.channels.messages');
-        Route::post('staff/chat/channels/{role}/messages', [StaffChatController::class, 'send'])
-            ->middleware('throttle:30,1')->name('api.v1.staff.chat.channels.send');
-        Route::post('staff/chat/channels/{role}/typing', [StaffChatController::class, 'typing'])
-            ->middleware('throttle:60,1')->name('api.v1.staff.chat.channels.typing');
+        Route::get('staff/chat/channels/{contact}/messages', [StaffChatController::class, 'messages'])
+            ->whereNumber('contact')->name('api.v1.staff.chat.channels.messages');
+        Route::post('staff/chat/channels/{contact}/messages', [StaffChatController::class, 'send'])
+            ->whereNumber('contact')->middleware('throttle:30,1')->name('api.v1.staff.chat.channels.send');
+        Route::post('staff/chat/channels/{contact}/typing', [StaffChatController::class, 'typing'])
+            ->whereNumber('contact')->middleware('throttle:60,1')->name('api.v1.staff.chat.channels.typing');
 
         // --- Staff Intercom (shared by every staff tablet's Intercom screen) ---
-        // Voice-call signalling between any two stations — same as the guest
-        // ↔ Reception calls in GuestIntercomCallController/
+        // Voice-call signalling between any two individual staff members —
+        // same as the guest ↔ Reception calls in GuestIntercomCallController/
         // ReceptionIntercomCallController — all three write to the same
         // intercom_calls table. Once accepted, both sides fetch Agora
         // credentials for the call's voice channel.

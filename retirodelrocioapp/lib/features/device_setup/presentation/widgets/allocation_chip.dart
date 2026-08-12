@@ -21,7 +21,10 @@ class AllocationChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.goldAccent.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.goldAccent.withValues(alpha: 0.3), width: 0.8),
+        border: Border.all(
+          color: AppColors.goldAccent.withValues(alpha: 0.3),
+          width: 0.8,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

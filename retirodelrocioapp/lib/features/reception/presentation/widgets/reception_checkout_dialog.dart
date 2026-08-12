@@ -8,7 +8,8 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/reception/application/reception_providers.dart';
 import 'package:retirodelrocioapp/features/reception/data/reception_repository.dart';
 import 'package:retirodelrocioapp/features/reception/domain/reception_departure_readiness.dart';
-import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart' show kReceptionBlue, kReceptionGreen;
+import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart'
+    show kReceptionBlue, kReceptionGreen;
 
 const Color _red = Color(0xFFEF4444);
 
@@ -95,7 +96,9 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
       });
     }
     try {
-      final data = await ref.read(receptionActionsProvider(_token)).departureReadiness(widget.bookingId);
+      final data = await ref
+          .read(receptionActionsProvider(_token))
+          .departureReadiness(widget.bookingId);
       if (!mounted) return;
       setState(() {
         _data = data;
@@ -107,7 +110,8 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
       if (!silent) setState(() => _loadError = e.message);
     } catch (_) {
       if (!mounted) return;
-      if (!silent) setState(() => _loadError = 'Could not load checkout details.');
+      if (!silent)
+        setState(() => _loadError = 'Could not load checkout details.');
     }
   }
 
@@ -116,9 +120,13 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
   /// tablet follows — so the dialog unlocks itself the moment they mark it
   /// complete, without reception needing to close and reopen it.
   void _syncPolling() {
-    final pending = _data?.inspectionStatus == ReceptionInspectionStatus.pending;
+    final pending =
+        _data?.inspectionStatus == ReceptionInspectionStatus.pending;
     if (pending && _pollTimer == null) {
-      _pollTimer = Timer.periodic(const Duration(seconds: 6), (_) => _refresh(silent: true));
+      _pollTimer = Timer.periodic(
+        const Duration(seconds: 6),
+        (_) => _refresh(silent: true),
+      );
     } else if (!pending && _pollTimer != null) {
       _pollTimer?.cancel();
       _pollTimer = null;
@@ -134,13 +142,18 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
       _actionError = null;
     });
     try {
-      final data = await ref.read(receptionActionsProvider(_token)).settleBill(widget.bookingId, method);
+      final data = await ref
+          .read(receptionActionsProvider(_token))
+          .settleBill(widget.bookingId, method);
       if (mounted) setState(() => _data = data);
       _syncPolling();
     } on ReceptionException catch (e) {
       if (mounted) setState(() => _actionError = e.message);
     } catch (_) {
-      if (mounted) setState(() => _actionError = 'Something went wrong. Please try again.');
+      if (mounted)
+        setState(
+          () => _actionError = 'Something went wrong. Please try again.',
+        );
     } finally {
       if (mounted) setState(() => _settlingBill = false);
     }
@@ -152,13 +165,18 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
       _actionError = null;
     });
     try {
-      final data = await ref.read(receptionActionsProvider(_token)).requestInspection(widget.bookingId);
+      final data = await ref
+          .read(receptionActionsProvider(_token))
+          .requestInspection(widget.bookingId);
       if (mounted) setState(() => _data = data);
       _syncPolling();
     } on ReceptionException catch (e) {
       if (mounted) setState(() => _actionError = e.message);
     } catch (_) {
-      if (mounted) setState(() => _actionError = 'Something went wrong. Please try again.');
+      if (mounted)
+        setState(
+          () => _actionError = 'Something went wrong. Please try again.',
+        );
     } finally {
       if (mounted) setState(() => _requestingInspection = false);
     }
@@ -170,7 +188,9 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
       _actionError = null;
     });
     try {
-      await ref.read(receptionActionsProvider(_token)).checkOut(widget.bookingId);
+      await ref
+          .read(receptionActionsProvider(_token))
+          .checkOut(widget.bookingId);
       if (mounted) Navigator.of(context).pop(true);
     } on ReceptionException catch (e) {
       setState(() => _actionError = e.message);
@@ -184,7 +204,10 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final maxHeight = (media.size.height - media.viewInsets.bottom - 48).clamp(280.0, 640.0);
+    final maxHeight = (media.size.height - media.viewInsets.bottom - 48).clamp(
+      280.0,
+      640.0,
+    );
 
     return Dialog(
       backgroundColor: const Color(0xFF161616),
@@ -205,7 +228,11 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
                   child: _loading
                       ? const Padding(
                           padding: EdgeInsets.symmetric(vertical: 40),
-                          child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.gold,
+                            ),
+                          ),
                         )
                       : (_loadError != null || _data == null)
                       ? _loadFailed()
@@ -214,7 +241,10 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
               ),
               if (_actionError != null) ...[
                 const SizedBox(height: 12),
-                Text(_actionError!, style: AppTypography.style(color: _red, fontSize: 13)),
+                Text(
+                  _actionError!,
+                  style: AppTypography.style(color: _red, fontSize: 13),
+                ),
               ],
               const SizedBox(height: 20),
               _footer(),
@@ -235,12 +265,22 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
             children: [
               Text(
                 'Check Out',
-                style: AppTypography.style(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                [widget.guestName, if ((widget.roomLabel ?? '').isNotEmpty) widget.roomLabel!].join(' · '),
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+                [
+                  widget.guestName,
+                  if ((widget.roomLabel ?? '').isNotEmpty) widget.roomLabel!,
+                ].join(' · '),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -270,7 +310,10 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
           Text(
             _loadError ?? 'Could not load checkout details.',
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 12),
           TextButton(
@@ -323,12 +366,19 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
                   children: [
                     Text(
                       'Outstanding balance',
-                      style: AppTypography.style(color: _red, fontSize: 13, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: _red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       '${data.dueLabel} must be settled before this guest can check out.',
-                      style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 12.5),
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12.5,
+                      ),
                     ),
                   ],
                 ),
@@ -350,7 +400,8 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final method in ReceptionDeskPaymentMethod.values) _methodChip(method),
+              for (final method in ReceptionDeskPaymentMethod.values)
+                _methodChip(method),
             ],
           ),
           const SizedBox(height: 10),
@@ -358,22 +409,31 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
             width: double.infinity,
             height: 36,
             child: Material(
-              color: _paymentMethod != null ? AppColors.gold : Colors.white.withValues(alpha: 0.08),
+              color: _paymentMethod != null
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
               child: InkWell(
-                onTap: (_paymentMethod != null && !_settlingBill) ? _settleBill : null,
+                onTap: (_paymentMethod != null && !_settlingBill)
+                    ? _settleBill
+                    : null,
                 borderRadius: BorderRadius.circular(10),
                 child: Center(
                   child: _settlingBill
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
                         )
                       : Text(
                           'Mark as Paid',
                           style: AppTypography.style(
-                            color: _paymentMethod != null ? Colors.black : Colors.white.withValues(alpha: 0.4),
+                            color: _paymentMethod != null
+                                ? Colors.black
+                                : Colors.white.withValues(alpha: 0.4),
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
@@ -390,24 +450,32 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
   Widget _methodChip(ReceptionDeskPaymentMethod method) {
     final selected = _paymentMethod == method;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.05),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
-        onTap: _settlingBill ? null : () => setState(() => _paymentMethod = method),
+        onTap: _settlingBill
+            ? null
+            : () => setState(() => _paymentMethod = method),
         borderRadius: BorderRadius.circular(999),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.1),
               width: 0.8,
             ),
           ),
           child: Text(
             method.label,
             style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.65),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.65),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -458,7 +526,10 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
         decoration: BoxDecoration(
           color: AppColors.gold.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.gold.withValues(alpha: 0.25), width: 0.8),
+          border: Border.all(
+            color: AppColors.gold.withValues(alpha: 0.25),
+            width: 0.8,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,7 +537,11 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.meeting_room_outlined, size: 16, color: AppColors.gold),
+                const Icon(
+                  Icons.meeting_room_outlined,
+                  size: 16,
+                  color: AppColors.gold,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -474,12 +549,19 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
                     children: [
                       Text(
                         'Room inspection needed',
-                        style: AppTypography.style(color: AppColors.gold, fontSize: 13, fontWeight: FontWeight.w700),
+                        style: AppTypography.style(
+                          color: AppColors.gold,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         'Ask housekeeping to inspect the room before this guest leaves.',
-                        style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 12.5),
+                        style: AppTypography.style(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 12.5,
+                        ),
                       ),
                     ],
                   ),
@@ -501,11 +583,18 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
                           )
                         : Text(
                             'Request Inspection',
-                            style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w700),
+                            style: AppTypography.style(
+                              color: Colors.black,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                   ),
                 ),
@@ -519,7 +608,10 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
         decoration: BoxDecoration(
           color: kReceptionBlue.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: kReceptionBlue.withValues(alpha: 0.25), width: 0.8),
+          border: Border.all(
+            color: kReceptionBlue.withValues(alpha: 0.25),
+            width: 0.8,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -527,7 +619,10 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
             const SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: kReceptionBlue),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: kReceptionBlue,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -536,12 +631,19 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
                 children: [
                   Text(
                     'Waiting for housekeeping',
-                    style: AppTypography.style(color: kReceptionBlue, fontSize: 13, fontWeight: FontWeight.w700),
+                    style: AppTypography.style(
+                      color: kReceptionBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     'Housekeeping has been notified — this unlocks the moment they clear the room.',
-                    style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 12.5),
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 12.5,
+                    ),
                   ),
                 ],
               ),
@@ -568,10 +670,14 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: muted ? Colors.white.withValues(alpha: 0.03) : color.withValues(alpha: 0.08),
+        color: muted
+            ? Colors.white.withValues(alpha: 0.03)
+            : color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: muted ? Colors.white.withValues(alpha: 0.08) : color.withValues(alpha: 0.25),
+          color: muted
+              ? Colors.white.withValues(alpha: 0.08)
+              : color.withValues(alpha: 0.25),
           width: 0.8,
         ),
       ),
@@ -586,12 +692,19 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
               children: [
                 Text(
                   title,
-                  style: AppTypography.style(color: color, fontSize: 13, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   body,
-                  style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 12.5),
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 12.5,
+                  ),
                 ),
               ],
             ),
@@ -609,12 +722,17 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),
           child: Text(
             'Cancel',
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 14,
+            ),
           ),
         ),
         const Spacer(),
         Material(
-          color: canSubmit ? AppColors.gold : Colors.white.withValues(alpha: 0.08),
+          color: canSubmit
+              ? AppColors.gold
+              : Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
           child: InkWell(
             onTap: canSubmit ? _submit : null,
@@ -626,12 +744,17 @@ class _CheckOutDialogState extends ConsumerState<_CheckOutDialog> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
                     )
                   : Text(
                       'Check Out',
                       style: AppTypography.style(
-                        color: canSubmit ? Colors.black : Colors.white.withValues(alpha: 0.4),
+                        color: canSubmit
+                            ? Colors.black
+                            : Colors.white.withValues(alpha: 0.4),
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),

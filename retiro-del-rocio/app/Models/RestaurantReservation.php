@@ -188,4 +188,31 @@ class RestaurantReservation extends Model
             default => 'bg-[#f3f4f6] text-[#6b7280]',
         };
     }
+
+    /**
+     * The Bar Tablet's reservation lookup result — a waiter types in the
+     * code a walk-in gives them at the door, sees this, and (if still
+     * `confirmed`) pushes it straight into a tab.
+     */
+    public function toBarLookupArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'code' => $this->code,
+            'area' => $this->area,
+            'area_label' => $this->areaLabel(),
+            'table_label' => $this->table_label,
+            'floor_label' => $this->isLounge() ? $this->floorLabel() : null,
+            'occasion' => $this->occasion,
+            'guests' => $this->guests,
+            'guests_label' => $this->guestsLabel(),
+            'reserved_date_label' => optional($this->reserved_date)->format('D, M j, Y'),
+            'reserved_time_label' => $this->timeLabel(),
+            'customer_name' => $this->customer_name,
+            'customer_phone' => $this->customer_phone,
+            'status' => $this->status,
+            'status_label' => $this->statusLabel(),
+            'can_open_tab' => $this->status === 'confirmed',
+        ];
+    }
 }

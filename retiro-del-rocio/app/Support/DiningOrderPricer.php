@@ -15,13 +15,18 @@ use App\Models\MenuItem;
  */
 class DiningOrderPricer
 {
-    /** The flat room-service / table fee applied to every dining order. */
-    public const SERVICE_FEE = 1000;
+    /**
+     * No flat service fee — VAT is the only markup on top of the subtotal.
+     * Kept as a named constant (rather than removing `service_fee`
+     * everywhere) since the field/column/presenters are still shared with
+     * historical orders that were charged the old ₦1,000 flat fee.
+     */
+    public const SERVICE_FEE = 0;
 
     /**
      * Price a cart of menu items: each item's price is read fresh from the
      * database (never trusted from the client) and snapshotted onto the
-     * order, plus VAT (7.5%, on the subtotal) and the flat service fee.
+     * order, plus VAT (7.5%, on the subtotal).
      *
      * @param  array<int, array{menu_item_id:int, qty:int, note?:?string}>  $itemsInput
      * @return array{lineItems: array, subtotal: int, vat: int, serviceFee: int, total: int, itemCount: int, hasFood: bool, hasDrinks: bool}

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retirodelrocioapp/core/utils/resume_refresher.dart';
 import 'package:retirodelrocioapp/features/intercom_call/data/intercom_call_repository.dart';
 import 'package:retirodelrocioapp/features/intercom_call/domain/intercom_call.dart';
 
@@ -27,10 +28,15 @@ class GuestIntercomCallNotifier extends Notifier<IntercomCall?> {
 
   final String token;
   Timer? _poll;
+  ResumeRefresher? _resumeRefresher;
 
   @override
   IntercomCall? build() {
-    ref.onDispose(() => _poll?.cancel());
+    _resumeRefresher = ResumeRefresher(() => unawaited(refresh()));
+    ref.onDispose(() {
+      _poll?.cancel();
+      _resumeRefresher?.dispose();
+    });
     _poll = Timer.periodic(
       const Duration(seconds: 4),
       (_) => unawaited(refresh()),

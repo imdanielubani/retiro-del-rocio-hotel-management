@@ -5,7 +5,10 @@ import 'package:retirodelrocioapp/features/maintenance/presentation/widgets/main
 /// "Close Order" — confirms marking a work order complete before it happens,
 /// since completion is a one-way step (there's no re-open action). Returns
 /// true if the technician confirmed.
-Future<bool> showCloseOrderDialog(BuildContext context, {required String orderTitle}) async {
+Future<bool> showCloseOrderDialog(
+  BuildContext context, {
+  required String orderTitle,
+}) async {
   final confirmed = await showDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -22,12 +25,20 @@ Future<bool> showCloseOrderDialog(BuildContext context, {required String orderTi
             children: [
               Row(
                 children: [
-                  const Icon(Icons.check_circle_outline_rounded, color: kMtGreen, size: 22),
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: kMtGreen,
+                    size: 22,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Close this order?',
-                      style: AppTypography.style(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -35,7 +46,11 @@ Future<bool> showCloseOrderDialog(BuildContext context, {required String orderTi
               const SizedBox(height: 12),
               Text(
                 '"$orderTitle" will be marked complete. This can\'t be undone from here.',
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 14, height: 1.4),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 20),
               Row(
@@ -43,7 +58,13 @@ Future<bool> showCloseOrderDialog(BuildContext context, {required String orderTi
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: Text('Cancel', style: AppTypography.style(color: Colors.white70, fontSize: 14)),
+                      child: Text(
+                        'Cancel',
+                        style: AppTypography.style(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -59,7 +80,11 @@ Future<bool> showCloseOrderDialog(BuildContext context, {required String orderTi
                           alignment: Alignment.center,
                           child: Text(
                             'Close Order',
-                            style: AppTypography.style(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w700),
+                            style: AppTypography.style(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),

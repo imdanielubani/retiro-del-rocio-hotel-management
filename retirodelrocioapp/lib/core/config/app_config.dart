@@ -34,17 +34,17 @@ class HotelInfo {
   final String? checkOutLabel;
 
   factory HotelInfo.fromJson(Map<String, dynamic> json) => HotelInfo(
-        name: (json['name'] as String?) ?? 'Retiro Del Rocio',
-        tagline: json['tagline'] as String?,
-        address: json['address'] as String?,
-        city: json['city'] as String?,
-        country: json['country'] as String?,
-        phone: json['phone'] as String?,
-        email: json['email'] as String?,
-        description: json['description'] as String?,
-        checkInLabel: json['check_in_label'] as String?,
-        checkOutLabel: json['check_out_label'] as String?,
-      );
+    name: (json['name'] as String?) ?? 'Retiro Del Rocio',
+    tagline: json['tagline'] as String?,
+    address: json['address'] as String?,
+    city: json['city'] as String?,
+    country: json['country'] as String?,
+    phone: json['phone'] as String?,
+    email: json['email'] as String?,
+    description: json['description'] as String?,
+    checkInLabel: json['check_in_label'] as String?,
+    checkOutLabel: json['check_out_label'] as String?,
+  );
 }
 
 /// Everything the tablet needs once, at launch, rather than on every poll.
@@ -60,10 +60,12 @@ class AppConfig {
 /// policy and where to listen for live room updates. Kept alive for the session;
 /// a failure resolves to an empty config rather than blocking the UI.
 final appConfigProvider = FutureProvider<AppConfig>((ref) async {
-  final dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 8),
-    receiveTimeout: const Duration(seconds: 8),
-  ));
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 8),
+    ),
+  );
 
   try {
     final response = await dio.getUri<Map<String, dynamic>>(

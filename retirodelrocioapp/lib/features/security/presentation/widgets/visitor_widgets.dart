@@ -139,28 +139,32 @@ class VisitorRow extends StatelessWidget {
   }
 
   static Widget _avatar(String initials) => Container(
-        width: 49,
-        height: 49,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          initials,
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
+    width: 49,
+    height: 49,
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      initials,
+      style: AppTypography.style(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 /// A pending visitor-pass request in the right column (Figma 254:584): guest,
 /// status chip, pass codes and a Verify Pass action.
 class VisitorPassRequestCard extends StatelessWidget {
-  const VisitorPassRequestCard({super.key, required this.request, this.onVerify});
+  const VisitorPassRequestCard({
+    super.key,
+    required this.request,
+    this.onVerify,
+  });
 
   final VisitorPassRequest request;
   final VoidCallback? onVerify;
@@ -226,10 +230,7 @@ class VisitorPassRequestCard extends StatelessWidget {
           const SizedBox(height: 12),
           _contactBlock(),
         ],
-        if (pending) ...[
-          const SizedBox(height: 15),
-          _verifyButton(),
-        ],
+        if (pending) ...[const SizedBox(height: 15), _verifyButton()],
       ],
     );
   }
@@ -249,7 +250,8 @@ class VisitorPassRequestCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          if ((request.email ?? '').isNotEmpty) _contactRow('Email', request.email!),
+          if ((request.email ?? '').isNotEmpty)
+            _contactRow('Email', request.email!),
           if ((request.whatsapp ?? '').isNotEmpty)
             _contactRow('WhatsApp Number', request.whatsapp!),
           if ((request.submittedLabel ?? '').isNotEmpty)
@@ -337,7 +339,8 @@ class VisitorPassRequestCard extends StatelessWidget {
               child: Text(
                 [
                   if (request.roomNumber != null) 'Room ${request.roomNumber}',
-                  if (request.isVerified && (request.arrivalLabel ?? '').isNotEmpty)
+                  if (request.isVerified &&
+                      (request.arrivalLabel ?? '').isNotEmpty)
                     request.arrivalLabel!
                   else if ((request.submittedLabel ?? '').isNotEmpty)
                     request.submittedLabel!,
@@ -449,39 +452,39 @@ class VisitorPassRequestCard extends StatelessWidget {
   }
 
   static Widget _avatar(String initials) => Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          initials,
-          style: AppTypography.style(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      initials,
+      style: AppTypography.style(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 Widget _chip(String label, Color color) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.style(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
+  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+  decoration: BoxDecoration(
+    color: color.withValues(alpha: 0.12),
+    borderRadius: BorderRadius.circular(999),
+  ),
+  child: Text(
+    label,
+    style: AppTypography.style(
+      color: color,
+      fontSize: 9,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+);
 
 /// A quiet placeholder for a list section that has nothing in it yet.
 class SectionEmpty extends StatelessWidget {

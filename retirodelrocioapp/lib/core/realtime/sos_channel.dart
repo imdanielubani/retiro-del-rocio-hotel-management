@@ -54,12 +54,18 @@ class SosChannel {
   /// (or, on a `reception` subscription, whenever a booking changes), and
   /// [onNotification] whenever a new notification lands (defaults to a no-op
   /// for callers that don't care, e.g. the security tablet).
-  void connect({required VoidCallback onChanged, VoidCallback? onNotification}) {
+  void connect({
+    required VoidCallback onChanged,
+    VoidCallback? onNotification,
+  }) {
     _closed = false;
     unawaited(_open(onChanged, onNotification ?? () {}));
   }
 
-  Future<void> _open(VoidCallback onChanged, VoidCallback onNotification) async {
+  Future<void> _open(
+    VoidCallback onChanged,
+    VoidCallback onNotification,
+  ) async {
     if (_closed) return;
 
     try {
@@ -81,7 +87,9 @@ class SosChannel {
 
       // Frames written before the handshake completes are lost.
       await socket.ready;
-      debugPrint('SosChannel: connected to ${config.socketUri.host} — awaiting handshake.');
+      debugPrint(
+        'SosChannel: connected to ${config.socketUri.host} — awaiting handshake.',
+      );
     } catch (error) {
       debugPrint('SosChannel: connect failed — $error');
       _scheduleReconnect(onChanged, onNotification);

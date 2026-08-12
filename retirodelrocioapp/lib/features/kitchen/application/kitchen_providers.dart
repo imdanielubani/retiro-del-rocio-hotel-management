@@ -122,10 +122,18 @@ class KitchenActions {
     return order;
   }
 
-  Future<KitchenOrder> markServed(int orderId) async {
+  Future<KitchenOrder> markReady(int orderId) async {
     final order = await _ref
         .read(kitchenRepositoryProvider)
-        .markServed(_token, orderId);
+        .markReady(_token, orderId);
+    _refreshBoard(orderId);
+    return order;
+  }
+
+  Future<KitchenOrder> setEta(int orderId, int minutes) async {
+    final order = await _ref
+        .read(kitchenRepositoryProvider)
+        .setEta(_token, orderId, minutes);
     _refreshBoard(orderId);
     return order;
   }

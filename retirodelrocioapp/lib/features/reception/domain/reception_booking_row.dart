@@ -52,7 +52,8 @@ class ReceptionBookingRow {
         status: json['status'] as String? ?? '',
         statusLabel: json['status_label'] as String? ?? '',
         isWalkIn: json['is_walk_in'] as bool? ?? false,
-        originLabel: (json['origin_label'] as String?)?.trim().isNotEmpty == true
+        originLabel:
+            (json['origin_label'] as String?)?.trim().isNotEmpty == true
             ? json['origin_label'] as String
             : null,
       );

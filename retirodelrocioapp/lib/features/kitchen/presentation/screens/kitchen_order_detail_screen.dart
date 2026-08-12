@@ -9,6 +9,7 @@ import 'package:retirodelrocioapp/features/kitchen/application/kitchen_providers
 import 'package:retirodelrocioapp/features/kitchen/data/kitchen_repository.dart';
 import 'package:retirodelrocioapp/features/kitchen/domain/kitchen_order.dart';
 import 'package:retirodelrocioapp/features/kitchen/presentation/dialogs/mark_ready_dialog.dart';
+import 'package:retirodelrocioapp/features/kitchen/presentation/dialogs/set_eta_dialog.dart';
 import 'package:retirodelrocioapp/features/kitchen/presentation/dialogs/void_item_dialog.dart';
 import 'package:retirodelrocioapp/features/kitchen/presentation/kitchen_navigation.dart';
 import 'package:retirodelrocioapp/features/kitchen/presentation/widgets/assign_station_sheet.dart';
@@ -67,6 +68,20 @@ class _KitchenOrderDetailScreenState
     setState(() => _busy = true);
     await handleMarkReady(context, ref, _token, order);
     if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _setEta(KitchenOrder order) async {
+    final minutes = await showSetEtaDialog(context, order);
+    if (minutes == null || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(kitchenActionsProvider(_token)).setEta(order.id, minutes);
+    } on KitchenException catch (e) {
+      _showFailure(e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _voidItem(KitchenOrder order, int index) async {
@@ -268,6 +283,62 @@ class _KitchenOrderDetailScreenState
               ],
             ),
           ),
+          if (order.boardColumn == 'new' ||
+              order.boardColumn == 'preparing') ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color:
+                    (order.estimatedReadyOverdue
+                            ? const Color(0xFFEF4444)
+                            : AppColors.gold)
+                        .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 18,
+                    color: order.estimatedReadyOverdue
+                        ? const Color(0xFFEF4444)
+                        : AppColors.gold,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      order.estimatedReadyLabel == null
+                          ? 'No ready time set yet.'
+                          : order.estimatedReadyOverdue
+                          ? 'Running late — was due ${order.estimatedReadyLabel}'
+                          : 'Ready by ${order.estimatedReadyLabel}',
+                      style: AppTypography.style(
+                        color: order.estimatedReadyOverdue
+                            ? const Color(0xFFEF4444)
+                            : Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : () => _setEta(order),
+                    child: Text(
+                      order.estimatedReadyLabel == null
+                          ? 'Add Time'
+                          : 'Increase Time',
+                      style: AppTypography.style(
+                        color: AppColors.gold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [

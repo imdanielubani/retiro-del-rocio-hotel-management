@@ -60,8 +60,9 @@ void main() {
       ProviderScope(
         overrides: [
           ambientVideoProvider.overrideWith((ref) async => null),
-          roomStatusProvider
-              .overrideWith((ref, token) async => ref.watch(liveStatus)),
+          roomStatusProvider.overrideWith(
+            (ref, token) async => ref.watch(liveStatus),
+          ),
           weatherProvider.overrideWith(
             (ref) async => const Weather(
               temperatureC: 34,
@@ -87,8 +88,9 @@ void main() {
     expect(find.text('Explore'), findsNothing);
   });
 
-  testWidgets('a check-in shows the room as occupied, behind Explore',
-      (tester) async {
+  testWidgets('a check-in shows the room as occupied, behind Explore', (
+    tester,
+  ) async {
     await pumpWelcome(tester, occupied);
 
     // The tablet reports the check-in but does not jump into the guest screens.

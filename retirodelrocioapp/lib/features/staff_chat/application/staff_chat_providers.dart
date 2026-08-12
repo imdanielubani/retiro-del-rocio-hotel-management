@@ -15,7 +15,7 @@ final staffChatRepositoryProvider = Provider<StaffChatRepository>(
   (ref) => StaffChatRepository(),
 );
 
-/// Every other station's channel, keyed by this staffer's own token.
+/// Every other staff member's channel, keyed by this staffer's own token.
 /// Re-polled every 10 seconds — brisk enough that a new message shows up on
 /// the list without needing to open the thread to find it.
 final staffChatChannelsProvider =
@@ -28,13 +28,13 @@ final staffChatChannelsProvider =
       return repo.channels(token);
     });
 
-/// One channel's thread, keyed by (token, otherRole). Re-polled every 6
+/// One channel's thread, keyed by (token, contactId). Re-polled every 6
 /// seconds while the thread is open.
 final staffChatThreadProvider =
-    FutureProvider.family<List<StaffChatMessage>, (String token, String role)>((
-      ref,
-      key,
-    ) async {
+    FutureProvider.family<
+      List<StaffChatMessage>,
+      (String token, int contactId)
+    >((ref, key) async {
       final repo = ref.watch(staffChatRepositoryProvider);
 
       final timer = Timer(const Duration(seconds: 6), ref.invalidateSelf);
@@ -43,7 +43,7 @@ final staffChatThreadProvider =
       return repo.messages(key.$1, key.$2);
     });
 
-/// True while any station's channel has an unread message — drives the dot
+/// True while any contact's channel has an unread message — drives the dot
 /// on the Chat icon in a tablet's top bar, the same way each module's own
 /// notification bell lights up.
 final staffChatHasUnreadProvider = Provider.family<bool, String>((ref, token) {
@@ -65,7 +65,7 @@ final staffChatChimeProvider = Provider.family<void, String>((ref, token) {
   final chime = NotificationChime();
   ref.onDispose(chime.dispose);
 
-  Map<String, int>? previousUnread;
+  Map<int, int>? previousUnread;
 
   ref.listen<AsyncValue<List<StaffChannel>>>(staffChatChannelsProvider(token), (
     previous,
@@ -74,11 +74,11 @@ final staffChatChimeProvider = Provider.family<void, String>((ref, token) {
     final channels = next.value;
     if (channels == null) return;
 
-    final unread = {for (final c in channels) c.role: c.unreadCount};
+    final unread = {for (final c in channels) c.userId: c.unreadCount};
     final known = previousUnread;
     if (known != null) {
       final arrived = channels.where(
-        (c) => c.unreadCount > (known[c.role] ?? 0),
+        (c) => c.unreadCount > (known[c.userId] ?? 0),
       );
       if (arrived.isNotEmpty) {
         unawaited(chime.play());
@@ -91,24 +91,22 @@ final staffChatChimeProvider = Provider.family<void, String>((ref, token) {
   }, fireImmediately: true);
 });
 
-/// Subscribes to this station's own Staff Chat inbox (`staff-chat-inbox.
-/// {myRole}`) and refreshes the instant another station's message actually
-/// lands — no more waiting on [staffChatChannelsProvider]'s poll tick.
-/// Refreshes the channel list unconditionally, and the sender's own thread
-/// too so a conversation that's already open updates immediately rather
-/// than up to 6 seconds later. [staffChatChimeProvider] reacts to whichever
-/// of those refreshes actually changes something, so the chime/toast fire
-/// off this the same way they already do off the poll — pure accelerator,
-/// not a replacement: if no broadcaster is configured, or the socket drops,
-/// the periodic polls still carry every screen. Watched from the same
-/// mount points as [staffChatChimeProvider] so the subscription is live
-/// wherever the user is in the module.
+/// Subscribes to this staffer's own Staff Chat inbox
+/// (`staff-chat-inbox.user.{myUserId}`) and refreshes the instant another
+/// person's message actually lands — no more waiting on
+/// [staffChatChannelsProvider]'s poll tick. Refreshes the channel list
+/// unconditionally, and the sender's own thread too so a conversation
+/// that's already open updates immediately rather than up to 6 seconds
+/// later. [staffChatChimeProvider] reacts to whichever of those refreshes
+/// actually changes something, so the chime/toast fire off this the same
+/// way they already do off the poll — pure accelerator, not a replacement:
+/// if no broadcaster is configured, or the socket drops, the periodic polls
+/// still carry every screen. Watched from the same mount points as
+/// [staffChatChimeProvider] so the subscription is live wherever the user
+/// is in the module.
 final staffChatRealtimeProvider =
-    FutureProvider.family<void, (String token, String myRole)>((
-      ref,
-      key,
-    ) async {
-      final (token, myRole) = key;
+    FutureProvider.family<void, (String token, int myUserId)>((ref, key) async {
+      final (token, myUserId) = key;
 
       final config = (await ref.watch(appConfigProvider.future)).realtime;
       if (config == null) {
@@ -120,12 +118,15 @@ final staffChatRealtimeProvider =
 
       final channel = StaffChatInboxChannel(
         config: config,
-        channel: 'staff-chat-inbox.$myRole',
+        channel: 'staff-chat-inbox.user.$myUserId',
       );
       channel.connect(
-        onMessage: (from) {
+        onMessage: (fromUserId) {
           ref.invalidate(staffChatChannelsProvider(token));
-          ref.invalidate(staffChatThreadProvider((token, from)));
+          final from = int.tryParse(fromUserId);
+          if (from != null) {
+            ref.invalidate(staffChatThreadProvider((token, from)));
+          }
         },
       );
 
@@ -138,38 +139,38 @@ class StaffChatActions {
   final Ref _ref;
   final String _token;
 
-  Future<StaffChatMessage> send(String role, String body) async {
+  Future<StaffChatMessage> send(int contactId, String body) async {
     final message = await _ref
         .read(staffChatRepositoryProvider)
-        .send(_token, role, body);
-    _ref.invalidate(staffChatThreadProvider((_token, role)));
+        .send(_token, contactId, body);
+    _ref.invalidate(staffChatThreadProvider((_token, contactId)));
     _ref.invalidate(staffChatChannelsProvider(_token));
     return message;
   }
 
-  Future<void> sendTyping(String role) =>
-      _ref.read(staffChatRepositoryProvider).sendTyping(_token, role);
+  Future<void> sendTyping(int contactId) =>
+      _ref.read(staffChatRepositoryProvider).sendTyping(_token, contactId);
 }
 
 final staffChatActionsProvider = Provider.family<StaffChatActions, String>(
   (ref, token) => StaffChatActions(ref, token),
 );
 
-/// True while the other station in ([myRole], [otherRole])'s channel is
+/// True while the other person in (myUserId, otherUserId)'s channel is
 /// (recently) typing — opens a transient realtime subscription to that
 /// channel for as long as the thread panel is showing it, auto-clearing a
 /// few seconds after the last signal.
 class StaffChatTypingNotifier extends Notifier<bool> {
-  StaffChatTypingNotifier(this.myRole, this.otherRole);
+  StaffChatTypingNotifier(this.myUserId, this.otherUserId);
 
-  final String myRole;
-  final String otherRole;
+  final int myUserId;
+  final int otherUserId;
 
   NamedTypingChannel? _channel;
   Timer? _timeout;
 
   String get _channelKey {
-    final pair = [myRole, otherRole]..sort();
+    final pair = [myUserId, otherUserId]..sort();
     return pair.join('_');
   }
 
@@ -196,7 +197,7 @@ class StaffChatTypingNotifier extends Notifier<bool> {
       onTyping: (from) {
         // Our own typing signal echoes back on this same channel; only the
         // other side's is worth showing here.
-        if (from != otherRole) return;
+        if (int.tryParse(from) != otherUserId) return;
 
         state = true;
         _timeout?.cancel();
@@ -210,5 +211,5 @@ final staffChatTypingProvider =
     NotifierProvider.family<
       StaffChatTypingNotifier,
       bool,
-      (String myRole, String otherRole)
+      (int myUserId, int otherUserId)
     >((arg) => StaffChatTypingNotifier(arg.$1, arg.$2));

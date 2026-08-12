@@ -7,13 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * An open running balance at the bar — the Bar Tablet's POS groups one or
  * more {@see DiningOrder} rows under a tab until the waiter/bartender closes
- * and settles it. A tab has no room booking (unlike a guest-tablet dining
- * order); it's a walk-in table/seat at the bar.
+ * and settles it. A tab either comes from a confirmed
+ * {@see RestaurantReservation} (a walk-in who booked a table/lounge ahead of
+ * arriving) or is opened directly for a guest already seated at the bar; if
+ * settled with "Charge to Room" it also carries the in-house {@see Booking}
+ * it was charged against.
  */
 class BarTab extends Model
 {
     protected $fillable = [
-        'code', 'table_label', 'guest_name', 'is_vip', 'assigned_to', 'opened_by',
+        'code', 'restaurant_reservation_id', 'booking_id', 'table_label', 'guest_name',
+        'is_vip', 'assigned_to', 'opened_by',
         'status', 'subtotal', 'vat', 'service_fee', 'total',
         'payment_method', 'payment_status', 'settled_at', 'notes',
     ];
@@ -42,6 +46,17 @@ class BarTab extends Model
     public function openedBy()
     {
         return $this->belongsTo(User::class, 'opened_by');
+    }
+
+    public function reservation()
+    {
+        return $this->belongsTo(RestaurantReservation::class, 'restaurant_reservation_id');
+    }
+
+    /** The in-house booking this tab was charged to, if settled "Charge to Room". */
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class);
     }
 
     public function scopeOpen($query)
@@ -82,23 +97,36 @@ class BarTab extends Model
         ]);
     }
 
-    /** Close and settle the tab, cascading payment to every order on it. */
-    public function settle(string $paymentMethod): bool
+    /**
+     * Close and settle the tab, cascading payment to every order on it.
+     *
+     * "Charge to Room" doesn't collect payment now — it stakes a claim on the
+     * guest's room folio, settled later at checkout — so it stays
+     * `payment_status: pending` and stamps `booking_id` on every order
+     * (matching the `room_charge` convention {@see ComputesBookingBill}
+     * already reads for Spa/Cinema/Dining) instead of `paid_at`.
+     */
+    public function settle(string $paymentMethod, ?int $bookingId = null): bool
     {
         if ($this->status !== 'open') {
             return false;
         }
 
+        $isRoomCharge = $paymentMethod === 'room_charge';
+        $paymentStatus = $isRoomCharge ? 'pending' : 'paid';
+
         $this->orders()->where('status', '!=', 'cancelled')->update([
-            'payment_status' => 'paid',
+            'payment_status' => $paymentStatus,
             'payment_method' => $paymentMethod,
-            'paid_at' => now(),
+            'paid_at' => $isRoomCharge ? null : now(),
+            'booking_id' => $isRoomCharge ? $bookingId : null,
         ]);
 
         return $this->update([
             'status' => 'settled',
             'payment_method' => $paymentMethod,
-            'payment_status' => 'paid',
+            'payment_status' => $paymentStatus,
+            'booking_id' => $isRoomCharge ? $bookingId : null,
             'settled_at' => now(),
         ]);
     }
@@ -153,6 +181,7 @@ class BarTab extends Model
         $bartender = $this->relationLoaded('bartender') ? $this->bartender : $this->bartender()->first();
         $openedBy = $this->relationLoaded('openedBy') ? $this->openedBy : $this->openedBy()->first();
         $orders = $this->relationLoaded('orders') ? $this->orders : $this->orders()->get();
+        $reservation = $this->relationLoaded('reservation') ? $this->reservation : $this->reservation()->first();
 
         return [
             'id' => $this->id,
@@ -162,6 +191,7 @@ class BarTab extends Model
             'is_vip' => $this->is_vip,
             'status' => $this->status,
             'status_label' => $this->statusLabel(),
+            'reservation_code' => $reservation?->code,
             'order_count' => $orders->where('status', '!=', 'cancelled')->count(),
             'subtotal_label' => $this->subtotalLabel(),
             'vat_label' => $this->vatLabel(),
@@ -178,11 +208,17 @@ class BarTab extends Model
     public function toBarDetailArray(): array
     {
         $orders = $this->relationLoaded('orders') ? $this->orders : $this->orders()->get();
+        $booking = $this->booking_id
+            ? ($this->relationLoaded('booking') ? $this->booking : $this->booking()->first())
+            : null;
 
         return [
             ...$this->toBarArray(),
             'payment_method' => $this->payment_method,
             'payment_status' => $this->payment_status,
+            'charged_room_label' => $booking
+                ? ('Room '.($booking->roomUnit?->number ?? $booking->room_name))
+                : null,
             'notes' => $this->notes,
             'orders' => $orders->map->toBarOrderArray()->values(),
         ];

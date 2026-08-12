@@ -8,7 +8,11 @@ import 'package:video_player/video_player.dart';
 /// preview, or a video-camera badge over a dark tile (fetching a real video
 /// thumbnail needs a frame-extraction dependency this app doesn't carry yet).
 class AttachmentThumbnail extends StatelessWidget {
-  const AttachmentThumbnail({super.key, required this.attachment, required this.onTap});
+  const AttachmentThumbnail({
+    super.key,
+    required this.attachment,
+    required this.onTap,
+  });
 
   final WorkOrderAttachment attachment;
   final VoidCallback onTap;
@@ -28,7 +32,11 @@ class AttachmentThumbnail extends StatelessWidget {
               Container(
                 color: Colors.black.withValues(alpha: 0.4),
                 alignment: Alignment.center,
-                child: const Icon(Icons.play_circle_fill_rounded, size: 36, color: Colors.white70),
+                child: const Icon(
+                  Icons.play_circle_fill_rounded,
+                  size: 36,
+                  color: Colors.white70,
+                ),
               )
             else
               Image.network(
@@ -36,11 +44,19 @@ class AttachmentThumbnail extends StatelessWidget {
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, progress) => progress == null
                     ? child
-                    : const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold)),
+                    : const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.gold,
+                        ),
+                      ),
                 errorBuilder: (_, _, _) => Container(
                   color: Colors.white.withValues(alpha: 0.06),
                   alignment: Alignment.center,
-                  child: const Icon(Icons.broken_image_outlined, color: Colors.white38),
+                  child: const Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white38,
+                  ),
                 ),
               ),
             if ((attachment.createdLabel ?? '').isNotEmpty)
@@ -52,7 +68,11 @@ class AttachmentThumbnail extends StatelessWidget {
                   attachment.createdLabel!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.style(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
           ],
@@ -63,7 +83,10 @@ class AttachmentThumbnail extends StatelessWidget {
 }
 
 /// Opens the attachment full-screen — a zoomable photo, or a playable video.
-Future<void> showAttachmentViewer(BuildContext context, WorkOrderAttachment attachment) {
+Future<void> showAttachmentViewer(
+  BuildContext context,
+  WorkOrderAttachment attachment,
+) {
   return showDialog(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.9),
@@ -73,7 +96,9 @@ Future<void> showAttachmentViewer(BuildContext context, WorkOrderAttachment atta
       child: Stack(
         alignment: Alignment.center,
         children: [
-          attachment.isVideo ? _VideoView(url: attachment.url) : InteractiveViewer(child: Image.network(attachment.url)),
+          attachment.isVideo
+              ? _VideoView(url: attachment.url)
+              : InteractiveViewer(child: Image.network(attachment.url)),
           Positioned(
             top: 0,
             right: 0,
@@ -129,13 +154,21 @@ class _VideoViewState extends State<_VideoView> {
     return AspectRatio(
       aspectRatio: _controller.value.aspectRatio,
       child: GestureDetector(
-        onTap: () => setState(() => _controller.value.isPlaying ? _controller.pause() : _controller.play()),
+        onTap: () => setState(
+          () => _controller.value.isPlaying
+              ? _controller.pause()
+              : _controller.play(),
+        ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             VideoPlayer(_controller),
             if (!_controller.value.isPlaying)
-              const Icon(Icons.play_circle_fill_rounded, size: 56, color: Colors.white70),
+              const Icon(
+                Icons.play_circle_fill_rounded,
+                size: 56,
+                color: Colors.white70,
+              ),
           ],
         ),
       ),

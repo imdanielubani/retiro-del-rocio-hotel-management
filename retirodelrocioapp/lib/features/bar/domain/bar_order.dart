@@ -34,6 +34,9 @@ class BarOrder {
     required this.ageVerified,
     required this.paymentStatus,
     required this.paymentStatusLabel,
+    this.estimatedReadyLabel,
+    this.estimatedReadyMinutes,
+    this.estimatedReadyOverdue = false,
   });
 
   final int id;
@@ -62,7 +65,9 @@ class BarOrder {
   final String status;
   final String statusLabel;
 
-  /// new · preparing · served — the Live Orders board's 3 columns.
+  /// new · preparing · ready · served — the Live Orders board's columns.
+  /// "ready" means the Kitchen has it waiting for pickup — a food item
+  /// on this order isn't at the table yet even though a drink might be.
   final String boardColumn;
   final String boardColumnLabel;
 
@@ -72,6 +77,16 @@ class BarOrder {
   final bool ageVerified;
   final String paymentStatus;
   final String paymentStatusLabel;
+
+  /// "7:45 PM" — when the Kitchen expects a food item on this order ready,
+  /// so the waiter can tell the guest a real time.
+  final String? estimatedReadyLabel;
+
+  /// Minutes remaining until [estimatedReadyLabel], or 0 once due.
+  final int? estimatedReadyMinutes;
+
+  /// True once the estimate has passed and it still isn't ready.
+  final bool estimatedReadyOverdue;
 
   bool get isPos => source == 'pos';
 
@@ -106,5 +121,8 @@ class BarOrder {
     ageVerified: json['age_verified'] as bool? ?? false,
     paymentStatus: json['payment_status'] as String? ?? 'pending',
     paymentStatusLabel: json['payment_status_label'] as String? ?? 'Pending',
+    estimatedReadyLabel: json['estimated_ready_label'] as String?,
+    estimatedReadyMinutes: (json['estimated_ready_minutes'] as num?)?.toInt(),
+    estimatedReadyOverdue: json['estimated_ready_overdue'] as bool? ?? false,
   );
 }

@@ -63,18 +63,22 @@ class _ReceptionVehiclePickupScreenState
       session: widget.session,
       pickup: pickup,
     );
-    if (changed == true && mounted) _toast('Driver updated for ${pickup.reference}.');
+    if (changed == true && mounted)
+      _toast('Driver updated for ${pickup.reference}.');
   }
 
   Future<void> _complete(PickupBooking pickup) async {
     setState(() => _busyId = pickup.id);
     try {
-      await ref.read(receptionActionsProvider(_token)).completePickup(pickup.id);
+      await ref
+          .read(receptionActionsProvider(_token))
+          .completePickup(pickup.id);
       if (mounted) _toast('${pickup.guestName} marked as picked up.');
     } on ReceptionException catch (e) {
       if (mounted) _toast(e.message, error: true);
     } catch (_) {
-      if (mounted) _toast('Something went wrong. Please try again.', error: true);
+      if (mounted)
+        _toast('Something went wrong. Please try again.', error: true);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -84,8 +88,13 @@ class _ReceptionVehiclePickupScreenState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: error ? const Color(0xFF7F1D1D) : const Color(0xFF14532D),
-        content: Text(message, style: AppTypography.style(color: Colors.white, fontSize: 14)),
+        backgroundColor: error
+            ? const Color(0xFF7F1D1D)
+            : const Color(0xFF14532D),
+        content: Text(
+          message,
+          style: AppTypography.style(color: Colors.white, fontSize: 14),
+        ),
       ),
     );
   }
@@ -117,12 +126,17 @@ class _ReceptionVehiclePickupScreenState
           const SizedBox(height: 16),
           Expanded(
             child: pickupsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.gold),
+              ),
               error: (_, _) => Center(
                 child: TextButton(
-                  onPressed: () => ref.invalidate(receptionPickupsProvider(_token)),
-                  child: const Text('Could not load pickups. Retry',
-                      style: TextStyle(color: AppColors.gold)),
+                  onPressed: () =>
+                      ref.invalidate(receptionPickupsProvider(_token)),
+                  child: const Text(
+                    'Could not load pickups. Retry',
+                    style: TextStyle(color: AppColors.gold),
+                  ),
                 ),
               ),
               data: (all) {
@@ -135,15 +149,17 @@ class _ReceptionVehiclePickupScreenState
                 }
                 return RefreshIndicator(
                   color: AppColors.gold,
-                  onRefresh: () async => ref.invalidate(receptionPickupsProvider(_token)),
+                  onRefresh: () async =>
+                      ref.invalidate(receptionPickupsProvider(_token)),
                   child: GridView.builder(
                     padding: const EdgeInsets.only(bottom: 24),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 460,
-                      mainAxisExtent: 232,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 460,
+                          mainAxisExtent: 232,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
                     itemCount: rows.length,
                     itemBuilder: (_, i) => _PickupCard(
                       pickup: rows[i],
@@ -177,10 +193,7 @@ class _ReceptionVehiclePickupScreenState
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          for (final f in _filters) ...[
-            _chip(f),
-            const SizedBox(width: 10),
-          ],
+          for (final f in _filters) ...[_chip(f), const SizedBox(width: 10)],
         ],
       ),
     );
@@ -189,7 +202,9 @@ class _ReceptionVehiclePickupScreenState
   Widget _chip(_Filter f) {
     final selected = _status == f.status;
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.15)
+          : Colors.white.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () => setState(() => _status = f.status),
@@ -199,14 +214,18 @@ class _ReceptionVehiclePickupScreenState
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.1),
               width: 0.8,
             ),
           ),
           child: Text(
             f.label,
             style: AppTypography.style(
-              color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.6),
+              color: selected
+                  ? AppColors.gold
+                  : Colors.white.withValues(alpha: 0.6),
               fontSize: 13,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             ),
@@ -232,10 +251,10 @@ class _PickupCard extends StatelessWidget {
   final VoidCallback onComplete;
 
   Color get _statusColor => switch (pickup.pickupStatus) {
-        'assigned' => kReceptionBlue,
-        'completed' => kReceptionGreen,
-        _ => AppColors.gold,
-      };
+    'assigned' => kReceptionBlue,
+    'completed' => kReceptionGreen,
+    _ => AppColors.gold,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +263,10 @@ class _PickupCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -255,13 +277,25 @@ class _PickupCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(pickup.reference,
-                        style: AppTypography.style(color: AppColors.gold, fontSize: 11, fontWeight: FontWeight.w600)),
+                    Text(
+                      pickup.reference,
+                      style: AppTypography.style(
+                        color: AppColors.gold,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(pickup.guestName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.style(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(
+                      pickup.guestName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -269,7 +303,10 @@ class _PickupCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _line(Icons.directions_car_rounded, '${pickup.vehicle} · ${pickup.passengersLabel}'),
+          _line(
+            Icons.directions_car_rounded,
+            '${pickup.vehicle} · ${pickup.passengersLabel}',
+          ),
           const SizedBox(height: 6),
           _line(Icons.route_rounded, '${pickup.from} → ${pickup.to}'),
           const SizedBox(height: 6),
@@ -278,7 +315,8 @@ class _PickupCard extends StatelessWidget {
             [
               if ((pickup.pickupDate ?? '').isNotEmpty) pickup.pickupDate!,
               if ((pickup.pickupTime ?? '').isNotEmpty) pickup.pickupTime!,
-              if ((pickup.flightNumber ?? '').isNotEmpty) '${pickup.numberLabel} ${pickup.flightNumber}',
+              if ((pickup.flightNumber ?? '').isNotEmpty)
+                '${pickup.numberLabel} ${pickup.flightNumber}',
             ].join(' · '),
           ),
           const Spacer(),
@@ -296,10 +334,19 @@ class _PickupCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: _statusColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _statusColor.withValues(alpha: 0.3), width: 0.8),
+        border: Border.all(
+          color: _statusColor.withValues(alpha: 0.3),
+          width: 0.8,
+        ),
       ),
-      child: Text(pickup.pickupStatusLabel,
-          style: AppTypography.style(color: _statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        pickup.pickupStatusLabel,
+        style: AppTypography.style(
+          color: _statusColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -310,10 +357,15 @@ class _PickupCard extends StatelessWidget {
         Icon(icon, size: 15, color: Colors.white.withValues(alpha: 0.4)),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 13,
+            ),
+          ),
         ),
       ],
     );
@@ -328,32 +380,63 @@ class _PickupCard extends StatelessWidget {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(driver.name,
+                    Text(
+                      driver.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if ((driver.vehicleDetails ?? driver.phone ?? '')
+                        .isNotEmpty)
+                      Text(
+                        driver.vehicleDetails ?? driver.phone ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTypography.style(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                    if ((driver.vehicleDetails ?? driver.phone ?? '').isNotEmpty)
-                      Text(driver.vehicleDetails ?? driver.phone ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+                        style: AppTypography.style(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 12,
+                        ),
+                      ),
                   ],
                 )
-              : Text('No driver assigned',
-                  style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
+              : Text(
+                  'No driver assigned',
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 13,
+                  ),
+                ),
         ),
         const SizedBox(width: 10),
         if (pickup.isAssigned)
-          _button('Picked up', kReceptionGreen, busy ? null : onComplete, busy: busy),
+          _button(
+            'Picked up',
+            kReceptionGreen,
+            busy ? null : onComplete,
+            busy: busy,
+          ),
         if (!pickup.isCompleted) ...[
           const SizedBox(width: 8),
-          _button(pickup.isUnassigned ? 'Assign Driver' : 'Reassign', AppColors.gold, onAssign),
+          _button(
+            pickup.isUnassigned ? 'Assign Driver' : 'Reassign',
+            AppColors.gold,
+            onAssign,
+          ),
         ],
       ],
     );
   }
 
-  Widget _button(String label, Color color, VoidCallback? onTap, {bool busy = false}) {
+  Widget _button(
+    String label,
+    Color color,
+    VoidCallback? onTap, {
+    bool busy = false,
+  }) {
     return Material(
       color: color.withValues(alpha: 0.14),
       borderRadius: BorderRadius.circular(10),
@@ -364,12 +447,28 @@ class _PickupCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.35), width: 0.8),
+            border: Border.all(
+              color: color.withValues(alpha: 0.35),
+              width: 0.8,
+            ),
           ),
           child: busy
-              ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: color))
-              : Text(label,
-                  style: AppTypography.style(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+              ? SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
+                )
+              : Text(
+                  label,
+                  style: AppTypography.style(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
       ),
     );

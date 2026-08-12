@@ -20,7 +20,10 @@ const List<String> kMaintenanceAssetCategories = [
 /// Register a new asset for the picker, service history, and
 /// preventive-maintenance tracking. Returns the created asset, or null if
 /// cancelled.
-Future<Asset?> showAddAssetDialog(BuildContext context, {required String token}) {
+Future<Asset?> showAddAssetDialog(
+  BuildContext context, {
+  required String token,
+}) {
   return showDialog<Asset>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -76,8 +79,12 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
             name: name,
             category: _category,
             roomUnitId: _room?.id,
-            locationLabel: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-            notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+            locationLabel: _locationController.text.trim().isEmpty
+                ? null
+                : _locationController.text.trim(),
+            notes: _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
             serviceIntervalDays: interval,
           );
       if (mounted) Navigator.of(context).pop(asset);
@@ -109,16 +116,26 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
               children: [
                 Text(
                   'Register Asset',
-                  style: AppTypography.style(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                _field(controller: _nameController, label: 'Asset name, e.g. "Lobby Generator"'),
+                _field(
+                  controller: _nameController,
+                  label: 'Asset name, e.g. "Lobby Generator"',
+                ),
                 const SizedBox(height: 12),
                 _categoryDropdown(),
                 const SizedBox(height: 12),
                 _roomDropdown(rooms),
                 const SizedBox(height: 12),
-                _field(controller: _locationController, label: 'Or a location, e.g. "Rooftop" (optional)'),
+                _field(
+                  controller: _locationController,
+                  label: 'Or a location, e.g. "Rooftop" (optional)',
+                ),
                 const SizedBox(height: 12),
                 _field(
                   controller: _intervalController,
@@ -126,18 +143,36 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
-                _field(controller: _notesController, label: 'Notes (optional)', maxLines: 3),
+                _field(
+                  controller: _notesController,
+                  label: 'Notes (optional)',
+                  maxLines: 3,
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: 10),
-                  Text(_error!, style: AppTypography.style(color: const Color(0xFFFF6B6B), fontSize: 12)),
+                  Text(
+                    _error!,
+                    style: AppTypography.style(
+                      color: const Color(0xFFFF6B6B),
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                        child: Text('Cancel', style: AppTypography.style(color: Colors.white70, fontSize: 14)),
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        child: Text(
+                          'Cancel',
+                          style: AppTypography.style(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -155,7 +190,10 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
                                   )
                                 : Text(
                                     'Register',
@@ -192,10 +230,16 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
@@ -211,7 +255,10 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: 'Category (optional)',
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -222,7 +269,8 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
       ),
       items: [
         const DropdownMenuItem<String?>(value: null, child: Text('None')),
-        for (final c in kMaintenanceAssetCategories) DropdownMenuItem<String?>(value: c, child: Text(c)),
+        for (final c in kMaintenanceAssetCategories)
+          DropdownMenuItem<String?>(value: c, child: Text(c)),
       ],
       onChanged: (value) => setState(() => _category = value),
     );
@@ -235,7 +283,10 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
       style: AppTypography.style(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: 'Room (optional)',
-        labelStyle: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+        labelStyle: AppTypography.style(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -245,11 +296,16 @@ class _AddAssetDialogState extends ConsumerState<AddAssetDialog> {
         ),
       ),
       items: [
-        const DropdownMenuItem<MaintenanceRoomOption?>(value: null, child: Text('None')),
+        const DropdownMenuItem<MaintenanceRoomOption?>(
+          value: null,
+          child: Text('None'),
+        ),
         for (final room in rooms)
           DropdownMenuItem<MaintenanceRoomOption?>(
             value: room,
-            child: Text('Room ${room.number}${(room.roomName ?? '').isNotEmpty ? ' · ${room.roomName}' : ''}'),
+            child: Text(
+              'Room ${room.number}${(room.roomName ?? '').isNotEmpty ? ' · ${room.roomName}' : ''}',
+            ),
           ),
       ],
       onChanged: (value) => setState(() => _room = value),

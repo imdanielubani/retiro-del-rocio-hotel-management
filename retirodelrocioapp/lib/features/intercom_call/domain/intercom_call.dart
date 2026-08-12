@@ -5,12 +5,18 @@ import 'package:flutter/foundation.dart';
 class IntercomParty {
   const IntercomParty({
     this.roomUnitId,
+    this.userId,
     this.role,
     required this.label,
     this.sublabel,
   });
 
   final int? roomUnitId;
+
+  /// The individual staff member's own user ID, for a staff-to-staff call —
+  /// null for a guest's room or a department-wide destination (e.g. a guest
+  /// calling "reception" as a whole).
+  final int? userId;
   final String? role;
   final String label;
   final String? sublabel;
@@ -20,15 +26,17 @@ class IntercomParty {
       identical(this, other) ||
       (other is IntercomParty &&
           other.roomUnitId == roomUnitId &&
+          other.userId == userId &&
           other.role == role &&
           other.label == label &&
           other.sublabel == sublabel);
 
   @override
-  int get hashCode => Object.hash(roomUnitId, role, label, sublabel);
+  int get hashCode => Object.hash(roomUnitId, userId, role, label, sublabel);
 
   factory IntercomParty.fromJson(Map<String, dynamic> json) => IntercomParty(
     roomUnitId: (json['room_unit_id'] as num?)?.toInt(),
+    userId: (json['user_id'] as num?)?.toInt(),
     role: json['role'] as String?,
     label: json['label'] as String? ?? '',
     sublabel: json['sublabel'] as String?,

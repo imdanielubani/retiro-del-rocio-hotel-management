@@ -20,7 +20,12 @@ Color housekeepingStatusColor(String status) => switch (status) {
 /// A headline counter, matching the reception/security dashboards' stat card
 /// language — a small tracked label and a large accent number.
 class HousekeepingStatCard extends StatelessWidget {
-  const HousekeepingStatCard({super.key, required this.label, required this.value, required this.accent});
+  const HousekeepingStatCard({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
 
   final String label;
   final int value;
@@ -33,7 +38,10 @@ class HousekeepingStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +58,12 @@ class HousekeepingStatCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             '$value',
-            style: AppTypography.style(color: accent, fontSize: 28, fontWeight: FontWeight.w800, height: 1),
+            style: AppTypography.style(
+              color: accent,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              height: 1,
+            ),
           ),
         ],
       ),
@@ -60,7 +73,11 @@ class HousekeepingStatCard extends StatelessWidget {
 
 /// A rounded status pill for a room's cleanliness.
 class HousekeepingStatusPill extends StatelessWidget {
-  const HousekeepingStatusPill({super.key, required this.status, required this.label});
+  const HousekeepingStatusPill({
+    super.key,
+    required this.status,
+    required this.label,
+  });
 
   final String status;
   final String label;
@@ -76,7 +93,11 @@ class HousekeepingStatusPill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTypography.style(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+        style: AppTypography.style(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -111,7 +132,10 @@ class HousekeepingSectionPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -178,7 +202,9 @@ class HousekeepingRoomCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: room.needsAttention
-              ? housekeepingStatusColor(room.housekeepingStatus).withValues(alpha: 0.35)
+              ? housekeepingStatusColor(
+                  room.housekeepingStatus,
+                ).withValues(alpha: 0.35)
               : Colors.white.withValues(alpha: 0.08),
           width: 0.8,
         ),
@@ -211,30 +237,47 @@ class HousekeepingRoomCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            (room.guestName ?? '').isNotEmpty ? room.guestName! : (room.roomName ?? 'Room ${room.number}'),
+            (room.guestName ?? '').isNotEmpty
+                ? room.guestName!
+                : (room.roomName ?? 'Room ${room.number}'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             [
-              if ((room.roomName ?? '').isNotEmpty && (room.guestName ?? '').isNotEmpty) room.roomName!,
+              if ((room.roomName ?? '').isNotEmpty &&
+                  (room.guestName ?? '').isNotEmpty)
+                room.roomName!,
               room.occupancyLabel,
             ].join('  ·  '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
           ),
           if ((room.updatedLabel ?? '').isNotEmpty) ...[
             const SizedBox(height: 2),
             Text(
               'Updated ${room.updatedLabel}',
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 12,
+              ),
             ),
           ],
           const SizedBox(height: 10),
-          HousekeepingStatusPill(status: room.housekeepingStatus, label: room.housekeepingStatusLabel),
+          HousekeepingStatusPill(
+            status: room.housekeepingStatus,
+            label: room.housekeepingStatusLabel,
+          ),
           const SizedBox(height: 14),
           _footer(),
         ],
@@ -245,10 +288,17 @@ class HousekeepingRoomCard extends StatelessWidget {
   Widget _tag(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Text(
         label,
-        style: AppTypography.style(color: color, fontSize: 10, fontWeight: FontWeight.w700),
+        style: AppTypography.style(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -267,7 +317,10 @@ class HousekeepingRoomCard extends StatelessWidget {
           child: SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.gold,
+            ),
           ),
         ),
       );
@@ -280,15 +333,37 @@ class HousekeepingRoomCard extends StatelessWidget {
         color: AppColors.gold,
         onTap: () => onMarkStatus('preparing'),
       ),
-      'preparing' => _button('Mark Clean', filled: true, color: kHkBlue, onTap: () => onMarkStatus('clean')),
-      'out_of_order' => _button('Mark Fixed', filled: true, color: kHkRed, onTap: () => onMarkStatus('clean')),
-      'clean' => _button('Mark Inspected', filled: false, color: kHkBlue, onTap: () => onMarkStatus('inspected')),
+      'preparing' => _button(
+        'Mark Clean',
+        filled: true,
+        color: kHkBlue,
+        onTap: () => onMarkStatus('clean'),
+      ),
+      'out_of_order' => _button(
+        'Mark Fixed',
+        filled: true,
+        color: kHkRed,
+        onTap: () => onMarkStatus('clean'),
+      ),
+      'clean' => _button(
+        'Mark Inspected',
+        filled: false,
+        color: kHkBlue,
+        onTap: () => onMarkStatus('inspected'),
+      ),
       _ => const SizedBox.shrink(), // inspected — nothing further to do here
     };
   }
 
-  Widget _button(String label, {required bool filled, required Color color, required VoidCallback onTap}) {
-    final fg = filled ? (color == AppColors.gold ? Colors.black : Colors.white) : color;
+  Widget _button(
+    String label, {
+    required bool filled,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final fg = filled
+        ? (color == AppColors.gold ? Colors.black : Colors.white)
+        : color;
     return SizedBox(
       width: double.infinity,
       height: 36,
@@ -301,7 +376,11 @@ class HousekeepingRoomCard extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: AppTypography.style(color: fg, fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTypography.style(
+                color: fg,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -312,10 +391,20 @@ class HousekeepingRoomCard extends StatelessWidget {
   Widget _overflowMenu(BuildContext context) {
     return PopupMenuButton<void>(
       color: const Color(0xFF141414),
-      icon: Icon(Icons.more_vert_rounded, size: 16, color: Colors.white.withValues(alpha: 0.4)),
+      icon: Icon(
+        Icons.more_vert_rounded,
+        size: 16,
+        color: Colors.white.withValues(alpha: 0.4),
+      ),
       padding: EdgeInsets.zero,
       itemBuilder: (context) => [
-        for (final status in const ['clean', 'dirty', 'preparing', 'inspected', 'out_of_order'])
+        for (final status in const [
+          'clean',
+          'dirty',
+          'preparing',
+          'inspected',
+          'out_of_order',
+        ])
           if (status != room.housekeepingStatus)
             PopupMenuItem<void>(
               onTap: () => onMarkStatus(status),
@@ -331,9 +420,16 @@ class HousekeepingRoomCard extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.build_outlined, size: 15, color: Colors.white.withValues(alpha: 0.6)),
+                Icon(
+                  Icons.build_outlined,
+                  size: 15,
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
                 const SizedBox(width: 8),
-                Text('Report Fault', style: AppTypography.style(color: Colors.white, fontSize: 13)),
+                Text(
+                  'Report Fault',
+                  style: AppTypography.style(color: Colors.white, fontSize: 13),
+                ),
               ],
             ),
           ),
@@ -390,7 +486,11 @@ class HousekeepingRequestCard extends StatelessWidget {
                   request.typeLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.style(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               if ((request.roomNumber ?? '').isNotEmpty) ...[
@@ -407,7 +507,8 @@ class HousekeepingRequestCard extends StatelessWidget {
               ],
             ],
           ),
-          if ((request.roomName ?? '').isNotEmpty || (request.guestName ?? '').isNotEmpty) ...[
+          if ((request.roomName ?? '').isNotEmpty ||
+              (request.guestName ?? '').isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(
               [
@@ -429,14 +530,20 @@ class HousekeepingRequestCard extends StatelessWidget {
               request.notes!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 12,
+              ),
             ),
           ],
           if ((request.createdLabel ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               request.createdLabel!,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 12,
+              ),
             ),
           ],
           const SizedBox(height: 14),
@@ -472,7 +579,11 @@ class HousekeepingRequestCard extends StatelessWidget {
           ),
           child: Text(
             'Completed',
-            style: AppTypography.style(color: kHkSlate, fontSize: 11, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: kHkSlate,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       );
@@ -490,7 +601,11 @@ class HousekeepingRequestCard extends StatelessWidget {
           child: Center(
             child: Text(
               'Mark Complete',
-              style: AppTypography.style(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTypography.style(
+                color: Colors.black,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -501,7 +616,11 @@ class HousekeepingRequestCard extends StatelessWidget {
 
 /// A quiet placeholder for a section with nothing in it yet.
 class HousekeepingSectionEmpty extends StatelessWidget {
-  const HousekeepingSectionEmpty({super.key, required this.icon, required this.message});
+  const HousekeepingSectionEmpty({
+    super.key,
+    required this.icon,
+    required this.message,
+  });
 
   final IconData icon;
   final String message;
@@ -517,7 +636,10 @@ class HousekeepingSectionEmpty extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 12,
+            ),
           ),
         ],
       ),

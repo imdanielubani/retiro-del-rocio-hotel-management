@@ -36,9 +36,9 @@ class KitchenNavigation {
     // Always return to the Live Board root first — it's never a named
     // `kitchen/` route itself (it occupies the route slot the login screen
     // replaced), so popping past it here would otherwise be irreversible.
-    Navigator.of(context).popUntil(
-      (route) => !(route.settings.name?.startsWith(_prefix) ?? false),
-    );
+    Navigator.of(
+      context,
+    ).popUntil((route) => !(route.settings.name?.startsWith(_prefix) ?? false));
 
     if (item == KitchenNavItem.liveBoard) return;
 

@@ -29,7 +29,11 @@ Widget receptionOriginBadge(String label) {
         const SizedBox(width: 4),
         Text(
           label,
-          style: AppTypography.style(color: kReceptionBlue, fontSize: 10, fontWeight: FontWeight.w700),
+          style: AppTypography.style(
+            color: kReceptionBlue,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     ),
@@ -38,17 +42,21 @@ Widget receptionOriginBadge(String label) {
 
 /// The accent colour for a booking status, shared by pills across the module.
 Color receptionStatusColor(String status) => switch (status) {
-      'paid' => kReceptionGreen,
-      'checked_in' || 'inside' => kReceptionBlue,
-      'checked_out' || 'exited' => kReceptionSlate,
-      'cancelled' || 'denied' => kReceptionRed,
-      'expired' => kReceptionSlate,
-      _ => AppColors.gold, // pending
-    };
+  'paid' => kReceptionGreen,
+  'checked_in' || 'inside' => kReceptionBlue,
+  'checked_out' || 'exited' => kReceptionSlate,
+  'cancelled' || 'denied' => kReceptionRed,
+  'expired' => kReceptionSlate,
+  _ => AppColors.gold, // pending
+};
 
 /// A rounded status pill (Confirmed / Checked In / …).
 class ReceptionStatusPill extends StatelessWidget {
-  const ReceptionStatusPill({super.key, required this.status, required this.label});
+  const ReceptionStatusPill({
+    super.key,
+    required this.status,
+    required this.label,
+  });
 
   final String status;
   final String label;
@@ -140,7 +148,10 @@ class ReceptionGuestCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
           ),
           child: Row(
             children: [
@@ -167,7 +178,10 @@ class ReceptionGuestCard extends StatelessWidget {
                         ),
                         if (guest.inHouse) ...[
                           const SizedBox(width: 8),
-                          const ReceptionStatusPill(status: 'checked_in', label: 'In-House'),
+                          const ReceptionStatusPill(
+                            status: 'checked_in',
+                            label: 'In-House',
+                          ),
                         ],
                       ],
                     ),
@@ -262,7 +276,10 @@ class ReceptionBookingRowCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,7 +327,11 @@ class ReceptionBookingRowCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.calendar_today_rounded, size: 12, color: Colors.white.withValues(alpha: 0.35)),
+              Icon(
+                Icons.calendar_today_rounded,
+                size: 12,
+                color: Colors.white.withValues(alpha: 0.35),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -345,7 +366,11 @@ class ReceptionBookingRowCard extends StatelessWidget {
 /// outstanding still shows (so the desk can confirm they're settled), muted
 /// rather than gold.
 class ReceptionBillRowCard extends StatelessWidget {
-  const ReceptionBillRowCard({super.key, required this.row, required this.onTap});
+  const ReceptionBillRowCard({
+    super.key,
+    required this.row,
+    required this.onTap,
+  });
 
   final ReceptionBillRow row;
   final VoidCallback onTap;
@@ -392,7 +417,8 @@ class ReceptionBillRowCard extends StatelessWidget {
                     Text(
                       [
                         row.roomLabel,
-                        if (row.checkOutLabel != null) 'out ${row.checkOutLabel}',
+                        if (row.checkOutLabel != null)
+                          'out ${row.checkOutLabel}',
                       ].join('  ·  '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -411,7 +437,9 @@ class ReceptionBillRowCard extends StatelessWidget {
                   Text(
                     row.totalDueLabel,
                     style: AppTypography.style(
-                      color: row.hasBalance ? AppColors.gold : Colors.white.withValues(alpha: 0.4),
+                      color: row.hasBalance
+                          ? AppColors.gold
+                          : Colors.white.withValues(alpha: 0.4),
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
@@ -426,7 +454,11 @@ class ReceptionBillRowCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white.withValues(alpha: 0.25)),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: Colors.white.withValues(alpha: 0.25),
+              ),
             ],
           ),
         ),
@@ -435,10 +467,15 @@ class ReceptionBillRowCard extends StatelessWidget {
   }
 
   String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+        .toUpperCase();
   }
 }
 
@@ -462,14 +499,19 @@ class ReceptionVisitorRowCard extends StatelessWidget {
 
     final timeLabel = visitor.isInside && visitor.arrivalLabel != null
         ? 'Arrived ${visitor.arrivalLabel}'
-        : (visitor.invitedLabel != null ? 'Invited ${visitor.invitedLabel}' : null);
+        : (visitor.invitedLabel != null
+              ? 'Invited ${visitor.invitedLabel}'
+              : null);
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Row(
         children: [
@@ -532,7 +574,10 @@ class ReceptionVisitorRowCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          ReceptionStatusPill(status: visitor.status, label: visitor.statusLabel),
+          ReceptionStatusPill(
+            status: visitor.status,
+            label: visitor.statusLabel,
+          ),
         ],
       ),
     );
@@ -561,7 +606,10 @@ class ReceptionStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Stack(
         children: [
@@ -631,7 +679,10 @@ class ReceptionSectionPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -693,7 +744,10 @@ class ReceptionBookingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -818,7 +872,9 @@ class ReceptionBookingCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: ReceptionStatusPill(
               status: booking.status,
-              label: booking.statusLabel.isNotEmpty ? booking.statusLabel : 'Checked In',
+              label: booking.statusLabel.isNotEmpty
+                  ? booking.statusLabel
+                  : 'Checked In',
             ),
           );
         }
@@ -838,7 +894,9 @@ class ReceptionBookingCard extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: ReceptionStatusPill(
             status: booking.status,
-            label: booking.statusLabel.isNotEmpty ? booking.statusLabel : booking.status,
+            label: booking.statusLabel.isNotEmpty
+                ? booking.statusLabel
+                : booking.status,
           ),
         );
     }
@@ -913,17 +971,17 @@ class ReceptionAlertRow extends StatelessWidget {
   final ReceptionAlert alert;
 
   Color get _color => switch (alert.severity) {
-        AlertSeverity.high => kReceptionRed,
-        AlertSeverity.medium => AppColors.gold,
-        AlertSeverity.low => kReceptionGreen,
-      };
+    AlertSeverity.high => kReceptionRed,
+    AlertSeverity.medium => AppColors.gold,
+    AlertSeverity.low => kReceptionGreen,
+  };
 
   IconData get _icon => switch (alert.type) {
-        'housekeeping_request' => Icons.cleaning_services_rounded,
-        'maintenance_request' => Icons.build_rounded,
-        'overdue_departure' => Icons.schedule_rounded,
-        _ => Icons.warning_amber_rounded,
-      };
+    'housekeeping_request' => Icons.cleaning_services_rounded,
+    'maintenance_request' => Icons.build_rounded,
+    'overdue_departure' => Icons.schedule_rounded,
+    _ => Icons.warning_amber_rounded,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1018,7 +1076,8 @@ class ReceptionRoomStatusTiles extends StatelessWidget {
 }
 
 /// The accent colour for a room's board status on the Room Status screen.
-Color receptionBoardStatusColor(ReceptionRoomBoardStatus status) => switch (status) {
+Color receptionBoardStatusColor(ReceptionRoomBoardStatus status) =>
+    switch (status) {
       ReceptionRoomBoardStatus.occupied => kReceptionBlue,
       ReceptionRoomBoardStatus.maintenance => kReceptionRed,
       ReceptionRoomBoardStatus.preparing => kReceptionBlue,
@@ -1062,7 +1121,11 @@ class ReceptionRoomStatusCard extends StatelessWidget {
               ),
               if (room.hasOpenWorkOrder) ...[
                 const SizedBox(width: 6),
-                Icon(Icons.build_rounded, size: 12, color: kReceptionRed.withValues(alpha: 0.8)),
+                Icon(
+                  Icons.build_rounded,
+                  size: 12,
+                  color: kReceptionRed.withValues(alpha: 0.8),
+                ),
               ],
               const Spacer(),
               Container(
@@ -1078,7 +1141,11 @@ class ReceptionRoomStatusCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       room.boardStatusLabel,
-                      style: AppTypography.style(color: accent, fontSize: 10, fontWeight: FontWeight.w700),
+                      style: AppTypography.style(
+                        color: accent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -1087,20 +1154,31 @@ class ReceptionRoomStatusCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            (room.guestName ?? '').isNotEmpty ? room.guestName! : (room.roomName ?? 'Room ${room.number}'),
+            (room.guestName ?? '').isNotEmpty
+                ? room.guestName!
+                : (room.roomName ?? 'Room ${room.number}'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 3),
           Text(
             [
-              if ((room.roomName ?? '').isNotEmpty && (room.guestName ?? '').isNotEmpty) room.roomName!,
+              if ((room.roomName ?? '').isNotEmpty &&
+                  (room.guestName ?? '').isNotEmpty)
+                room.roomName!,
               room.housekeepingStatusLabel,
             ].join('  ·  '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -1110,7 +1188,11 @@ class ReceptionRoomStatusCard extends StatelessWidget {
 
 /// A quiet placeholder for a section with nothing in it yet.
 class ReceptionSectionEmpty extends StatelessWidget {
-  const ReceptionSectionEmpty({super.key, required this.icon, required this.message});
+  const ReceptionSectionEmpty({
+    super.key,
+    required this.icon,
+    required this.message,
+  });
 
   final IconData icon;
   final String message;

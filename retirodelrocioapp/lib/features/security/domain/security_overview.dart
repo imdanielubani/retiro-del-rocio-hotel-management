@@ -53,7 +53,8 @@ class SecurityOverview {
   );
 
   factory SecurityOverview.fromJson(Map<String, dynamic> json) {
-    final officer = (json['officer'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final officer =
+        (json['officer'] as Map?)?.cast<String, dynamic>() ?? const {};
     final stats = (json['stats'] as Map?)?.cast<String, dynamic>() ?? const {};
 
     List<T> parse<T>(String key, T Function(Map<String, dynamic>) build) =>

@@ -3,6 +3,7 @@
 use App\Events\BookingConfirmed;
 use App\Http\Controllers\Admin\Auth\LogoutController;
 use App\Http\Middleware\TouchLastSeen;
+use App\Livewire\Admin\Access\MyAccess;
 use App\Livewire\Admin\Access\Roles;
 use App\Livewire\Admin\Access\Users;
 use App\Livewire\Admin\Auth\ForgotPassword;
@@ -34,6 +35,7 @@ use App\Livewire\Admin\Housekeeping\RoomStatus;
 use App\Livewire\Admin\Housekeeping\StaffWorkload;
 use App\Livewire\Admin\Kitchen\Menu;
 use App\Livewire\Admin\Kitchen\Orders;
+use App\Livewire\Admin\Kitchen\StaffPerformance;
 use App\Livewire\Admin\Maintenance\Assets as MaintenanceAssets;
 use App\Livewire\Admin\Maintenance\PartsRequests as MaintenancePartsRequests;
 use App\Livewire\Admin\Maintenance\WorkOrders as MaintenanceWorkOrders;
@@ -1146,105 +1148,135 @@ $adminRoutes->group(function () {
         Route::post('logout', LogoutController::class)->name('logout');
 
         // Apartments — Rooms (full-page Livewire components)
-        Route::get('apartments/rooms', Index::class)->name('rooms.index');
-        Route::get('apartments/rooms/create', Edit::class)->name('rooms.create');
-        Route::get('apartments/rooms/{room}/edit', Edit::class)->name('rooms.edit');
-        Route::get('apartments/rooms/{room}/calendar', Calendar::class)->name('rooms.calendar');
+        Route::middleware('permission:manage rooms')->group(function () {
+            Route::get('apartments/rooms', Index::class)->name('rooms.index');
+            Route::get('apartments/rooms/create', Edit::class)->name('rooms.create');
+            Route::get('apartments/rooms/{room}/edit', Edit::class)->name('rooms.edit');
+            Route::get('apartments/rooms/{room}/calendar', Calendar::class)->name('rooms.calendar');
+        });
 
         // Apartments — Bookings
-        Route::get('apartments/bookings', App\Livewire\Admin\Bookings\Index::class)->name('bookings.index');
-        Route::get('apartments/bookings/{booking}', Show::class)->name('bookings.show');
+        Route::middleware('permission:manage bookings')->group(function () {
+            Route::get('apartments/bookings', App\Livewire\Admin\Bookings\Index::class)->name('bookings.index');
+            Route::get('apartments/bookings/{booking}', Show::class)->name('bookings.show');
+        });
 
         // Guest Management — guests (people who have booked) & their stay history
-        Route::get('guests', App\Livewire\Admin\Guests\Index::class)->name('guests.index');
-        Route::get('stay-history', App\Livewire\Admin\StayHistory\Index::class)->name('stay-history.index');
+        Route::middleware('permission:manage guests')->group(function () {
+            Route::get('guests', App\Livewire\Admin\Guests\Index::class)->name('guests.index');
+            Route::get('stay-history', App\Livewire\Admin\StayHistory\Index::class)->name('stay-history.index');
+        });
 
         // Website CMS — page hub + per-page editor + contact messages
-        Route::get('website-cms', App\Livewire\Admin\Cms\Index::class)->name('cms.index');
-        Route::get('website-cms/page/{page}', App\Livewire\Admin\Cms\Edit::class)->name('cms.edit');
-        Route::get('website-cms/messages', App\Livewire\Admin\Messages\Index::class)->name('messages.index');
+        Route::middleware('permission:manage cms')->group(function () {
+            Route::get('website-cms', App\Livewire\Admin\Cms\Index::class)->name('cms.index');
+            Route::get('website-cms/page/{page}', App\Livewire\Admin\Cms\Edit::class)->name('cms.edit');
+            Route::get('website-cms/messages', App\Livewire\Admin\Messages\Index::class)->name('messages.index');
+        });
 
         // Vehicle Pickups — Vehicles (fleet shown on the website pick-up popup),
         // bookings, and the driver roster reception/admin assign from.
-        Route::get('airport-pickups/vehicles', App\Livewire\Admin\Vehicles\Index::class)->name('vehicles.index');
-        Route::get('airport-pickups/bookings', Bookings::class)->name('vehicles.bookings');
-        Route::get('airport-pickups/drivers', Drivers::class)->name('vehicles.drivers');
+        Route::middleware('permission:manage transport')->group(function () {
+            Route::get('airport-pickups/vehicles', App\Livewire\Admin\Vehicles\Index::class)->name('vehicles.index');
+            Route::get('airport-pickups/bookings', Bookings::class)->name('vehicles.bookings');
+            Route::get('airport-pickups/drivers', Drivers::class)->name('vehicles.drivers');
+        });
 
         // Spa & Wellness — services fleet + reservations
-        Route::get('spa-wellness/services', Services::class)->name('spa.services');
-        Route::get('spa-wellness/bookings', App\Livewire\Admin\Spa\Bookings::class)->name('spa.bookings');
+        Route::middleware('permission:manage spa')->group(function () {
+            Route::get('spa-wellness/services', Services::class)->name('spa.services');
+            Route::get('spa-wellness/bookings', App\Livewire\Admin\Spa\Bookings::class)->name('spa.bookings');
+        });
 
         // Housekeeping — every guest housekeeping/maintenance service request
         // (the admin mirror of the guest tablet's own Service Request
         // history) + the admin-managed catalog behind its request-type tiles.
-        Route::get('housekeeping/requests', Requests::class)->name('housekeeping.requests');
-        Route::get('housekeeping/request-types', RequestTypes::class)->name('housekeeping.request-types');
-        Route::get('housekeeping/room-status', RoomStatus::class)->name('housekeeping.room-status');
-        Route::get('housekeeping/lost-found', LostFound::class)->name('housekeeping.lost-found');
-        Route::get('housekeeping/staff-workload', StaffWorkload::class)->name('housekeeping.staff-workload');
+        Route::middleware('permission:manage housekeeping')->group(function () {
+            Route::get('housekeeping/requests', Requests::class)->name('housekeeping.requests');
+            Route::get('housekeeping/request-types', RequestTypes::class)->name('housekeeping.request-types');
+            Route::get('housekeeping/room-status', RoomStatus::class)->name('housekeeping.room-status');
+            Route::get('housekeeping/lost-found', LostFound::class)->name('housekeeping.lost-found');
+            Route::get('housekeeping/staff-workload', StaffWorkload::class)->name('housekeeping.staff-workload');
+        });
 
         // Maintenance — the admin mirror of the maintenance tablet's own
         // Work Orders board, Assets tab and Requests (parts) tab.
-        Route::get('maintenance/work-orders', MaintenanceWorkOrders::class)->name('maintenance.work-orders');
-        Route::get('maintenance/assets', MaintenanceAssets::class)->name('maintenance.assets');
-        Route::get('maintenance/parts-requests', MaintenancePartsRequests::class)->name('maintenance.parts-requests');
+        Route::middleware('permission:manage maintenance')->group(function () {
+            Route::get('maintenance/work-orders', MaintenanceWorkOrders::class)->name('maintenance.work-orders');
+            Route::get('maintenance/assets', MaintenanceAssets::class)->name('maintenance.assets');
+            Route::get('maintenance/parts-requests', MaintenancePartsRequests::class)->name('maintenance.parts-requests');
+        });
 
         // Bar Inventory — dashboard, product catalog, stock in/out, bottle
         // tracking, consumption, adjustments and reorder alerts, all reading
         // through the same BarStockMovement ledger so stock counts can never drift.
-        Route::get('bar-inventory/dashboard', BarDashboard::class)->name('bar-inventory.dashboard');
-        Route::get('bar-inventory/items', BarItems::class)->name('bar-inventory.items');
-        Route::get('bar-inventory/stock-in', BarStockIn::class)->name('bar-inventory.stock-in');
-        Route::get('bar-inventory/stock-out', BarStockOut::class)->name('bar-inventory.stock-out');
-        Route::get('bar-inventory/bottle-tracking', BarBottleTracking::class)->name('bar-inventory.bottle-tracking');
-        Route::get('bar-inventory/consumption', BarConsumption::class)->name('bar-inventory.consumption');
-        Route::get('bar-inventory/adjustments', BarAdjustments::class)->name('bar-inventory.adjustments');
-        Route::get('bar-inventory/reorder-alerts', BarReorderAlerts::class)->name('bar-inventory.reorder-alerts');
+        Route::middleware('permission:manage bar inventory')->group(function () {
+            Route::get('bar-inventory/dashboard', BarDashboard::class)->name('bar-inventory.dashboard');
+            Route::get('bar-inventory/items', BarItems::class)->name('bar-inventory.items');
+            Route::get('bar-inventory/stock-in', BarStockIn::class)->name('bar-inventory.stock-in');
+            Route::get('bar-inventory/stock-out', BarStockOut::class)->name('bar-inventory.stock-out');
+            Route::get('bar-inventory/bottle-tracking', BarBottleTracking::class)->name('bar-inventory.bottle-tracking');
+            Route::get('bar-inventory/consumption', BarConsumption::class)->name('bar-inventory.consumption');
+            Route::get('bar-inventory/adjustments', BarAdjustments::class)->name('bar-inventory.adjustments');
+            Route::get('bar-inventory/reorder-alerts', BarReorderAlerts::class)->name('bar-inventory.reorder-alerts');
+        });
 
         // Chat — the admin/manager's own channel with each staff station
         // (Reception, Housekeeping, Maintenance, Security), sharing the same
         // internal Staff Chat every tablet's Chat screen uses.
-        Route::get('chat', AdminChat::class)->name('chat.index');
+        Route::get('chat', AdminChat::class)->middleware('permission:manage staff')->name('chat.index');
 
         // Gym & Fitness — plans + memberships
-        Route::get('gym/plans', Plans::class)->name('gym.plans');
-        Route::get('gym/memberships', Memberships::class)->name('gym.memberships');
-        Route::get('gym/memberships/{membership}/receipt', function (GymMembership $membership) {
-            return view('gym-receipt', ['m' => $membership]);
-        })->name('gym.receipt');
+        Route::middleware('permission:manage gym')->group(function () {
+            Route::get('gym/plans', Plans::class)->name('gym.plans');
+            Route::get('gym/memberships', Memberships::class)->name('gym.memberships');
+            Route::get('gym/memberships/{membership}/receipt', function (GymMembership $membership) {
+                return view('gym-receipt', ['m' => $membership]);
+            })->name('gym.receipt');
+        });
 
         // Restaurant — tables, lounge + reservations
-        Route::get('restaurant/tables', Tables::class)->name('restaurant.tables');
-        Route::get('restaurant/lounge', Lounge::class)->name('restaurant.lounge');
-        Route::get('restaurant/reservations', Reservations::class)->name('restaurant.reservations');
-        Route::get('restaurant/reservations/{reservation}/receipt', function (RestaurantReservation $reservation) {
-            return view('restaurant-receipt', ['r' => $reservation]);
-        })->name('restaurant.receipt');
+        Route::middleware('permission:manage restaurant')->group(function () {
+            Route::get('restaurant/tables', Tables::class)->name('restaurant.tables');
+            Route::get('restaurant/lounge', Lounge::class)->name('restaurant.lounge');
+            Route::get('restaurant/reservations', Reservations::class)->name('restaurant.reservations');
+            Route::get('restaurant/reservations/{reservation}/receipt', function (RestaurantReservation $reservation) {
+                return view('restaurant-receipt', ['r' => $reservation]);
+            })->name('restaurant.receipt');
+        });
 
         // Cinema — movies, snacks + ticket bookings
-        Route::get('cinema/movies', Movies::class)->name('cinema.movies');
-        Route::get('cinema/snacks', Snacks::class)->name('cinema.snacks');
-        Route::get('cinema/bookings', App\Livewire\Admin\Cinema\Bookings::class)->name('cinema.bookings');
-        Route::get('cinema/bookings/{booking}/receipt', function (CinemaBooking $booking) {
-            return view('cinema-receipt', ['b' => $booking]);
-        })->name('cinema.receipt');
+        Route::middleware('permission:manage cinema')->group(function () {
+            Route::get('cinema/movies', Movies::class)->name('cinema.movies');
+            Route::get('cinema/snacks', Snacks::class)->name('cinema.snacks');
+            Route::get('cinema/bookings', App\Livewire\Admin\Cinema\Bookings::class)->name('cinema.bookings');
+            Route::get('cinema/bookings/{booking}/receipt', function (CinemaBooking $booking) {
+                return view('cinema-receipt', ['b' => $booking]);
+            })->name('cinema.receipt');
+        });
 
         // Kitchen — food menu + orders placed from the guest tablet's Place Order screen
-        Route::get('kitchen/menu', Menu::class)->name('kitchen.menu');
-        Route::get('kitchen/orders', Orders::class)->name('kitchen.orders');
+        Route::middleware('permission:manage kitchen')->group(function () {
+            Route::get('kitchen/menu', Menu::class)->name('kitchen.menu');
+            Route::get('kitchen/orders', Orders::class)->name('kitchen.orders');
+            Route::get('kitchen/staff', StaffPerformance::class)->name('kitchen.staff');
+        });
 
         // Bar & Lounge — drinks menu + orders, same guest tablet Place Order flow
-        Route::get('bar-lounge/menu', App\Livewire\Admin\BarLounge\Menu::class)->name('bar-lounge.menu');
-        Route::get('bar-lounge/orders', App\Livewire\Admin\BarLounge\Orders::class)->name('bar-lounge.orders');
+        Route::middleware('permission:manage bar')->group(function () {
+            Route::get('bar-lounge/menu', App\Livewire\Admin\BarLounge\Menu::class)->name('bar-lounge.menu');
+            Route::get('bar-lounge/orders', App\Livewire\Admin\BarLounge\Orders::class)->name('bar-lounge.orders');
+            Route::get('bar-lounge/staff', App\Livewire\Admin\BarLounge\StaffPerformance::class)->name('bar-lounge.staff');
+        });
 
         // Payment — transactions captured from checkout
-        Route::get('payment', App\Livewire\Admin\Payment\Index::class)->name('payment.index');
+        Route::get('payment', App\Livewire\Admin\Payment\Index::class)->middleware('permission:manage payments')->name('payment.index');
 
         // Billing — every checked-in guest's outstanding room-charge balance
-        Route::get('billing', App\Livewire\Admin\Billing\Index::class)->name('billing.index');
+        Route::get('billing', App\Livewire\Admin\Billing\Index::class)->middleware('permission:manage billing')->name('billing.index');
 
         // Access Control — TTLock smart locks (lock mapping + passcode dashboard)
-        Route::get('access-control/ttlock', Locks::class)->name('ttlock.locks');
+        Route::get('access-control/ttlock', Locks::class)->middleware('permission:manage security')->name('ttlock.locks');
 
         // Device Management — tablets, smart TVs + fleet dashboard
         Route::get('devices', Dashboard::class)->middleware('permission:device.view')->name('devices.dashboard');
@@ -1252,21 +1284,21 @@ $adminRoutes->group(function () {
         Route::get('devices/smart-tvs', SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
         Route::get('devices/{device}', App\Livewire\Admin\Devices\Show::class)->whereNumber('device')->middleware('permission:device.view')->name('devices.show');
 
-        // Security — SOS emergency register (management oversight of guest alerts)
-        Route::redirect('security', 'security/incidents');
-        Route::get('security/incidents', Incidents::class)->name('security.incidents');
-
-        // Visitor passes register — issue/manage passes, gate codes & TTLock status.
-        Route::get('security/visitor-passes', VisitorPasses::class)->name('security.visitor-passes');
-
-        // Visitor access log — the audit of gate entries, exits & denials.
-        Route::get('security/visitor-access', VisitorAccessLog::class)->name('security.visitor-access');
+        // Security — SOS emergency register (management oversight of guest alerts),
+        // visitor passes + the visitor access audit log.
+        Route::middleware('permission:manage security')->group(function () {
+            Route::redirect('security', 'security/incidents');
+            Route::get('security/incidents', Incidents::class)->name('security.incidents');
+            Route::get('security/visitor-passes', VisitorPasses::class)->name('security.visitor-passes');
+            Route::get('security/visitor-access', VisitorAccessLog::class)->name('security.visitor-access');
+        });
 
         // Administration — access control (users, roles & permissions)
-        Route::get('users', Users::class)->name('access.users');
+        Route::get('users', Users::class)->middleware('permission:manage users')->name('access.users');
         Route::get('roles-permissions', Roles::class)->name('access.roles');
+        Route::get('my-access', MyAccess::class)->name('access.my-access');
 
         // Administration — hotel information & front-desk policy
-        Route::get('settings', App\Livewire\Admin\Settings\Index::class)->name('settings');
+        Route::get('settings', App\Livewire\Admin\Settings\Index::class)->middleware('permission:manage settings')->name('settings');
     });
 });

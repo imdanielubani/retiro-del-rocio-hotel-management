@@ -51,7 +51,8 @@ class ProvisionedDevice {
   bool get isGuest => !isStaff;
 
   factory ProvisionedDevice.fromProvisionResponse(Map<String, dynamic> json) {
-    final device = (json['device'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final device =
+        (json['device'] as Map?)?.cast<String, dynamic>() ?? const {};
     return ProvisionedDevice.fromDeviceJson(
       device,
       token: json['token'] as String? ?? '',
@@ -81,19 +82,20 @@ class ProvisionedDevice {
   }
 
   Map<String, dynamic> toJson() => {
-        'token': token,
-        'device_code': deviceCode,
-        'device_name': deviceName,
-        'mode': mode,
-        'role': role,
-        'allocation': allocation,
-        'suite_name': suiteName,
-        'room_number': roomNumber,
-        'room_unit_id': roomUnitId,
-        'room_image': roomImageUrl,
-      };
+    'token': token,
+    'device_code': deviceCode,
+    'device_name': deviceName,
+    'mode': mode,
+    'role': role,
+    'allocation': allocation,
+    'suite_name': suiteName,
+    'room_number': roomNumber,
+    'room_unit_id': roomUnitId,
+    'room_image': roomImageUrl,
+  };
 
-  factory ProvisionedDevice.fromJson(Map<String, dynamic> json) => ProvisionedDevice(
+  factory ProvisionedDevice.fromJson(Map<String, dynamic> json) =>
+      ProvisionedDevice(
         token: json['token'] as String? ?? '',
         deviceCode: json['device_code'] as String? ?? '',
         deviceName: json['device_name'] as String? ?? '',

@@ -28,7 +28,8 @@ class _AssignDriverDialog extends ConsumerStatefulWidget {
   final PickupBooking pickup;
 
   @override
-  ConsumerState<_AssignDriverDialog> createState() => _AssignDriverDialogState();
+  ConsumerState<_AssignDriverDialog> createState() =>
+      _AssignDriverDialogState();
 }
 
 class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
@@ -50,12 +51,15 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
       _error = null;
     });
     try {
-      await ref.read(receptionActionsProvider(_token)).assignDriver(widget.pickup.id, _selectedId);
+      await ref
+          .read(receptionActionsProvider(_token))
+          .assignDriver(widget.pickup.id, _selectedId);
       if (mounted) Navigator.of(context).pop(true);
     } on ReceptionException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Something went wrong. Please try again.');
+      if (mounted)
+        setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -64,7 +68,10 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final maxHeight = (media.size.height - media.viewInsets.bottom - 48).clamp(280.0, 680.0);
+    final maxHeight = (media.size.height - media.viewInsets.bottom - 48).clamp(
+      280.0,
+      680.0,
+    );
     final driversAsync = ref.watch(receptionDriversProvider(_token));
 
     return Dialog(
@@ -85,7 +92,9 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
                 child: driversAsync.when(
                   loading: () => const Padding(
                     padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
                   ),
                   error: (_, _) => _emptyRoster('Could not load drivers.'),
                   data: (drivers) => _roster(drivers),
@@ -93,7 +102,13 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
-                Text(_error!, style: AppTypography.style(color: const Color(0xFFEF4444), fontSize: 13)),
+                Text(
+                  _error!,
+                  style: AppTypography.style(
+                    color: const Color(0xFFEF4444),
+                    fontSize: 13,
+                  ),
+                ),
               ],
               const SizedBox(height: 20),
               _footer(),
@@ -112,11 +127,22 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Assign Driver',
-                  style: AppTypography.style(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+              Text(
+                'Assign Driver',
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('${widget.pickup.guestName} · ${widget.pickup.reference}',
-                  style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
+              Text(
+                '${widget.pickup.guestName} · ${widget.pickup.reference}',
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -126,7 +152,11 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
           child: InkWell(
             onTap: _busy ? null : () => Navigator.of(context).pop(false),
             customBorder: const CircleBorder(),
-            child: const SizedBox(width: 34, height: 34, child: Icon(Icons.close_rounded, size: 18, color: Colors.white)),
+            child: const SizedBox(
+              width: 34,
+              height: 34,
+              child: Icon(Icons.close_rounded, size: 18, color: Colors.white),
+            ),
           ),
         ),
       ],
@@ -143,7 +173,9 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
     }
 
     if (list.isEmpty) {
-      return _emptyRoster('No available drivers. Add one from Admin → Vehicle Pickups → Drivers.');
+      return _emptyRoster(
+        'No available drivers. Add one from Admin → Vehicle Pickups → Drivers.',
+      );
     }
 
     return ListView(
@@ -151,10 +183,7 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
       children: [
         _unassignTile(),
         const SizedBox(height: 10),
-        for (final d in list) ...[
-          _driverTile(d),
-          const SizedBox(height: 10),
-        ],
+        for (final d in list) ...[_driverTile(d), const SizedBox(height: 10)],
       ],
     );
   }
@@ -171,7 +200,10 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
 
   Widget _driverTile(PickupDriver d) {
     final selected = _selectedId == d.id;
-    final subtitle = [d.vehicleDetails, d.phone].where((s) => (s ?? '').isNotEmpty).join(' · ');
+    final subtitle = [
+      d.vehicleDetails,
+      d.phone,
+    ].where((s) => (s ?? '').isNotEmpty).join(' · ');
     return _tile(
       selected: selected,
       onTap: () => setState(() => _selectedId = d.id),
@@ -187,7 +219,9 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
     required String subtitle,
   }) {
     return Material(
-      color: selected ? AppColors.gold.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
+      color: selected
+          ? AppColors.gold.withValues(alpha: 0.1)
+          : Colors.white.withValues(alpha: 0.03),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: _busy ? null : onTap,
@@ -197,7 +231,9 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppColors.gold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+              color: selected
+                  ? AppColors.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
@@ -209,12 +245,23 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.3),
+                    color: selected
+                        ? AppColors.gold
+                        : Colors.white.withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
                 child: selected
-                    ? Center(child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle)))
+                    ? Center(
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.gold,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      )
                     : null,
               ),
               const SizedBox(width: 12),
@@ -222,12 +269,24 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                    Text(
+                      title,
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.style(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.style(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -242,9 +301,14 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 30),
       child: Center(
-        child: Text(message,
-            textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: AppTypography.style(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
@@ -255,8 +319,13 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
         Expanded(
           child: TextButton(
             onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-            child: Text('Cancel',
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+            child: Text(
+              'Cancel',
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 14,
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -266,11 +335,27 @@ class _AssignDriverDialogState extends ConsumerState<_AssignDriverDialog> {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.gold,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _busy
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                : Text('Save', style: AppTypography.style(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w700)),
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.black,
+                    ),
+                  )
+                : Text(
+                    'Save',
+                    style: AppTypography.style(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
         ),
       ],

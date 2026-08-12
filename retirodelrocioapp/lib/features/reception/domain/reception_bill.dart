@@ -22,14 +22,15 @@ class ReceptionBillRow {
   final String totalDueLabel;
   final bool hasBalance;
 
-  factory ReceptionBillRow.fromJson(Map<String, dynamic> json) => ReceptionBillRow(
-    bookingId: (json['booking_id'] as num?)?.toInt() ?? 0,
-    guestName: json['guest_name'] as String? ?? 'Guest',
-    roomLabel: json['room_label'] as String? ?? '—',
-    checkOutLabel: json['check_out_label'] as String?,
-    totalDueLabel: json['total_due_label'] as String? ?? 'NGN 0',
-    hasBalance: json['has_balance'] as bool? ?? false,
-  );
+  factory ReceptionBillRow.fromJson(Map<String, dynamic> json) =>
+      ReceptionBillRow(
+        bookingId: (json['booking_id'] as num?)?.toInt() ?? 0,
+        guestName: json['guest_name'] as String? ?? 'Guest',
+        roomLabel: json['room_label'] as String? ?? '—',
+        checkOutLabel: json['check_out_label'] as String?,
+        totalDueLabel: json['total_due_label'] as String? ?? 'NGN 0',
+        hasBalance: json['has_balance'] as bool? ?? false,
+      );
 }
 
 /// The Bills list plus its headline totals.
@@ -52,10 +53,12 @@ class ReceptionBillsOverview {
   );
 
   factory ReceptionBillsOverview.fromJson(Map<String, dynamic> json) {
-    final summary = (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final summary =
+        (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
 
     return ReceptionBillsOverview(
-      totalOutstandingLabel: summary['total_outstanding_label'] as String? ?? 'NGN 0',
+      totalOutstandingLabel:
+          summary['total_outstanding_label'] as String? ?? 'NGN 0',
       guestsWithBalance: (summary['guests_with_balance'] as num?)?.toInt() ?? 0,
       rows: ((json['bills'] as List?) ?? const [])
           .map((r) => ReceptionBillRow.fromJson((r as Map).cast()))
@@ -90,8 +93,10 @@ class ReceptionBillDetail {
   final String totalDueLabel;
 
   factory ReceptionBillDetail.fromJson(Map<String, dynamic> json) {
-    final reservation = (json['reservation'] as Map?)?.cast<String, dynamic>() ?? const {};
-    final summary = (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final reservation =
+        (json['reservation'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final summary =
+        (json['summary'] as Map?)?.cast<String, dynamic>() ?? const {};
 
     return ReceptionBillDetail(
       guestName: reservation['guest_name'] as String? ?? 'Guest',

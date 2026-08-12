@@ -218,13 +218,26 @@ class BarActions {
     return tab;
   }
 
-  Future<BarTab> closeTab(int tabId, String paymentMethod) async {
+  Future<BarTab> closeTab(
+    int tabId,
+    String paymentMethod, {
+    int? bookingId,
+  }) async {
     final tab = await _ref
         .read(barRepositoryProvider)
-        .closeTab(_token, tabId, paymentMethod);
+        .closeTab(_token, tabId, paymentMethod, bookingId: bookingId);
     _refreshBoard();
     _ref.invalidate(barTabDetailProvider((_token, tabId)));
     _ref.invalidate(barHistoryProvider(_token));
+    return tab;
+  }
+
+  /// Push a confirmed reservation straight into a new, pre-filled tab.
+  Future<BarTab> confirmReservationToTab(int reservationId) async {
+    final tab = await _ref
+        .read(barRepositoryProvider)
+        .confirmReservationToTab(_token, reservationId);
+    _ref.invalidate(barOpenTabsProvider(_token));
     return tab;
   }
 

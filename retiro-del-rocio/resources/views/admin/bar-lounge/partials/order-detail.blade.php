@@ -41,7 +41,9 @@
 
                 <div class="flex flex-col gap-1.5 rounded-xl bg-[#f9fafb] px-4 py-3 text-[13px]">
                     <div class="flex items-center justify-between text-[#6b7280]"><span>Subtotal</span><span>₦{{ number_format($selected->subtotal) }}</span></div>
+                    @if($selected->service_fee > 0)
                     <div class="flex items-center justify-between text-[#6b7280]"><span>Service Fee</span><span>₦{{ number_format($selected->service_fee) }}</span></div>
+                    @endif
                     <div class="flex items-center justify-between border-t border-[#e5e7eb] pt-1.5 text-[14px] font-bold text-[#1e1e1e]"><span>Total</span><span>{{ $selected->totalLabel() }}</span></div>
                 </div>
 

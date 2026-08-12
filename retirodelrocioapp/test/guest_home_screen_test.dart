@@ -86,8 +86,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('only the service grid scrolls — the stay card stays put',
-      (tester) async {
+  testWidgets('only the service grid scrolls — the stay card stays put', (
+    tester,
+  ) async {
     await pumpHome(tester);
 
     final stayCardBefore = tester.getTopLeft(find.byType(CurrentStayCard));
@@ -97,7 +98,10 @@ void main() {
     final hotelInfo = find.text('Hotel Information');
     final tileBefore = tester.getTopLeft(hotelInfo);
 
-    await tester.drag(find.byType(QuickServiceCard).first, const Offset(0, -160));
+    await tester.drag(
+      find.byType(QuickServiceCard).first,
+      const Offset(0, -160),
+    );
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(hotelInfo).dy, lessThan(tileBefore.dy));
@@ -118,8 +122,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('service cards hold their height under the kiosk font clamp',
-      (tester) async {
+  testWidgets('service cards hold their height under the kiosk font clamp', (
+    tester,
+  ) async {
     // The tablet's system font-size setting used to inflate the labels and
     // overflow these fixed-height cards. `RocioTabletApp` clamps scaling for the
     // whole kiosk (see app.dart); this mirrors that wrapper and pins the height.

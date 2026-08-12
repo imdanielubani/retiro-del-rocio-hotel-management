@@ -34,32 +34,33 @@ void main() {
     );
   });
 
-  testWidgets('shows a dismissible toast with the notification title and message', (
-    tester,
-  ) async {
-    await pumpApp(tester);
+  testWidgets(
+    'shows a dismissible toast with the notification title and message',
+    (tester) async {
+      await pumpApp(tester);
 
-    showSecurityNotificationToast(
-      SecurityNotification(
-        id: 1,
-        category: SecurityNotificationCategory.guest,
-        title: 'New Visitor Invited',
-        message: 'Daniel Ubani in Room 101 invited Michael Brown.',
-        time: DateTime.now(),
-      ),
-    );
-    await tester.pump();
+      showSecurityNotificationToast(
+        SecurityNotification(
+          id: 1,
+          category: SecurityNotificationCategory.guest,
+          title: 'New Visitor Invited',
+          message: 'Daniel Ubani in Room 101 invited Michael Brown.',
+          time: DateTime.now(),
+        ),
+      );
+      await tester.pump();
 
-    expect(find.text('New Visitor Invited'), findsOneWidget);
-    expect(
-      find.text('Daniel Ubani in Room 101 invited Michael Brown.'),
-      findsOneWidget,
-    );
-    // A SnackBar, not a full-screen blocking overlay.
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.byType(Dialog), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.text('New Visitor Invited'), findsOneWidget);
+      expect(
+        find.text('Daniel Ubani in Room 101 invited Michael Brown.'),
+        findsOneWidget,
+      );
+      // A SnackBar, not a full-screen blocking overlay.
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('a second notification replaces the first rather than stacking', (
     tester,

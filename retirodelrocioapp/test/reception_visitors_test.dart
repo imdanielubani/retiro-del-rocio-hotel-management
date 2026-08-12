@@ -4,8 +4,8 @@ import 'package:retirodelrocioapp/features/reception/domain/reception_visitor.da
 import 'package:retirodelrocioapp/features/reception/presentation/widgets/reception_widgets.dart';
 
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(body: SizedBox(width: 520, child: child)),
-    );
+  home: Scaffold(body: SizedBox(width: 520, child: child)),
+);
 
 void main() {
   group('domain parsing', () {
@@ -98,21 +98,29 @@ void main() {
     isInside: true,
   );
 
-  testWidgets('an expected visitor row shows the host, room and Pending status', (tester) async {
-    await tester.pumpWidget(_host(ReceptionVisitorRowCard(visitor: expected)));
+  testWidgets(
+    'an expected visitor row shows the host, room and Pending status',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(ReceptionVisitorRowCard(visitor: expected)),
+      );
 
-    expect(find.text('Michael Brown'), findsOneWidget);
-    expect(find.text('Visiting Daniel Ubani  ·  Alba Suite'), findsOneWidget);
-    expect(find.text('Pending'), findsOneWidget);
-    expect(find.text('Invited Aug 1, 9:00AM'), findsOneWidget);
-  });
+      expect(find.text('Michael Brown'), findsOneWidget);
+      expect(find.text('Visiting Daniel Ubani  ·  Alba Suite'), findsOneWidget);
+      expect(find.text('Pending'), findsOneWidget);
+      expect(find.text('Invited Aug 1, 9:00AM'), findsOneWidget);
+    },
+  );
 
-  testWidgets('an arrived visitor row shows the Inside status and arrival time', (tester) async {
-    await tester.pumpWidget(_host(ReceptionVisitorRowCard(visitor: arrived)));
+  testWidgets(
+    'an arrived visitor row shows the Inside status and arrival time',
+    (tester) async {
+      await tester.pumpWidget(_host(ReceptionVisitorRowCard(visitor: arrived)));
 
-    expect(find.text('Sarah Connor'), findsOneWidget);
-    expect(find.text('Visiting John Doe  ·  Room 202'), findsOneWidget);
-    expect(find.text('Inside'), findsOneWidget);
-    expect(find.text('Arrived 4:10PM'), findsOneWidget);
-  });
+      expect(find.text('Sarah Connor'), findsOneWidget);
+      expect(find.text('Visiting John Doe  ·  Room 202'), findsOneWidget);
+      expect(find.text('Inside'), findsOneWidget);
+      expect(find.text('Arrived 4:10PM'), findsOneWidget);
+    },
+  );
 }

@@ -60,7 +60,7 @@ class BarScaffold extends ConsumerWidget {
     // bottom-tab dashboard.
     ref.watch(barNotificationChimeProvider(session.token));
     ref.watch(staffChatChimeProvider(session.token));
-    ref.watch(staffChatRealtimeProvider((session.token, session.role)));
+    ref.watch(staffChatRealtimeProvider((session.token, session.userId)));
     watchStaffIntercomCall(context, ref, session);
     final hasUnreadChat = ref.watch(staffChatHasUnreadProvider(session.token));
 

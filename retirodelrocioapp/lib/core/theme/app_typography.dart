@@ -11,7 +11,8 @@ abstract final class AppTypography {
 
   /// Applies Poppins to every text style of [base]. Used for the app-wide
   /// [ThemeData.textTheme] so all default text renders in Poppins.
-  static TextTheme textTheme(TextTheme base) => base.apply(fontFamily: fontFamily);
+  static TextTheme textTheme(TextTheme base) =>
+      base.apply(fontFamily: fontFamily);
 
   /// A Poppins [TextStyle] with the given attributes — for one-off design text.
   static TextStyle style({
@@ -20,13 +21,12 @@ abstract final class AppTypography {
     FontWeight? fontWeight,
     double? letterSpacing,
     double? height,
-  }) =>
-      TextStyle(
-        fontFamily: fontFamily,
-        color: color,
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        height: height,
-      );
+  }) => TextStyle(
+    fontFamily: fontFamily,
+    color: color,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    letterSpacing: letterSpacing,
+    height: height,
+  );
 }

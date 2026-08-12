@@ -27,10 +27,12 @@ class ReceptionBillDetailScreen extends ConsumerStatefulWidget {
   final int bookingId;
 
   @override
-  ConsumerState<ReceptionBillDetailScreen> createState() => _ReceptionBillDetailScreenState();
+  ConsumerState<ReceptionBillDetailScreen> createState() =>
+      _ReceptionBillDetailScreenState();
 }
 
-class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailScreen> {
+class _ReceptionBillDetailScreenState
+    extends ConsumerState<ReceptionBillDetailScreen> {
   late Future<ReceptionBillDetail> _future;
 
   String get _token => widget.session.token;
@@ -41,8 +43,9 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
     _future = _load();
   }
 
-  Future<ReceptionBillDetail> _load() =>
-      ref.read(receptionRepositoryProvider).bookingBill(_token, widget.bookingId);
+  Future<ReceptionBillDetail> _load() => ref
+      .read(receptionRepositoryProvider)
+      .bookingBill(_token, widget.bookingId);
 
   void _retry() => setState(() => _future = _load());
 
@@ -85,18 +88,27 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
 
   Widget _body(AsyncSnapshot<ReceptionBillDetail> snapshot) {
     if (snapshot.connectionState != ConnectionState.done) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.gold));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
+      );
     }
     if (snapshot.hasError || snapshot.data == null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_off_rounded, size: 30, color: Colors.white.withValues(alpha: 0.4)),
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 30,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 12),
             Text(
               'Could not load this bill.',
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 15,
+              ),
             ),
             const SizedBox(height: 16),
             Material(
@@ -106,7 +118,10 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
                 onTap: _retry,
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   child: Text(
                     'Retry',
                     style: AppTypography.style(
@@ -134,7 +149,10 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
               children: [
                 for (var i = 0; i < bill.categories.length; i++) ...[
                   if (i > 0) const SizedBox(height: 16),
-                  BillCategoryCard(category: bill.categories[i], initiallyExpanded: i == 0),
+                  BillCategoryCard(
+                    category: bill.categories[i],
+                    initiallyExpanded: i == 0,
+                  ),
                 ],
               ],
             ),
@@ -152,14 +170,21 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.2), width: 0.8),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.2),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             'Bill Summary',
-            style: AppTypography.style(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 16),
           for (final line in bill.summaryLines) ...[
@@ -173,7 +198,11 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
             children: [
               Text(
                 'Total Due',
-                style: AppTypography.style(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -196,7 +225,8 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
             const SizedBox(height: 20),
             Container(height: 1, color: Colors.white.withValues(alpha: 0.1)),
             const SizedBox(height: 16),
-            if (bill.checkInLabel != null) _summaryRow('Check-in', bill.checkInLabel!),
+            if (bill.checkInLabel != null)
+              _summaryRow('Check-in', bill.checkInLabel!),
             if (bill.checkOutLabel != null) ...[
               const SizedBox(height: 10),
               _summaryRow('Check-out', bill.checkOutLabel!),
@@ -214,7 +244,10 @@ class _ReceptionBillDetailScreenState extends ConsumerState<ReceptionBillDetailS
         Expanded(
           child: Text(
             label,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 13,
+            ),
           ),
         ),
         const SizedBox(width: 12),

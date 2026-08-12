@@ -33,10 +33,7 @@ class IncidentDetailPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: _closeButton(),
-        ),
+        Align(alignment: Alignment.centerRight, child: _closeButton()),
         const SizedBox(height: 8),
         _emergencyCard(),
         const SizedBox(height: 20),
@@ -100,7 +97,11 @@ class IncidentDetailPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: _red.withValues(alpha: 0.3)),
                 ),
-                child: const Icon(Icons.warning_amber_rounded, size: 20, color: _red),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 20,
+                  color: _red,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -248,10 +249,20 @@ class IncidentDetailPanel extends StatelessWidget {
     return Column(
       children: [
         if (incident.isActive)
-          _primaryAction('Acknowledge & Dispatch', Icons.campaign_rounded, _red, onAcknowledge)
+          _primaryAction(
+            'Acknowledge & Dispatch',
+            Icons.campaign_rounded,
+            _red,
+            onAcknowledge,
+          )
         else if (incident.isAcknowledged)
-          _primaryAction('Mark Resolved', Icons.check_circle_outline_rounded,
-              AppColors.gold, onResolve, onDark: true)
+          _primaryAction(
+            'Mark Resolved',
+            Icons.check_circle_outline_rounded,
+            AppColors.gold,
+            onResolve,
+            onDark: true,
+          )
         else
           _closedBanner(),
         const SizedBox(height: 10),
@@ -260,8 +271,13 @@ class IncidentDetailPanel extends StatelessWidget {
     );
   }
 
-  Widget _primaryAction(String label, IconData icon, Color color, VoidCallback onTap,
-      {bool onDark = false}) {
+  Widget _primaryAction(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap, {
+    bool onDark = false,
+  }) {
     return SizedBox(
       width: double.infinity,
       child: Material(
@@ -277,12 +293,19 @@ class IncidentDetailPanel extends StatelessWidget {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(icon, size: 16, color: onDark ? AppColors.onGold : Colors.white),
+                      Icon(
+                        icon,
+                        size: 16,
+                        color: onDark ? AppColors.onGold : Colors.white,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         label,
@@ -319,7 +342,11 @@ class IncidentDetailPanel extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             resolved ? 'Incident Resolved' : 'Stood Down',
-            style: AppTypography.style(color: color, fontSize: 14, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -345,7 +372,11 @@ class IncidentDetailPanel extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.call_rounded, size: 15, color: Colors.white.withValues(alpha: 0.7)),
+                Icon(
+                  Icons.call_rounded,
+                  size: 15,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Call Room',
@@ -364,14 +395,14 @@ class IncidentDetailPanel extends StatelessWidget {
   }
 
   Widget _sectionLabel(String text) => Text(
-        text,
-        style: AppTypography.style(
-          color: Colors.white.withValues(alpha: 0.35),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
-        ),
-      );
+    text,
+    style: AppTypography.style(
+      color: Colors.white.withValues(alpha: 0.35),
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.2,
+    ),
+  );
 
   static String _stamp(DateTime? at) {
     if (at == null) return '—';
@@ -421,7 +452,9 @@ class _TimelineStep extends StatelessWidget {
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: done ? doneColor.withValues(alpha: 0.15) : Colors.transparent,
+                  color: done
+                      ? doneColor.withValues(alpha: 0.15)
+                      : Colors.transparent,
                   shape: BoxShape.circle,
                   border: Border.all(color: dotColor, width: 1.5),
                 ),
@@ -447,7 +480,9 @@ class _TimelineStep extends StatelessWidget {
                 Text(
                   title,
                   style: AppTypography.style(
-                    color: done ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                    color: done
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.5),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),

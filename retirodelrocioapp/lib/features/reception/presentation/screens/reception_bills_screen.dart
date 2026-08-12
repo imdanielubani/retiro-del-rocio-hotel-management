@@ -24,7 +24,8 @@ class ReceptionBillsScreen extends ConsumerStatefulWidget {
   final StaffSession session;
 
   @override
-  ConsumerState<ReceptionBillsScreen> createState() => _ReceptionBillsScreenState();
+  ConsumerState<ReceptionBillsScreen> createState() =>
+      _ReceptionBillsScreenState();
 }
 
 class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
@@ -43,8 +44,11 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
     final q = _search.trim().toLowerCase();
     if (q.isEmpty) return all;
     return all
-        .where((b) =>
-            b.guestName.toLowerCase().contains(q) || b.roomLabel.toLowerCase().contains(q))
+        .where(
+          (b) =>
+              b.guestName.toLowerCase().contains(q) ||
+              b.roomLabel.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -52,7 +56,10 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
     ReceptionNavigation.push(
       context,
       'bills/${row.bookingId}',
-      ReceptionBillDetailScreen(session: widget.session, bookingId: row.bookingId),
+      ReceptionBillDetailScreen(
+        session: widget.session,
+        bookingId: row.bookingId,
+      ),
     );
   }
 
@@ -62,7 +69,9 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
 
     final billsAsync = ref.watch(receptionBillsProvider(_token));
     final overview = billsAsync.value ?? ReceptionBillsOverview.empty;
-    final unreadNotifications = ref.watch(receptionUnreadNotificationsProvider(_token));
+    final unreadNotifications = ref.watch(
+      receptionUnreadNotificationsProvider(_token),
+    );
 
     return ReceptionScaffold(
       session: widget.session,
@@ -90,12 +99,15 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
             child: billsAsync.when(
               loading: () => overview.rows.isNotEmpty
                   ? _list(overview)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    ),
               error: (_, _) => overview.rows.isNotEmpty
                   ? _list(overview)
                   : Center(
                       child: TextButton(
-                        onPressed: () => ref.invalidate(receptionBillsProvider(_token)),
+                        onPressed: () =>
+                            ref.invalidate(receptionBillsProvider(_token)),
                         child: const Text(
                           'Could not load bills. Retry',
                           style: TextStyle(color: AppColors.gold),
@@ -113,7 +125,13 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
   Widget _summaryCards(ReceptionBillsOverview overview) {
     return Row(
       children: [
-        Expanded(child: _summaryCard('TOTAL OUTSTANDING', overview.totalOutstandingLabel, AppColors.gold)),
+        Expanded(
+          child: _summaryCard(
+            'TOTAL OUTSTANDING',
+            overview.totalOutstandingLabel,
+            AppColors.gold,
+          ),
+        ),
         const SizedBox(width: 16),
         Expanded(
           child: _summaryCard(
@@ -132,7 +150,10 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,7 +197,8 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
         padding: const EdgeInsets.only(bottom: 24),
         itemCount: rows.length,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => ReceptionBillRowCard(row: rows[i], onTap: () => _openBill(rows[i])),
+        itemBuilder: (_, i) =>
+            ReceptionBillRowCard(row: rows[i], onTap: () => _openBill(rows[i])),
       ),
     );
   }
@@ -185,7 +207,10 @@ class _ReceptionBillsScreenState extends ConsumerState<ReceptionBillsScreen> {
     ReceptionNavigation.push(
       context,
       'notifications',
-      ReceptionNotificationScreen(session: widget.session, current: ReceptionNavItem.bills),
+      ReceptionNotificationScreen(
+        session: widget.session,
+        current: ReceptionNavItem.bills,
+      ),
     );
   }
 }

@@ -31,7 +31,7 @@ class KitchenLiveBoardScreen extends ConsumerStatefulWidget {
 class _KitchenLiveBoardScreenState
     extends ConsumerState<KitchenLiveBoardScreen> {
   String _search = '';
-  String _column = ''; // '' | new | preparing | served
+  String _column = ''; // '' | new | preparing | ready
 
   String get _token => widget.session.token;
 
@@ -118,8 +118,8 @@ class _KitchenLiveBoardScreenState
                 ),
                 KitchenFilterChip(
                   label: 'Ready',
-                  selected: _column == 'served',
-                  onTap: () => setState(() => _column = 'served'),
+                  selected: _column == 'ready',
+                  onTap: () => setState(() => _column = 'ready'),
                 ),
               ],
             ),
@@ -169,7 +169,7 @@ class _KitchenLiveBoardScreenState
           child: KitchenStatCard(
             label: 'READY',
             value: '${overview.readyCount}',
-            accent: kitchenBoardColumnColor('served'),
+            accent: kitchenBoardColumnColor('ready'),
           ),
         ),
         const SizedBox(width: 12),

@@ -28,7 +28,12 @@ Color maintenancePriorityColor(String priority) => switch (priority) {
 /// stat card exactly: a small tracked label and a large accent number, on a
 /// faint frosted card with a fading accent underline.
 class MaintenanceStatCard extends StatelessWidget {
-  const MaintenanceStatCard({super.key, required this.label, required this.value, required this.accent});
+  const MaintenanceStatCard({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
 
   final String label;
   final int value;
@@ -42,7 +47,10 @@ class MaintenanceStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Stack(
         children: [
@@ -61,7 +69,12 @@ class MaintenanceStatCard extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 '$value',
-                style: AppTypography.style(color: accent, fontSize: 36, fontWeight: FontWeight.w800, height: 1),
+                style: AppTypography.style(
+                  color: accent,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
               ),
             ],
           ),
@@ -72,7 +85,9 @@ class MaintenanceStatCard extends StatelessWidget {
             child: Container(
               height: 2,
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [accent.withValues(alpha: 0.25), Colors.transparent]),
+                gradient: LinearGradient(
+                  colors: [accent.withValues(alpha: 0.25), Colors.transparent],
+                ),
               ),
             ),
           ),
@@ -85,7 +100,12 @@ class MaintenanceStatCard extends StatelessWidget {
 /// A titled panel shell, matching the reception dashboard's section panels
 /// exactly: a gold uppercase heading over a faint frosted card.
 class MaintenanceSectionPanel extends StatelessWidget {
-  const MaintenanceSectionPanel({super.key, required this.title, required this.child, this.expand = true});
+  const MaintenanceSectionPanel({
+    super.key,
+    required this.title,
+    required this.child,
+    this.expand = true,
+  });
 
   final String title;
   final Widget child;
@@ -100,7 +120,10 @@ class MaintenanceSectionPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -133,8 +156,18 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
-      child: Text(label, style: AppTypography.style(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.style(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
@@ -179,9 +212,15 @@ class WorkOrderCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              _Pill(label: order.priorityLabel, color: maintenancePriorityColor(order.priority)),
+              _Pill(
+                label: order.priorityLabel,
+                color: maintenancePriorityColor(order.priority),
+              ),
               const SizedBox(width: 8),
-              _Pill(label: order.statusLabel, color: maintenanceStatusColor(order.status)),
+              _Pill(
+                label: order.statusLabel,
+                color: maintenanceStatusColor(order.status),
+              ),
               if (order.slaBreached) ...[
                 const SizedBox(width: 8),
                 _Pill(label: 'SLA Breached', color: kMtRed),
@@ -193,18 +232,26 @@ class WorkOrderCard extends StatelessWidget {
             order.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+            style: AppTypography.style(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             [
               order.locationLabel,
-              if ((order.assignedToName ?? '').isNotEmpty) order.assignedToName!,
+              if ((order.assignedToName ?? '').isNotEmpty)
+                order.assignedToName!,
               if ((order.createdLabel ?? '').isNotEmpty) order.createdLabel!,
             ].join('  ·  '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
           ),
           if ((order.description ?? '').isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -212,7 +259,10 @@ class WorkOrderCard extends StatelessWidget {
               order.description!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 12,
+              ),
             ),
           ],
           const SizedBox(height: 10),
@@ -226,7 +276,11 @@ class WorkOrderCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(14),
-      child: InkWell(borderRadius: BorderRadius.circular(14), onTap: onTap, child: card),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: card,
+      ),
     );
   }
 
@@ -239,7 +293,14 @@ class WorkOrderCard extends StatelessWidget {
       );
     }
     if (order.isDone) {
-      return Text('Done', style: AppTypography.style(color: kMtSlate, fontSize: 12, fontWeight: FontWeight.w600));
+      return Text(
+        'Done',
+        style: AppTypography.style(
+          color: kMtSlate,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      );
     }
     if (order.isNew) return _button('Accept', kMtBlue, onAccept);
     if (order.isAccepted) return _button('Start', AppColors.gold, onStart);
@@ -255,7 +316,14 @@ class WorkOrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(label, style: AppTypography.style(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+          child: Text(
+            label,
+            style: AppTypography.style(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ),
     );
@@ -283,7 +351,9 @@ class AssetCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: asset.isDueForService ? kMtRed.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.08),
+              color: asset.isDueForService
+                  ? kMtRed.withValues(alpha: 0.35)
+                  : Colors.white.withValues(alpha: 0.08),
               width: 0.8,
             ),
           ),
@@ -292,26 +362,36 @@ class AssetCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if ((asset.category ?? '').isNotEmpty) _Pill(label: asset.category!, color: kMtBlue),
+                  if ((asset.category ?? '').isNotEmpty)
+                    _Pill(label: asset.category!, color: kMtBlue),
                   if (asset.isDueForService) ...[
-                    if ((asset.category ?? '').isNotEmpty) const SizedBox(width: 8),
+                    if ((asset.category ?? '').isNotEmpty)
+                      const SizedBox(width: 8),
                     _Pill(label: 'Service Due', color: kMtRed),
                   ],
                 ],
               ),
-              if ((asset.category ?? '').isNotEmpty || asset.isDueForService) const SizedBox(height: 8),
+              if ((asset.category ?? '').isNotEmpty || asset.isDueForService)
+                const SizedBox(height: 8),
               Text(
                 asset.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.style(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                style: AppTypography.style(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 asset.locationLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
@@ -320,7 +400,10 @@ class AssetCard extends StatelessWidget {
                     : 'No service schedule',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.style(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+                style: AppTypography.style(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -359,7 +442,10 @@ class PartsRequestCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,22 +457,35 @@ class PartsRequestCard extends StatelessWidget {
                   '${request.quantity} × ${request.partName}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.style(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                  style: AppTypography.style(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              _Pill(label: request.statusLabel, color: _partsRequestStatusColor(request.status)),
+              _Pill(
+                label: request.statusLabel,
+                color: _partsRequestStatusColor(request.status),
+              ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             [
-              if ((request.workOrderTitle ?? '').isNotEmpty) request.workOrderTitle!,
-              if ((request.locationLabel ?? '').isNotEmpty) request.locationLabel!,
-              if ((request.createdLabel ?? '').isNotEmpty) request.createdLabel!,
+              if ((request.workOrderTitle ?? '').isNotEmpty)
+                request.workOrderTitle!,
+              if ((request.locationLabel ?? '').isNotEmpty)
+                request.locationLabel!,
+              if ((request.createdLabel ?? '').isNotEmpty)
+                request.createdLabel!,
             ].join('  ·  '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
           ),
           if ((request.note ?? '').isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -394,7 +493,10 @@ class PartsRequestCard extends StatelessWidget {
               request.note!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.style(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+              style: AppTypography.style(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 12,
+              ),
             ),
           ],
           if (request.isPending) ...[
@@ -433,7 +535,14 @@ class PartsRequestCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(label, style: AppTypography.style(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+          child: Text(
+            label,
+            style: AppTypography.style(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ),
     );
@@ -442,7 +551,11 @@ class PartsRequestCard extends StatelessWidget {
 
 /// A quiet placeholder for a section with nothing in it yet.
 class MaintenanceSectionEmpty extends StatelessWidget {
-  const MaintenanceSectionEmpty({super.key, required this.icon, required this.message});
+  const MaintenanceSectionEmpty({
+    super.key,
+    required this.icon,
+    required this.message,
+  });
 
   final IconData icon;
   final String message;
@@ -458,7 +571,10 @@ class MaintenanceSectionEmpty extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: AppTypography.style(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+            style: AppTypography.style(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 12,
+            ),
           ),
         ],
       ),

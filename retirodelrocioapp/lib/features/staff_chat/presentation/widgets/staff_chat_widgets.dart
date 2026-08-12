@@ -152,6 +152,7 @@ class StaffChatConversationTile extends StatelessWidget {
     super.key,
     required this.role,
     required this.label,
+    required this.roleLabel,
     required this.online,
     required this.preview,
     required this.timeLabel,
@@ -162,6 +163,7 @@ class StaffChatConversationTile extends StatelessWidget {
 
   final String role;
   final String label;
+  final String roleLabel;
   final bool online;
   final String? preview;
   final String? timeLabel;
@@ -227,7 +229,18 @@ class StaffChatConversationTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    StaffOnlineStatus(online: online),
+                    Row(
+                      children: [
+                        Text(
+                          '$roleLabel · ',
+                          style: AppTypography.style(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            fontSize: 11,
+                          ),
+                        ),
+                        StaffOnlineStatus(online: online),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: [

@@ -31,15 +31,15 @@ class _StaffIntercomBodyState extends ConsumerState<StaffIntercomBody> {
   bool _placingCall = false;
 
   String get _token => widget.session.token;
-  String get _myRole => widget.session.role;
+  int get _myUserId => widget.session.userId;
 
-  Future<void> _call(String role) async {
+  Future<void> _call(int userId) async {
     if (_placingCall) return;
     setState(() => _placingCall = true);
     try {
       await ref
-          .read(staffIntercomCallProvider((_token, _myRole)).notifier)
-          .place(role);
+          .read(staffIntercomCallProvider((_token, _myUserId)).notifier)
+          .place(userId);
     } on IntercomCallException catch (e) {
       if (mounted) _toast(e.message, error: true);
     } catch (_) {
@@ -87,7 +87,7 @@ class _StaffIntercomBodyState extends ConsumerState<StaffIntercomBody> {
         crossAxisCount: 3,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 1.7,
+        childAspectRatio: 1.5,
       ),
       itemBuilder: (_, i) => _card(channels[i]),
     );
@@ -114,13 +114,23 @@ class _StaffIntercomBodyState extends ConsumerState<StaffIntercomBody> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  channel.label,
+                  channel.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.style(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  channel.roleLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.style(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 11,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -145,7 +155,7 @@ class _StaffIntercomBodyState extends ConsumerState<StaffIntercomBody> {
       color: color.withValues(alpha: online ? 0.13 : 0.06),
       shape: const CircleBorder(),
       child: InkWell(
-        onTap: (online && !_placingCall) ? () => _call(channel.role) : null,
+        onTap: (online && !_placingCall) ? () => _call(channel.userId) : null,
         customBorder: const CircleBorder(),
         child: Container(
           width: 42,

@@ -5,7 +5,9 @@ import 'package:retirodelrocioapp/features/welcome/data/weather_service.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/weather.dart';
 
 /// The weather service instance.
-final weatherServiceProvider = Provider<WeatherService>((ref) => WeatherService());
+final weatherServiceProvider = Provider<WeatherService>(
+  (ref) => WeatherService(),
+);
 
 /// Current weather for the hotel, refreshed every 15 minutes.
 final weatherProvider = FutureProvider<Weather>((ref) async {

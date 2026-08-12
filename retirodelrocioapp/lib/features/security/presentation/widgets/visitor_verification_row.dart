@@ -6,21 +6,20 @@ import 'package:retirodelrocioapp/features/security/domain/visitor_pass_record.d
 /// The status accent for a visitor row — gold while pending, green once verified,
 /// red if denied (Figma 229:13150).
 Color visitorStatusColor(VisitorPassStatus status) => switch (status) {
-      VisitorPassStatus.verified => const Color(0xFF22C55E),
-      VisitorPassStatus.denied => const Color(0xFFFF4D4D),
-      VisitorPassStatus.pending => AppColors.gold,
-      VisitorPassStatus.cancelled ||
-      VisitorPassStatus.expired =>
-        const Color(0x73FFFFFF),
-    };
+  VisitorPassStatus.verified => const Color(0xFF22C55E),
+  VisitorPassStatus.denied => const Color(0xFFFF4D4D),
+  VisitorPassStatus.pending => AppColors.gold,
+  VisitorPassStatus.cancelled ||
+  VisitorPassStatus.expired => const Color(0x73FFFFFF),
+};
 
 String visitorStatusLabel(VisitorPassStatus status) => switch (status) {
-      VisitorPassStatus.verified => 'Verified',
-      VisitorPassStatus.denied => 'Denied',
-      VisitorPassStatus.pending => 'Pending',
-      VisitorPassStatus.cancelled => 'Cancelled',
-      VisitorPassStatus.expired => 'Expired',
-    };
+  VisitorPassStatus.verified => 'Verified',
+  VisitorPassStatus.denied => 'Denied',
+  VisitorPassStatus.pending => 'Pending',
+  VisitorPassStatus.cancelled => 'Cancelled',
+  VisitorPassStatus.expired => 'Expired',
+};
 
 /// One row in the Visitor Verification list. Tapping a pending row expands it to
 /// reveal the visitor's contact details, so the officer can confirm identity.
@@ -83,7 +82,10 @@ class VisitorVerificationRow extends StatelessWidget {
                 const SizedBox(height: 12),
                 _contactDetails(),
               ],
-              if (expanded && pass.isVerified && pass.isInside && onCheckOut != null) ...[
+              if (expanded &&
+                  pass.isVerified &&
+                  pass.isInside &&
+                  onCheckOut != null) ...[
                 const SizedBox(height: 14),
                 _checkOutButton(),
               ],
@@ -169,7 +171,9 @@ class VisitorVerificationRow extends StatelessWidget {
               TextSpan(
                 children: [
                   TextSpan(
-                    text: pass.hasOnlineCode ? 'Online Code — ' : 'Offline Code — ',
+                    text: pass.hasOnlineCode
+                        ? 'Online Code — '
+                        : 'Offline Code — ',
                     style: AppTypography.style(
                       color: Colors.white.withValues(alpha: 0.4),
                       fontSize: 12,
@@ -177,14 +181,15 @@ class VisitorVerificationRow extends StatelessWidget {
                   ),
                   TextSpan(
                     text: pass.code,
-                    style: AppTypography.style(
-                      color: accent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                    ).copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                    style:
+                        AppTypography.style(
+                          color: accent,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                        ).copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                   ),
                 ],
               ),
@@ -302,8 +307,7 @@ class VisitorVerificationRow extends StatelessWidget {
   Widget _contactDetails() {
     return Column(
       children: [
-        if ((pass.email ?? '').isNotEmpty)
-          _detailRow('Email', pass.email!),
+        if ((pass.email ?? '').isNotEmpty) _detailRow('Email', pass.email!),
         if ((pass.phone ?? '').isNotEmpty) ...[
           const SizedBox(height: 8),
           _detailRow('WhatsApp Number', pass.phone!),

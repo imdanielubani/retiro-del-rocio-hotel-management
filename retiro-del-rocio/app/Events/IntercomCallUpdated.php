@@ -22,21 +22,28 @@ class IntercomCallUpdated implements ShouldBroadcastNow
     public function __construct(
         public ?int $fromRoomUnitId,
         public ?string $fromRole,
+        public ?int $fromUserId,
         public ?int $toRoomUnitId,
         public ?string $toRole,
+        public ?int $toUserId,
     ) {}
 
     /** @return array<int, Channel> */
     public function broadcastOn(): array
     {
         return [
-            $this->fromRoomUnitId !== null
-                ? new Channel('rooms.'.$this->fromRoomUnitId)
-                : new Channel('staff-intercom.'.$this->fromRole),
-            $this->toRoomUnitId !== null
-                ? new Channel('rooms.'.$this->toRoomUnitId)
-                : new Channel('staff-intercom.'.$this->toRole),
+            $this->channelFor($this->fromRoomUnitId, $this->fromUserId, $this->fromRole),
+            $this->channelFor($this->toRoomUnitId, $this->toUserId, $this->toRole),
         ];
+    }
+
+    private function channelFor(?int $roomUnitId, ?int $userId, ?string $role): Channel
+    {
+        return match (true) {
+            $roomUnitId !== null => new Channel('rooms.'.$roomUnitId),
+            $userId !== null => new Channel('staff-intercom.user.'.$userId),
+            default => new Channel('staff-intercom.'.$role),
+        };
     }
 
     public function broadcastAs(): string

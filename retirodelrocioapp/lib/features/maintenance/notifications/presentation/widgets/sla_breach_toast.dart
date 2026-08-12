@@ -29,8 +29,15 @@ void showSlaBreachToast(WorkOrder order) {
               width: 36,
               height: 36,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: kMtRed.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.warning_amber_rounded, size: 18, color: kMtRed),
+              decoration: BoxDecoration(
+                color: kMtRed.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                size: 18,
+                color: kMtRed,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -42,14 +49,21 @@ void showSlaBreachToast(WorkOrder order) {
                     'SLA Breached — ${order.title}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.style(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: AppTypography.style(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${order.locationLabel} · ${order.priorityLabel} priority is past its resolution deadline.',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.style(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),

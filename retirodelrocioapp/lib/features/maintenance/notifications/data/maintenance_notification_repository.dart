@@ -19,12 +19,17 @@ class MaintenanceNotificationRepository {
     : _dio =
           dio ??
           Dio(
-            BaseOptions(connectTimeout: const Duration(seconds: 8), receiveTimeout: const Duration(seconds: 8)),
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 8),
+              receiveTimeout: const Duration(seconds: 8),
+            ),
           );
 
   final Dio _dio;
 
-  Options _auth(String token) => Options(headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'});
+  Options _auth(String token) => Options(
+    headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+  );
 
   Future<List<MaintenanceNotification>> fetch(String token) async {
     try {
@@ -33,12 +38,16 @@ class MaintenanceNotificationRepository {
         options: _auth(token),
       );
       final rows = (response.data?['data'] as List?) ?? const [];
-      return rows.map((r) => MaintenanceNotification.fromJson((r as Map).cast())).toList();
+      return rows
+          .map((r) => MaintenanceNotification.fromJson((r as Map).cast()))
+          .toList();
     } on DioException catch (error) {
       throw MaintenanceNotificationException(_messageFrom(error));
     } catch (error) {
       debugPrint('MaintenanceNotificationRepository: fetch failed — $error');
-      throw MaintenanceNotificationException('Could not load the notifications.');
+      throw MaintenanceNotificationException(
+        'Could not load the notifications.',
+      );
     }
   }
 
@@ -52,7 +61,9 @@ class MaintenanceNotificationRepository {
       throw MaintenanceNotificationException(_messageFrom(error));
     } catch (error) {
       debugPrint('MaintenanceNotificationRepository: markRead failed — $error');
-      throw MaintenanceNotificationException('Could not update that notification.');
+      throw MaintenanceNotificationException(
+        'Could not update that notification.',
+      );
     }
   }
 
@@ -65,17 +76,24 @@ class MaintenanceNotificationRepository {
     } on DioException catch (error) {
       throw MaintenanceNotificationException(_messageFrom(error));
     } catch (error) {
-      debugPrint('MaintenanceNotificationRepository: markAllRead failed — $error');
-      throw MaintenanceNotificationException('Could not update the notifications.');
+      debugPrint(
+        'MaintenanceNotificationRepository: markAllRead failed — $error',
+      );
+      throw MaintenanceNotificationException(
+        'Could not update the notifications.',
+      );
     }
   }
 
   String _messageFrom(DioException error) {
     final data = error.response?.data;
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
-    if (error.type == DioExceptionType.connectionError || error.type == DioExceptionType.connectionTimeout) {
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout) {
       return 'No connection. Please try again.';
     }
     return 'Something went wrong. Please try again.';

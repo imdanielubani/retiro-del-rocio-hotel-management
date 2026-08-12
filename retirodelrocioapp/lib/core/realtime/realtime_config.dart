@@ -22,16 +22,16 @@ class RealtimeConfig {
 
   /// Reverb speaks the Pusher protocol, so the socket lives at `/app/{key}`.
   Uri get socketUri => Uri(
-        scheme: isSecure ? 'wss' : 'ws',
-        host: host,
-        port: port,
-        path: '/app/$key',
-        queryParameters: const {
-          'protocol': '7',
-          'client': 'rocio-tablet',
-          'version': '1.0',
-        },
-      );
+    scheme: isSecure ? 'wss' : 'ws',
+    host: host,
+    port: port,
+    path: '/app/$key',
+    queryParameters: const {
+      'protocol': '7',
+      'client': 'rocio-tablet',
+      'version': '1.0',
+    },
+  );
 
   static RealtimeConfig? fromJson(Map<String, dynamic>? json) {
     if (json == null) return null;

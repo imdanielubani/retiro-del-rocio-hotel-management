@@ -195,9 +195,9 @@ class ReceptionRepository {
         if (search != null && search.isNotEmpty) 'search': search,
         if (status != null && status.isNotEmpty) 'status': status,
       };
-      final uri = Uri.parse(ApiConfig.endpoint('reception/visitors')).replace(
-        queryParameters: query.isEmpty ? null : query,
-      );
+      final uri = Uri.parse(
+        ApiConfig.endpoint('reception/visitors'),
+      ).replace(queryParameters: query.isEmpty ? null : query);
       final response = await _dio.getUri<Map<String, dynamic>>(
         uri,
         options: _auth(token),
@@ -446,7 +446,9 @@ class ReceptionRepository {
     try {
       final response = await _dio.getUri<Map<String, dynamic>>(
         Uri.parse(
-          ApiConfig.endpoint('reception/bookings/$bookingId/departure-readiness'),
+          ApiConfig.endpoint(
+            'reception/bookings/$bookingId/departure-readiness',
+          ),
         ),
         options: _auth(token),
       );
@@ -474,7 +476,9 @@ class ReceptionRepository {
   ) async {
     try {
       await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/settle-bill')),
+        Uri.parse(
+          ApiConfig.endpoint('reception/bookings/$bookingId/settle-bill'),
+        ),
         data: {'payment_method': method.apiValue},
         options: _auth(token),
       );
@@ -499,7 +503,11 @@ class ReceptionRepository {
   ) async {
     try {
       await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/request-inspection')),
+        Uri.parse(
+          ApiConfig.endpoint(
+            'reception/bookings/$bookingId/request-inspection',
+          ),
+        ),
         options: _auth(token),
       );
     } on DioException catch (error) {
@@ -517,7 +525,9 @@ class ReceptionRepository {
   Future<void> checkOut(String token, int bookingId) async {
     try {
       await _dio.postUri<Map<String, dynamic>>(
-        Uri.parse(ApiConfig.endpoint('reception/bookings/$bookingId/check-out')),
+        Uri.parse(
+          ApiConfig.endpoint('reception/bookings/$bookingId/check-out'),
+        ),
         options: _auth(token),
       );
     } on DioException catch (error) {

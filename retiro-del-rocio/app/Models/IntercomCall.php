@@ -33,8 +33,8 @@ class IntercomCall extends Model
     public const ACTIVE_STATUSES = [self::RINGING, self::ACCEPTED];
 
     protected $fillable = [
-        'from_room_unit_id', 'from_role', 'from_label', 'from_sublabel',
-        'to_room_unit_id', 'to_role', 'to_label', 'to_sublabel',
+        'from_room_unit_id', 'from_user_id', 'from_role', 'from_label', 'from_sublabel',
+        'to_room_unit_id', 'to_user_id', 'to_role', 'to_label', 'to_sublabel',
         'status', 'answered_at', 'ended_at',
     ];
 
@@ -54,7 +54,7 @@ class IntercomCall extends Model
     {
         static::created(function (self $call) {
             try {
-                broadcast(new IntercomCallRinging($call->to_room_unit_id, $call->to_role));
+                broadcast(new IntercomCallRinging($call->to_room_unit_id, $call->to_role, $call->to_user_id));
             } catch (Throwable $e) {
                 report($e);
             }
@@ -69,8 +69,10 @@ class IntercomCall extends Model
                 broadcast(new IntercomCallUpdated(
                     $call->from_room_unit_id,
                     $call->from_role,
+                    $call->from_user_id,
                     $call->to_room_unit_id,
                     $call->to_role,
+                    $call->to_user_id,
                 ));
             } catch (Throwable $e) {
                 report($e);
@@ -102,20 +104,34 @@ class IntercomCall extends Model
         });
     }
 
-    /** Whether [$roomUnitId]/[$role] (exactly one set) is the caller on this call. */
-    public function isCaller(?int $roomUnitId, ?string $role): bool
+    /**
+     * Whether [$roomUnitId]/[$role] (exactly one set) is the caller on this
+     * call. [$userId], when given, takes priority — a staff-to-staff call is
+     * addressed to one specific person, not "whoever holds this role".
+     */
+    public function isCaller(?int $roomUnitId, ?string $role, ?int $userId = null): bool
     {
-        return $this->matchesParty($this->from_room_unit_id, $this->from_role, $roomUnitId, $role);
+        return $this->matchesParty($this->from_room_unit_id, $this->from_role, $this->from_user_id, $roomUnitId, $role, $userId);
     }
 
-    /** Whether [$roomUnitId]/[$role] (exactly one set) is the callee on this call. */
-    public function isCallee(?int $roomUnitId, ?string $role): bool
+    /** Whether [$roomUnitId]/[$role]/[$userId] is the callee on this call — see {@see isCaller()}. */
+    public function isCallee(?int $roomUnitId, ?string $role, ?int $userId = null): bool
     {
-        return $this->matchesParty($this->to_room_unit_id, $this->to_role, $roomUnitId, $role);
+        return $this->matchesParty($this->to_room_unit_id, $this->to_role, $this->to_user_id, $roomUnitId, $role, $userId);
     }
 
-    private function matchesParty(?int $partyRoomUnitId, ?string $partyRole, ?int $roomUnitId, ?string $role): bool
-    {
+    private function matchesParty(
+        ?int $partyRoomUnitId,
+        ?string $partyRole,
+        ?int $partyUserId,
+        ?int $roomUnitId,
+        ?string $role,
+        ?int $userId,
+    ): bool {
+        if ($userId !== null) {
+            return $partyUserId === $userId;
+        }
+
         if ($roomUnitId !== null) {
             return $partyRoomUnitId === $roomUnitId;
         }
@@ -167,12 +183,14 @@ class IntercomCall extends Model
             'status' => $this->status,
             'from' => [
                 'room_unit_id' => $this->from_room_unit_id,
+                'user_id' => $this->from_user_id,
                 'role' => $this->from_role,
                 'label' => $this->from_label,
                 'sublabel' => $this->from_sublabel,
             ],
             'to' => [
                 'room_unit_id' => $this->to_room_unit_id,
+                'user_id' => $this->to_user_id,
                 'role' => $this->to_role,
                 'label' => $this->to_label,
                 'sublabel' => $this->to_sublabel,

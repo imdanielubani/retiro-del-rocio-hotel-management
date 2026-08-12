@@ -26,17 +26,17 @@ class GuestInfo {
   final DateTime? checkOut;
 
   factory GuestInfo.fromJson(Map<String, dynamic> json) => GuestInfo(
-        name: (json['name'] as String?)?.trim().isNotEmpty == true
-            ? json['name'] as String
-            : 'Guest',
-        reference: json['reference'] as String?,
-        nights: (json['nights'] as num?)?.toInt(),
-        // The API sends ISO-8601 with an offset (+01:00). `DateTime.parse` keeps
-        // that as a UTC instant, and DateFormat would then render it in UTC — an
-        // hour behind Nigeria. `toLocal()` puts it back on the tablet's clock.
-        checkIn: _localDate(json['check_in']),
-        checkOut: _localDate(json['check_out']),
-      );
+    name: (json['name'] as String?)?.trim().isNotEmpty == true
+        ? json['name'] as String
+        : 'Guest',
+    reference: json['reference'] as String?,
+    nights: (json['nights'] as num?)?.toInt(),
+    // The API sends ISO-8601 with an offset (+01:00). `DateTime.parse` keeps
+    // that as a UTC instant, and DateFormat would then render it in UTC — an
+    // hour behind Nigeria. `toLocal()` puts it back on the tablet's clock.
+    checkIn: _localDate(json['check_in']),
+    checkOut: _localDate(json['check_out']),
+  );
 
   static DateTime? _localDate(Object? value) =>
       DateTime.tryParse(value as String? ?? '')?.toLocal();
@@ -61,16 +61,16 @@ class RoomStatus {
   bool get hasGuest => guest != null;
 
   factory RoomStatus.fromJson(Map<String, dynamic> json) => RoomStatus(
-        occupancy: switch (json['occupancy'] as String?) {
-          'occupied' => Occupancy.occupied,
-          'maintenance' => Occupancy.maintenance,
-          'unassigned' => Occupancy.unassigned,
-          _ => Occupancy.available,
-        },
-        suiteName: json['suite_name'] as String?,
-        roomNumber: json['room_number'] as String?,
-        guest: json['guest'] is Map
-            ? GuestInfo.fromJson((json['guest'] as Map).cast<String, dynamic>())
-            : null,
-      );
+    occupancy: switch (json['occupancy'] as String?) {
+      'occupied' => Occupancy.occupied,
+      'maintenance' => Occupancy.maintenance,
+      'unassigned' => Occupancy.unassigned,
+      _ => Occupancy.available,
+    },
+    suiteName: json['suite_name'] as String?,
+    roomNumber: json['room_number'] as String?,
+    guest: json['guest'] is Map
+        ? GuestInfo.fromJson((json['guest'] as Map).cast<String, dynamic>())
+        : null,
+  );
 }

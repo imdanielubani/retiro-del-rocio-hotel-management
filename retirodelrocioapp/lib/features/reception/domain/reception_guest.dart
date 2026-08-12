@@ -87,11 +87,11 @@ class GuestStats {
   final String? firstSeenLabel;
 
   factory GuestStats.fromJson(Map<String, dynamic> json) => GuestStats(
-        totalStays: (json['total_stays'] as num?)?.toInt() ?? 0,
-        totalNights: (json['total_nights'] as num?)?.toInt() ?? 0,
-        totalSpendLabel: json['total_spend_label'] as String? ?? '',
-        firstSeenLabel: json['first_seen_label'] as String?,
-      );
+    totalStays: (json['total_stays'] as num?)?.toInt() ?? 0,
+    totalNights: (json['total_nights'] as num?)?.toInt() ?? 0,
+    totalSpendLabel: json['total_spend_label'] as String? ?? '',
+    firstSeenLabel: json['first_seen_label'] as String?,
+  );
 }
 
 /// A guest's full record: contact, stats, preferences and stay history.

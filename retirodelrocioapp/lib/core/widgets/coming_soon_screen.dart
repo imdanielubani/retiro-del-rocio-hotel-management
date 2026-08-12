@@ -15,7 +15,10 @@ class ComingSoonScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        title: Text(title, style: AppTypography.style(color: Colors.white, fontSize: 18)),
+        title: Text(
+          title,
+          style: AppTypography.style(color: Colors.white, fontSize: 18),
+        ),
       ),
       body: Center(
         child: Text(

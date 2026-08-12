@@ -74,7 +74,7 @@ class _BarShellState extends ConsumerState<BarShell> {
     ref.watch(barRealtimeProvider(_token));
     ref.watch(barNotificationChimeProvider(_token));
     ref.watch(staffChatChimeProvider(_token));
-    ref.watch(staffChatRealtimeProvider((_token, widget.session.role)));
+    ref.watch(staffChatRealtimeProvider((_token, widget.session.userId)));
     watchStaffIntercomCall(context, ref, widget.session);
 
     final overview = ref.watch(barOverviewProvider(_token)).value;

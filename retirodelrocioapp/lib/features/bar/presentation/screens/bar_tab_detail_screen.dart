@@ -83,12 +83,18 @@ class _BarTabDetailScreenState extends ConsumerState<BarTabDetailScreen> {
     final confirmed = await showCloseTabConfirmDialog(context, tab);
     if (!confirmed || !mounted) return;
 
-    final method = await showSettlePaymentSheet(context, tab: tab);
-    if (method == null || !mounted) return;
+    final result = await showSettlePaymentSheet(
+      context,
+      tab: tab,
+      token: _token,
+    );
+    if (result == null || !mounted) return;
 
     setState(() => _busy = true);
     try {
-      await ref.read(barActionsProvider(_token)).closeTab(tab.id, method);
+      await ref
+          .read(barActionsProvider(_token))
+          .closeTab(tab.id, result.method, bookingId: result.bookingId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -225,6 +231,23 @@ class _BarTabDetailScreenState extends ConsumerState<BarTabDetailScreen> {
             ],
           ),
         ),
+        if (tab.chargedRoomLabel != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.hotel_rounded, size: 14, color: AppColors.gold),
+              const SizedBox(width: 6),
+              Text(
+                'Charged to ${tab.chargedRoomLabel}',
+                style: AppTypography.style(
+                  color: AppColors.gold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 14),
         if (tab.isOpen)
           Row(

@@ -34,7 +34,8 @@ Future<void> showSosAlertOverlay(
   BuildContext context, {
   required SecurityIncident incident,
   required String officerName,
-  required ProviderListenable<AsyncValue<List<SecurityIncident>>> activeIncidents,
+  required ProviderListenable<AsyncValue<List<SecurityIncident>>>
+  activeIncidents,
   required Future<void> Function() onAcknowledge,
   VoidCallback? onCallRoom,
 }) {
@@ -138,8 +139,9 @@ class _SosAlertOverlayState extends ConsumerState<_SosAlertOverlay>
     // our acknowledge is in flight).
     final incidents = ref.watch(widget.activeIncidents).value;
     if (incidents != null && !_acknowledged && !_busy && !_closing) {
-      final stillActive =
-          incidents.any((i) => i.id == incident.id && i.isActive);
+      final stillActive = incidents.any(
+        (i) => i.id == incident.id && i.isActive,
+      );
       if (!stillActive) {
         _closing = true;
         final navigator = Navigator.of(context);
@@ -174,9 +176,15 @@ class _SosAlertOverlayState extends ConsumerState<_SosAlertOverlay>
                       ? const Color(0xF20A0F0A)
                       : const Color(0xF7060101),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: accent.withValues(alpha: 0.6), width: 2),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.6),
+                    width: 2,
+                  ),
                   boxShadow: [
-                    BoxShadow(color: accent.withValues(alpha: 0.25), blurRadius: 80),
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.25),
+                      blurRadius: 80,
+                    ),
                   ],
                 ),
                 child: _acknowledged ? _acknowledgedView() : _priorityView(),
@@ -312,9 +320,15 @@ class _SosAlertOverlayState extends ConsumerState<_SosAlertOverlay>
           decoration: BoxDecoration(
             color: _green.withValues(alpha: 0.15),
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: _green.withValues(alpha: 0.3), blurRadius: 40)],
+            boxShadow: [
+              BoxShadow(color: _green.withValues(alpha: 0.3), blurRadius: 40),
+            ],
           ),
-          child: const Icon(Icons.check_circle_outline_rounded, size: 52, color: _green),
+          child: const Icon(
+            Icons.check_circle_outline_rounded,
+            size: 52,
+            color: _green,
+          ),
         ),
         const SizedBox(height: 22),
         Text(
@@ -388,7 +402,10 @@ class _SosAlertOverlayState extends ConsumerState<_SosAlertOverlay>
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
                   )
                 : Row(
                     mainAxisSize: MainAxisSize.min,

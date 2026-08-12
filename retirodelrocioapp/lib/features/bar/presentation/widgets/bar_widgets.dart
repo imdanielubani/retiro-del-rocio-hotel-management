@@ -238,6 +238,7 @@ class VipBadge extends StatelessWidget {
 Color barBoardColumnColor(String column) => switch (column) {
   'new' => const Color(0xFF3B82F6),
   'preparing' => const Color(0xFFD97706),
+  'ready' => const Color(0xFF8B5CF6),
   'served' => const Color(0xFF16A34A),
   _ => const Color(0xFF6B7280),
 };
