@@ -20,6 +20,7 @@ import 'package:retirodelrocioapp/features/guest/my_stay/presentation/screens/my
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/screens/guest_notification_screen.dart';
 import 'package:retirodelrocioapp/features/guest/service_requests/presentation/screens/guest_service_request_screen.dart';
+import 'package:retirodelrocioapp/features/guest/smart_room/presentation/screens/smart_room_screen.dart';
 import 'package:retirodelrocioapp/features/guest/sos/presentation/screens/sos_screen.dart';
 import 'package:retirodelrocioapp/features/guest/spa/presentation/screens/guest_spa_screen.dart';
 import 'package:retirodelrocioapp/features/guest/visitor_pass/presentation/screens/visitor_pass_screen.dart';
@@ -238,6 +239,21 @@ class _GuestHomeScreenState extends ConsumerState<GuestHomeScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => GuestIntercomScreen(
+            device: widget.device,
+            status: live ?? widget.status,
+          ),
+        ),
+      );
+      if (mounted) _resetIdleTimer();
+      return;
+    }
+
+    // Smart Room is built — take the guest there rather than "coming soon".
+    if (service.id == GuestServices.smartRoom.id) {
+      final live = ref.read(roomStatusProvider(widget.device.token)).value;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SmartRoomScreen(
             device: widget.device,
             status: live ?? widget.status,
           ),
