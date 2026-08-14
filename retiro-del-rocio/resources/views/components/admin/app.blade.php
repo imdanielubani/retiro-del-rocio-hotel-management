@@ -59,6 +59,11 @@
     // link with no backend yet, or a self-service page like "My Access".
     $canRoles = $user->hasRole('super-admin') || $user->can('manage settings');
 
+    // Manager sees Users & Staff too, but only for its narrower Reset
+    // Credentials action (see Livewire\Admin\Access\Users) — Admin/Super
+    // Admin's own `manage users` already covers this.
+    $canUsers = $user->can('manage users') || $user->can('reset credentials');
+
     // Grouped navigation. Items with `children` are expandable; others are direct links.
     // Links use '#' placeholders until their module routes exist.
     $nav = [
@@ -148,7 +153,7 @@
                 ['label' => 'Parts Requests', 'href' => route('admin.maintenance.parts-requests'), 'active' => request()->routeIs('admin.maintenance.parts-requests'), 'permission' => 'manage maintenance'],
             ]],
             ['label' => 'Security', 'icon' => 'shield', 'href' => route('admin.security.incidents'), 'active' => request()->routeIs('admin.security.incidents'), 'permission' => 'manage security'],
-            ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users'), 'permission' => 'manage users'],
+            ['label' => 'Users & Staff', 'icon' => 'user', 'href' => route('admin.access.users'), 'active' => request()->routeIs('admin.access.users'), 'visible' => $canUsers],
         ]],
         ['label' => 'Device Management', 'items' => [
             ['label' => 'Tablets', 'icon' => 'tablet', 'href' => route('admin.devices.tablets'), 'active' => request()->routeIs('admin.devices.tablets') || request()->routeIs('admin.devices.dashboard') || request()->routeIs('admin.devices.show'), 'permission' => 'device.view'],

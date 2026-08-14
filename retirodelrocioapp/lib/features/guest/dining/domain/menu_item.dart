@@ -111,6 +111,11 @@ enum DiningPaymentMethod { room, paystack }
 /// tracker renders (Figma 130:415): Received → Preparing → Ready → On Way →
 /// Done. [stepNumber] is 1-based, matching the tracker's numbered steps
 /// (deliberately not named `index` — that name is reserved by `Enum`).
+///
+/// Food-only — a drink never visits `preparing`/`ready`/`on_way` (it isn't
+/// cooked or dispatched to the room the way a kitchen ticket is; a bartender
+/// just serves it), so a drinks-only order renders
+/// [DiningDrinkStage] instead — see [DiningOrderSummary.hasFood].
 enum DiningOrderStage {
   received(1),
   preparing(2),
@@ -127,6 +132,24 @@ enum DiningOrderStage {
     'on_way' => DiningOrderStage.onWay,
     'delivered' => DiningOrderStage.done,
     _ => DiningOrderStage.received,
+  };
+}
+
+/// A drinks-only order's shorter flow: placed, then (for a room order) on
+/// its way, then served — no kitchen preparing/ready stages to visit, since
+/// a drink isn't cooked. See [DiningOrderStage].
+enum DiningDrinkStage {
+  received(1),
+  onWay(2),
+  served(3);
+
+  const DiningDrinkStage(this.stepNumber);
+  final int stepNumber;
+
+  static DiningDrinkStage fromStatus(String status) => switch (status) {
+    'on_way' => DiningDrinkStage.onWay,
+    'delivered' => DiningDrinkStage.served,
+    _ => DiningDrinkStage.received,
   };
 }
 
@@ -173,6 +196,8 @@ class DiningOrderSummary {
     required this.placedAtLabel,
     required this.status,
     required this.statusLabel,
+    required this.hasFood,
+    required this.hasDrinks,
     required this.isActive,
     required this.etaLabel,
     required this.chargedToRoom,
@@ -195,6 +220,13 @@ class DiningOrderSummary {
   final String status;
   final String statusLabel;
 
+  /// Whether this order has a food item — drives which progress tracker
+  /// renders. A drink has no kitchen "preparing" stage, so a drinks-only
+  /// order (`!hasFood`) gets [DiningDrinkStage]'s much shorter flow instead
+  /// of [DiningOrderStage]'s 5-step one.
+  final bool hasFood;
+  final bool hasDrinks;
+
   /// Still moving through the kitchen — the progress tracker only renders
   /// for these; a delivered/cancelled order shows just its final status pill.
   final bool isActive;
@@ -204,6 +236,7 @@ class DiningOrderSummary {
   final String totalLabel;
 
   DiningOrderStage get stage => DiningOrderStage.fromStatus(status);
+  DiningDrinkStage get drinkStage => DiningDrinkStage.fromStatus(status);
 
   factory DiningOrderSummary.fromJson(Map<String, dynamic> json) =>
       DiningOrderSummary(
@@ -218,6 +251,8 @@ class DiningOrderSummary {
         placedAtLabel: json['placed_at_label'] as String?,
         status: json['status'] as String? ?? '',
         statusLabel: json['status_label'] as String? ?? '',
+        hasFood: json['has_food'] as bool? ?? true,
+        hasDrinks: json['has_drinks'] as bool? ?? false,
         isActive: json['is_active'] as bool? ?? false,
         etaLabel: json['eta_label'] as String?,
         chargedToRoom: json['charged_to_room'] as bool? ?? false,

@@ -449,25 +449,33 @@ class _OrderCard extends StatelessWidget {
   }
 
   Widget _progressTracker() {
-    const steps = [
-      (DiningOrderStage.received, 'Received'),
-      (DiningOrderStage.preparing, 'Preparing'),
-      (DiningOrderStage.ready, 'Ready'),
-      (DiningOrderStage.onWay, 'On Way'),
-      (DiningOrderStage.done, 'Done'),
-    ];
-    final currentStep = order.stage.stepNumber;
+    // A drink has no kitchen "preparing"/"ready" stage — it isn't cooked —
+    // so it gets its own, shorter tracker instead of the food ticket's
+    // 5-step one, but it still visits "On Way" for a room order once a
+    // bartender dispatches it.
+    final steps = order.hasFood
+        ? const [
+            (1, 'Received'),
+            (2, 'Preparing'),
+            (3, 'Ready'),
+            (4, 'On Way'),
+            (5, 'Done'),
+          ]
+        : const [(1, 'Received'), (2, 'On Way'), (3, 'Served')];
+    final currentStep = order.hasFood
+        ? order.stage.stepNumber
+        : order.drinkStage.stepNumber;
 
     return Row(
       children: [
         for (var i = 0; i < steps.length; i++) ...[
-          _stepCircle(steps[i].$1.stepNumber, steps[i].$2, currentStep),
+          _stepCircle(steps[i].$1, steps[i].$2, currentStep),
           if (i != steps.length - 1)
             Expanded(
               child: Container(
                 height: 2,
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                color: steps[i].$1.stepNumber < currentStep
+                color: steps[i].$1 < currentStep
                     ? AppColors.gold
                     : Colors.white.withValues(alpha: 0.1),
               ),

@@ -13,13 +13,21 @@
             <p class="truncate text-[13px] font-bold text-[#1e1e1e]">{{ $user->name }}</p>
         </div>
 
-        <button type="button" @click="open = false" wire:click="edit({{ $user->id }})"
-                class="flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] text-[#374151] transition hover:bg-[#f9fafb]">
-            <svg class="size-4 text-[#6b7280]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            Edit Account
+        @if ($canManageUsers ?? false)
+            <button type="button" @click="open = false" wire:click="edit({{ $user->id }})"
+                    class="flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] text-[#374151] transition hover:bg-[#f9fafb]">
+                <svg class="size-4 text-[#6b7280]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                Edit Account
+            </button>
+        @endif
+
+        <button type="button" @click="open = false" wire:click="openReset({{ $user->id }})"
+                class="flex w-full items-center gap-2.5 border-t border-[#f1f1ee] px-4 py-2 text-left text-[13px] text-[#374151] transition hover:bg-[#f9fafb]">
+            <svg class="size-4 text-[#6b7280]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Reset Password / PIN
         </button>
 
-        @if ($user->id !== auth()->id())
+        @if (($canManageUsers ?? false) && $user->id !== auth()->id())
             <button type="button" @click="open = false" wire:click="toggleStatus({{ $user->id }})"
                     class="flex w-full items-center gap-2.5 border-t border-[#f1f1ee] px-4 py-2 text-left text-[13px] text-[#374151] transition hover:bg-[#f9fafb]">
                 @if ($user->status === 'active')

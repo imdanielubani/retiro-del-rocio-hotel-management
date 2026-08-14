@@ -15,6 +15,7 @@ class BarOrder {
     required this.barTabId,
     required this.tabCode,
     required this.tableLabel,
+    required this.roomLabel,
     required this.isVip,
     required this.guestName,
     required this.source,
@@ -45,6 +46,9 @@ class BarOrder {
   final int? barTabId;
   final String? tabCode;
   final String? tableLabel;
+
+  /// "Room 101" for a guest-tablet room order, else null.
+  final String? roomLabel;
   final bool isVip;
   final String? guestName;
 
@@ -92,6 +96,11 @@ class BarOrder {
 
   bool get needsAgeCheck => requiresAgeVerification && !ageVerified;
 
+  /// Wherever this order is headed — the tab's table, or the guest's room —
+  /// takes priority over the guest's name so a waiter can tell at a glance
+  /// where to deliver without opening the order.
+  String get destinationLabel => tableLabel ?? roomLabel ?? guestName ?? code;
+
   factory BarOrder.fromJson(Map<String, dynamic> json) => BarOrder(
     id: (json['id'] as num?)?.toInt() ?? 0,
     code: json['code'] as String? ?? '',
@@ -99,6 +108,7 @@ class BarOrder {
     barTabId: (json['bar_tab_id'] as num?)?.toInt(),
     tabCode: json['tab_code'] as String?,
     tableLabel: json['table_label'] as String?,
+    roomLabel: json['room_label'] as String?,
     isVip: json['is_vip'] as bool? ?? false,
     guestName: json['guest_name'] as String?,
     source: json['source'] as String? ?? 'guest_tablet',

@@ -7,6 +7,7 @@ import 'package:retirodelrocioapp/core/config/app_config.dart';
 import 'package:retirodelrocioapp/core/realtime/room_channel.dart';
 import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_device.dart';
 import 'package:retirodelrocioapp/features/guest/chat/application/chat_providers.dart';
+import 'package:retirodelrocioapp/features/guest/dining/application/dining_providers.dart';
 import 'package:retirodelrocioapp/features/guest/intercom/application/guest_intercom_call_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/application/guest_notification_providers.dart';
 import 'package:retirodelrocioapp/features/guest/notifications/presentation/widgets/guest_notification_toast.dart';
@@ -92,6 +93,11 @@ Future<void> _notifyGuest(
   // A staff reply in Concierge Chat lands on this same signal, so the thread
   // updates within a couple of seconds instead of waiting on its own poll.
   ref.invalidate(guestChatThreadProvider(deviceToken));
+  // Kitchen moving a food order to a new stage (or setting an ETA), or a
+  // waiter serving a drink, lands on this same signal too (see
+  // DiningOrder::booted()'s status/ETA hook), so My Orders' progress
+  // tracker updates live instead of only on pull-to-refresh.
+  ref.invalidate(diningOrdersProvider(deviceToken));
   unawaited(chime.play());
 
   try {

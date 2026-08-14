@@ -93,6 +93,11 @@ class BarRepository {
   Future<BarOrder> markServed(String token, int id) =>
       _orderAct(token, id, 'serve');
 
+  /// Dispatch a pure drinks-only room-service order (no waiter/bar tab
+  /// already running it) for delivery to the guest's room.
+  Future<BarOrder> markOnTheWay(String token, int id) =>
+      _orderAct(token, id, 'on-way');
+
   Future<BarOrder> verifyAge(String token, int id) =>
       _orderAct(token, id, 'verify-age');
 

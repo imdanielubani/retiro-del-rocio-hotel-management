@@ -112,22 +112,36 @@ class TabletController extends Controller
         }
 
         $data = $request->validated();
-        $user = User::where('email', $data['email'])->first();
 
-        if (! $user || ! Hash::check($data['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
+        if (! empty($data['pin'])) {
+            // PIN sign-in needs no email — the PIN alone identifies the
+            // staffer, scoped to this tablet's own role (User::findActiveByPin
+            // already enforces active + role, so nothing further to check).
+            $user = User::findActiveByPin($data['pin'], $device->role);
 
-        if ($user->status && $user->status !== 'active') {
-            return response()->json(['message' => 'Your account is not active.'], 403);
-        }
+            if (! $user) {
+                throw ValidationException::withMessages([
+                    'pin' => ['The provided PIN is incorrect.'],
+                ]);
+            }
+        } else {
+            $user = User::where('email', $data['email'])->first();
 
-        if (! $user->hasRole($device->role)) {
-            throw ValidationException::withMessages([
-                'email' => ['This account is not authorised for the '.$device->role.' tablet.'],
-            ]);
+            if (! $user || ! Hash::check($data['password'], $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+
+            if ($user->status && $user->status !== 'active') {
+                return response()->json(['message' => 'Your account is not active.'], 403);
+            }
+
+            if (! $user->hasRole($device->role)) {
+                throw ValidationException::withMessages([
+                    'email' => ['This account is not authorised for the '.$device->role.' tablet.'],
+                ]);
+            }
         }
 
         $device->log('login', $user->name.' signed in on the '.$device->role.' tablet.');

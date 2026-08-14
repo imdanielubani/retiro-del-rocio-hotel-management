@@ -69,9 +69,14 @@ class DiningOrderPricer
                 // today's menu (a dish's photo/prep time/category/alcohol
                 // flag can change later — has_food/has_drinks and the Bar
                 // Tablet's age-verification gate are derived from this same
-                // snapshot, not a live lookup).
+                // snapshot, not a live lookup). The raw path is stored, not
+                // a pre-resolved URL — {@see MenuItem::resolveImagePath()}
+                // turns it into an absolute URL at read time, so old orders
+                // don't end up with a permanently dead image link the moment
+                // the app's base URL changes (a dev machine's LAN IP, a
+                // domain migration).
                 'prep_minutes' => $menuItem->prep_minutes,
-                'image_url' => $menuItem->imageUrl(),
+                'image' => $menuItem->image,
                 'category' => $menuItem->category,
                 'is_alcoholic' => (bool) $menuItem->is_alcoholic,
                 'voided' => false,

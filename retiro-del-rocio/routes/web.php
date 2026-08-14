@@ -1294,7 +1294,7 @@ $adminRoutes->group(function () {
         });
 
         // Administration — access control (users, roles & permissions)
-        Route::get('users', Users::class)->middleware('permission:manage users')->name('access.users');
+        Route::get('users', Users::class)->middleware('permission:manage users|reset credentials')->name('access.users');
         Route::get('roles-permissions', Roles::class)->name('access.roles');
         Route::get('my-access', MyAccess::class)->name('access.my-access');
 

@@ -9,7 +9,7 @@ import 'package:retirodelrocioapp/features/authentication/domain/staff_session.d
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/reauth_panel.dart';
 
 /// Full-screen lock shown after inactivity. The staffer re-enters their
-/// password to resume, or logs out entirely.
+/// PIN (or password) to resume, or logs out entirely.
 class SessionLockScreen extends ConsumerWidget {
   const SessionLockScreen({
     super.key,
@@ -83,7 +83,7 @@ class SessionLockScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Signed in as ${session.name}\nEnter your password to continue',
+                      'Signed in as ${session.name}\nEnter your PIN to continue',
                       textAlign: TextAlign.center,
                       style: AppTypography.style(
                         color: Colors.white.withValues(alpha: 0.55),

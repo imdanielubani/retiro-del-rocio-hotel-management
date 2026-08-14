@@ -248,6 +248,49 @@ class TabletDiningOrderTest extends TestCase
             ->assertJsonPath('data.0.items.1.qty', 2);
     }
 
+    public function test_an_order_items_image_is_snapshotted_as_a_raw_path_and_resolved_fresh_on_read(): void
+    {
+        $salmon = $this->menuItem(['image' => 'menu-items/salmon.jpg']);
+
+        $this->withToken($this->token)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [['menu_item_id' => $salmon->id, 'qty' => 1]],
+        ])->assertCreated();
+
+        // The raw path is snapshotted, not a pre-resolved (host-baked) URL —
+        // this is what lets the URL stay correct even if the app's base URL
+        // changes later (a dev machine's LAN IP, a domain migration).
+        $order = DiningOrder::where('booking_id', $this->booking->id)->firstOrFail();
+        $this->assertSame('menu-items/salmon.jpg', $order->items[0]['image']);
+        $this->assertArrayNotHasKey('image_url', $order->items[0]);
+
+        $data = $this->withToken($this->token)->getJson('/api/v1/tablets/dining/orders')->json('data.0');
+        $this->assertSame(MenuItem::resolveImagePath('menu-items/salmon.jpg'), $data['items'][0]['image_url']);
+    }
+
+    public function test_a_pre_existing_order_with_only_a_stale_snapshotted_image_url_still_renders(): void
+    {
+        DiningOrder::create([
+            'booking_id' => $this->booking->id,
+            'reference' => 'DN-LEGACY-1',
+            'items' => [[
+                'menu_item_id' => 1, 'name' => 'Salmon', 'price' => 9000, 'qty' => 1, 'note' => null,
+                'prep_minutes' => 25, 'image_url' => 'http://old-dead-host.example.test/storage/menu-items/salmon.jpg',
+            ]],
+            'item_count' => 1,
+            'subtotal' => 9000,
+            'service_fee' => 0,
+            'total' => 9000,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'payment_method' => 'room_charge',
+        ]);
+
+        $this->withToken($this->token)
+            ->getJson('/api/v1/tablets/dining/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.items.0.image_url', 'http://old-dead-host.example.test/storage/menu-items/salmon.jpg');
+    }
+
     public function test_a_delivered_order_has_no_eta_and_is_not_active(): void
     {
         DiningOrder::create([

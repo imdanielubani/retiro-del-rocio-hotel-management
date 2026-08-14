@@ -110,6 +110,38 @@ class KitchenController extends Controller
     }
 
     /**
+     * POST /kitchen/orders/{order}/on-way — Kitchen dispatching a pure
+     * room-service order (no waiter/bar tab) for delivery to the guest's
+     * room. Rejected for a dine-in/POS order — that hand-off is the Bar
+     * Tablet's {@see BarController::markServed()} instead.
+     */
+    public function markOnTheWay(Request $request, DiningOrder $order): JsonResponse
+    {
+        $this->kitchenStaff($request);
+        abort_unless($order->has_food, 404);
+        abort_if($order->bar_tab_id, 422, 'This order is being served by the waiter — mark it served from the Bar Tablet.');
+
+        abort_unless($order->markOnTheWay(), 422, 'This ticket cannot be marked on the way right now.');
+
+        return response()->json(['data' => $order->fresh(['barTab', 'booking.roomUnit', 'assignedBartender'])->toKitchenOrderArray()]);
+    }
+
+    /**
+     * POST /kitchen/orders/{order}/deliver — Kitchen confirming a pure
+     * room-service order reached the guest.
+     */
+    public function markDelivered(Request $request, DiningOrder $order): JsonResponse
+    {
+        $this->kitchenStaff($request);
+        abort_unless($order->has_food, 404);
+        abort_if($order->bar_tab_id, 422, 'This order is being served by the waiter — mark it served from the Bar Tablet.');
+
+        abort_unless($order->markDeliveredToRoom(), 422, 'This ticket cannot be marked delivered right now.');
+
+        return response()->json(['data' => $order->fresh(['barTab', 'booking.roomUnit', 'assignedBartender'])->toKitchenOrderArray()]);
+    }
+
+    /**
      * POST /kitchen/orders/{order}/eta — set or increase how long this
      * ticket still needs. Blocked once it's ready or closed — there's
      * nothing left to estimate at that point.

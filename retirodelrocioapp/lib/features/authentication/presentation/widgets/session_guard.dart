@@ -9,7 +9,7 @@ import 'package:retirodelrocioapp/features/authentication/presentation/screens/s
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/session_expiring_banner.dart';
 
 /// Wraps the authenticated staff area and enforces session security:
-///  • **Session lock** after inactivity (re-enter password to resume)
+///  • **Session lock** after inactivity (re-enter PIN, or password, to resume)
 ///  • **Expiring banner** shortly before the JWT expires ("Stay signed in")
 ///  • **Session timeout** when the JWT expires → back to sign-in.
 class SessionGuard extends ConsumerStatefulWidget {

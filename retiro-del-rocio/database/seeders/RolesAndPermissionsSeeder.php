@@ -45,6 +45,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage maintenance',
             'manage security',
             'manage billing',
+            // Narrower than 'manage users' — lets a role reset any staff
+            // member's tablet password/PIN from Users & Staff without
+            // granting the rest of user management (creating accounts,
+            // assigning roles, suspending, deleting).
+            'reset credentials',
         ];
 
         foreach ($permissions as $permission) {
@@ -77,6 +82,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage cinema',
             'manage gym',
             'manage transport',
+            'reset credentials',
         ]);
 
         // Default super-admin account for first login (temporary credentials).

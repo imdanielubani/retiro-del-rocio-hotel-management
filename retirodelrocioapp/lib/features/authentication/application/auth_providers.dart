@@ -24,17 +24,21 @@ class AuthController extends AsyncNotifier<StaffSession?> {
   @override
   Future<StaffSession?> build() => _store.read();
 
-  /// Signs in; throws [AuthException] on failure (caught by the screen).
+  /// Signs in with either [password] or [pin] (exactly one); throws
+  /// [AuthException] on failure (caught by the screen). A PIN sign-in needs
+  /// no [email] at all — the PIN alone identifies the staffer.
   Future<StaffSession> login({
     required String deviceToken,
-    required String email,
-    required String password,
+    String? email,
+    String? password,
+    String? pin,
     required String activeRole,
   }) async {
     final session = await _repo.staffLogin(
       deviceToken: deviceToken,
       email: email,
       password: password,
+      pin: pin,
       activeRole: activeRole,
     );
     await _store.save(session);
@@ -42,9 +46,10 @@ class AuthController extends AsyncNotifier<StaffSession?> {
     return session;
   }
 
-  /// Re-verify the current staffer's password (session lock / "stay signed in").
-  /// Reuses the persisted device token + the signed-in email; refreshes the JWT.
-  Future<StaffSession> reauthenticate(String password) async {
+  /// Re-verify the current staffer with either [password] or [pin] (exactly
+  /// one) — session lock / "stay signed in". Reuses the persisted device
+  /// token + the signed-in email; refreshes the JWT.
+  Future<StaffSession> reauthenticate({String? password, String? pin}) async {
     // Read the pairing from disk, not [bootstrapDeviceProvider]: that snapshot is
     // fixed at launch, so a tablet paired *during* this run (fresh setup → sign
     // in) would have a null snapshot and fail here. The store is always current —
@@ -60,6 +65,7 @@ class AuthController extends AsyncNotifier<StaffSession?> {
       deviceToken: device.token,
       email: current.email,
       password: password,
+      pin: pin,
       activeRole: current.role,
     );
     await _store.save(session);

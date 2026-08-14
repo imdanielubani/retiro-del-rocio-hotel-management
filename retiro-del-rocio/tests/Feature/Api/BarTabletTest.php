@@ -224,6 +224,47 @@ class BarTabletTest extends TestCase
         $this->assertSame(2, DiningOrder::forBarLounge()->count());
     }
 
+    public function test_a_room_service_order_shows_the_room_number_not_the_guests_name(): void
+    {
+        $drink = $this->drink();
+        $barToken = $this->bartenderToken();
+        $guestToken = $this->guestToken();
+        $roomNumber = RoomUnit::firstOrFail()->number;
+
+        $this->withToken($guestToken)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::first();
+
+        $this->withToken($barToken)
+            ->getJson('/api/v1/bar/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.room_label', 'Room '.$roomNumber)
+            ->assertJsonPath('data.0.table_label', null);
+
+        $this->withToken($barToken)
+            ->getJson("/api/v1/bar/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.room_label', 'Room '.$roomNumber);
+    }
+
+    public function test_a_dine_in_tab_order_shows_the_table_not_a_room(): void
+    {
+        $drink = $this->drink();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', ['table_label' => 'Table 4'])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->assertCreated();
+
+        $this->withToken($token)
+            ->getJson('/api/v1/bar/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.table_label', 'Table 4')
+            ->assertJsonPath('data.0.room_label', null);
+    }
+
     public function test_serving_an_alcoholic_order_requires_age_verification_first(): void
     {
         $wine = $this->drink(['name' => 'House Red Wine', 'is_alcoholic' => true]);
@@ -621,6 +662,124 @@ class BarTabletTest extends TestCase
 
         $this->assertCount(1, $this->withToken($waiterA)->getJson('/api/v1/bar/history')->json('data.tabs'));
         $this->assertCount(0, $this->withToken($waiterB)->getJson('/api/v1/bar/history')->json('data.tabs'));
+    }
+
+    public function test_a_bartender_can_mark_a_room_service_drink_on_the_way_then_delivered(): void
+    {
+        $wine = $this->drink(['name' => 'House Red Wine']);
+        $barToken = $this->bartenderToken();
+
+        $guestToken = $this->guestToken();
+        $this->withToken($guestToken)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [['menu_item_id' => $wine->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::first();
+
+        $this->withToken($barToken)
+            ->postJson("/api/v1/bar/orders/{$order->id}/on-way")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'on_way');
+
+        $this->withToken($barToken)
+            ->postJson("/api/v1/bar/orders/{$order->id}/serve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'delivered');
+    }
+
+    public function test_on_the_way_is_rejected_for_a_dine_in_tab_order(): void
+    {
+        $drink = $this->drink();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order->id}/on-way")
+            ->assertStatus(422);
+    }
+
+    public function test_on_the_way_is_rejected_for_a_room_service_food_order(): void
+    {
+        // No bar tab — Kitchen dispatches this one, not the waiter.
+        $drink = $this->drink();
+        $food = $this->food();
+        $token = $this->bartenderToken();
+
+        $guestToken = $this->guestToken();
+        $this->withToken($guestToken)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [
+                ['menu_item_id' => $drink->id, 'qty' => 1],
+                ['menu_item_id' => $food->id, 'qty' => 1],
+            ],
+        ])->assertCreated();
+        $order = DiningOrder::first();
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order->id}/on-way")
+            ->assertStatus(422);
+    }
+
+    public function test_a_waiter_can_mark_a_dine_in_food_ticket_on_the_way_once_the_kitchen_readies_it(): void
+    {
+        $food = $this->food();
+        $barToken = $this->bartenderToken();
+
+        Role::findOrCreate('kitchen', 'web');
+        $chef = User::factory()->create(['status' => 'active']);
+        $chef->assignRole('kitchen');
+        $chefToken = app(JwtService::class)->issue(['sub' => $chef->id])['token'];
+
+        $tab = $this->withToken($barToken)->postJson('/api/v1/bar/tabs', ['table_label' => 'Table 6'])->json('data');
+        $this->withToken($barToken)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $food->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+
+        // Waiter can't jump ahead of the kitchen.
+        $this->withToken($barToken)
+            ->postJson("/api/v1/bar/orders/{$order->id}/on-way")
+            ->assertStatus(422);
+
+        $this->withToken($chefToken)->postJson("/api/v1/kitchen/orders/{$order->id}/prepare")->assertOk();
+        $this->withToken($chefToken)->postJson("/api/v1/kitchen/orders/{$order->id}/serve")->assertOk(); // Kitchen's "Mark Ready".
+
+        // Kitchen sees the ticket as on the way once the waiter picks it up.
+        $this->withToken($barToken)
+            ->postJson("/api/v1/bar/orders/{$order->id}/on-way")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'on_way');
+
+        $this->withToken($chefToken)
+            ->getJson("/api/v1/kitchen/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'on_way')
+            ->assertJsonPath('data.board_column_label', 'On the Way');
+
+        // The waiter then serves it.
+        $this->withToken($barToken)
+            ->postJson("/api/v1/bar/orders/{$order->id}/serve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'delivered');
+    }
+
+    public function test_on_the_way_is_rejected_for_a_dine_in_drink(): void
+    {
+        $drink = $this->drink();
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $drink->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+
+        $this->withToken($token)
+            ->postJson("/api/v1/bar/orders/{$order->id}/on-way")
+            ->assertStatus(422);
     }
 
     public function test_the_in_house_bookings_search_only_returns_checked_in_guests(): void

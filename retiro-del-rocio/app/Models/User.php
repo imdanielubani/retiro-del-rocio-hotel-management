@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -27,6 +28,7 @@ class User extends Authenticatable
         'phone',
         'avatar',
         'password',
+        'pin',
         'status',
         'last_login_at',
         'last_login_ip',
@@ -40,6 +42,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'pin',
         'remember_token',
     ];
 
@@ -55,6 +58,7 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
+            'pin' => 'hashed',
         ];
     }
 
@@ -84,5 +88,28 @@ class User extends Authenticatable
     public function scopeAdmins($query)
     {
         return $query->where('status', 'active')->role(['super-admin', 'admin', 'manager']);
+    }
+
+    /**
+     * Find the active user whose PIN matches — a PIN-only tablet sign-in has
+     * no email to look the account up by directly. PINs are hashed, so this
+     * can't be a WHERE lookup; it scans candidates and Hash::checks each,
+     * which is fine at hotel-staff scale.
+     *
+     * Optionally narrowed to staff holding a given role — a PIN login is
+     * scoped to the tablet's own role, so the same PIN reused on a
+     * different station (or by two people in different roles) never
+     * cross-matches the wrong person. Optionally excludes one user's own
+     * id — used to check a new PIN isn't already taken when setting one.
+     */
+    public static function findActiveByPin(string $pin, ?string $role = null, ?int $excludeUserId = null): ?self
+    {
+        return self::query()
+            ->where('status', 'active')
+            ->whereNotNull('pin')
+            ->when($role, fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $role)))
+            ->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))
+            ->get()
+            ->first(fn (self $u) => Hash::check($pin, $u->pin));
     }
 }

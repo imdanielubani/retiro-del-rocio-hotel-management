@@ -28,16 +28,24 @@ class AuthRepository {
 
   final Dio _dio;
 
+  /// Exactly one of [password] or [pin] should be provided — whichever tab
+  /// the staffer picked on the login screen. A PIN sign-in needs no [email]
+  /// at all — the PIN alone identifies the staffer.
   Future<StaffSession> staffLogin({
     required String deviceToken,
-    required String email,
-    required String password,
+    String? email,
+    String? password,
+    String? pin,
     required String activeRole,
   }) async {
     try {
       final response = await _dio.postUri<Map<String, dynamic>>(
         Uri.parse(ApiConfig.endpoint('tablets/staff-login')),
-        data: {'email': email.trim(), 'password': password},
+        data: {
+          if (email != null) 'email': email.trim(),
+          if (password != null) 'password': password,
+          if (pin != null) 'pin': pin,
+        },
         options: Options(
           headers: {
             'Authorization': 'Bearer $deviceToken',
@@ -85,6 +93,6 @@ class AuthRepository {
         error.type == DioExceptionType.connectionTimeout) {
       return AuthException('Cannot reach the server. Check the connection.');
     }
-    return AuthException('Incorrect email or password.');
+    return AuthException('Incorrect credentials.');
   }
 }

@@ -10,7 +10,6 @@ use App\Http\Controllers\Api\V1\GuestServiceRequestController;
 use App\Http\Controllers\Api\V1\HousekeepingController;
 use App\Http\Controllers\Api\V1\KitchenController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
-use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ReceptionChatController;
 use App\Http\Controllers\Api\V1\ReceptionController;
 use App\Http\Controllers\Api\V1\ReceptionIntercomCallController;
@@ -73,14 +72,6 @@ $api->group(function () {
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:6,1')
         ->name('api.v1.auth.login');
-
-    // OTP password reset (tablet app): request code → verify → set new password.
-    Route::post('auth/forgot-password', [PasswordResetController::class, 'sendOtp'])
-        ->middleware('throttle:5,1')->name('api.v1.auth.forgot-password');
-    Route::post('auth/verify-otp', [PasswordResetController::class, 'verifyOtp'])
-        ->middleware('throttle:10,1')->name('api.v1.auth.verify-otp');
-    Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])
-        ->middleware('throttle:10,1')->name('api.v1.auth.reset-password');
 
     // Tablet provisioning — public, authenticated by the QR's provision token.
     Route::post('tablets/provision', [TabletController::class, 'provision'])
@@ -490,6 +481,8 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.bar.orders.prepare');
         Route::post('bar/orders/{order}/serve', [BarController::class, 'markServed'])
             ->middleware('throttle:60,1')->name('api.v1.bar.orders.serve');
+        Route::post('bar/orders/{order}/on-way', [BarController::class, 'markOnTheWay'])
+            ->middleware('throttle:60,1')->name('api.v1.bar.orders.on-way');
         Route::post('bar/orders/{order}/void-item', [BarController::class, 'voidItem'])
             ->middleware('throttle:60,1')->name('api.v1.bar.orders.void-item');
         Route::post('bar/orders/{order}/verify-age', [BarController::class, 'verifyAge'])
@@ -550,6 +543,10 @@ $api->group(function () {
             ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.prepare');
         Route::post('kitchen/orders/{order}/serve', [KitchenController::class, 'markReady'])
             ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.serve');
+        Route::post('kitchen/orders/{order}/on-way', [KitchenController::class, 'markOnTheWay'])
+            ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.on-way');
+        Route::post('kitchen/orders/{order}/deliver', [KitchenController::class, 'markDelivered'])
+            ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.deliver');
         Route::post('kitchen/orders/{order}/eta', [KitchenController::class, 'setEta'])
             ->middleware('throttle:60,1')->name('api.v1.kitchen.orders.eta');
         Route::post('kitchen/orders/{order}/void-item', [KitchenController::class, 'voidItem'])

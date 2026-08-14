@@ -199,7 +199,9 @@ class _KitchenLiveBoardScreenState
         physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 280,
-          mainAxisExtent: 112,
+          // Tall enough for the "preparing" column's extra ETA row, which
+          // otherwise overflows the card by a few pixels.
+          mainAxisExtent: 124,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
