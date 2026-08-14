@@ -104,6 +104,25 @@ class DiningOrder extends Model
         return (bool) $this->has_drinks || $this->bar_tab_id !== null;
     }
 
+    /**
+     * A waiter's own private slice of the bar board — their claimed orders,
+     * plus anything still unclaimed (`assigned_to` null) so a fresh
+     * guest-tablet drink order remains pickable by whoever gets to it first.
+     * Once claimed (via a POS tab, which always stamps `assigned_to` on
+     * creation, or the Assign Bartender sheet), it drops off every other
+     * waiter's board — that's the fix for waiters seeing each other's tables.
+     */
+    public function scopeVisibleToBarStaff($query, User $user)
+    {
+        return $query->where(fn ($q) => $q->where('assigned_to', $user->id)->orWhereNull('assigned_to'));
+    }
+
+    /** Single-row equivalent of {@see scopeVisibleToBarStaff()}, for guarding direct-by-ID actions. */
+    public function isVisibleToBarStaff(User $user): bool
+    {
+        return $this->assigned_to === null || $this->assigned_to === $user->id;
+    }
+
     /** Comma-separated dish names, e.g. "Pan-Seared Salmon, Wagyu Tenderloin". */
     public function itemsLabel(): string
     {

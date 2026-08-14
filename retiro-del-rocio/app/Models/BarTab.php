@@ -69,6 +69,22 @@ class BarTab extends Model
         return $query->where('status', 'settled');
     }
 
+    /**
+     * A waiter's own tabs only — every tab is opened by and assigned to
+     * exactly one waiter at creation (there is no tab-reassignment flow), so
+     * this keeps one waiter's tables out of every other waiter's list.
+     */
+    public function scopeVisibleToBarStaff($query, User $user)
+    {
+        return $query->where(fn ($q) => $q->where('opened_by', $user->id)->orWhere('assigned_to', $user->id));
+    }
+
+    /** Single-row equivalent of {@see scopeVisibleToBarStaff()}, for guarding direct-by-ID actions. */
+    public function isVisibleToBarStaff(User $user): bool
+    {
+        return $this->opened_by === $user->id || $this->assigned_to === $user->id;
+    }
+
     /** Tab code, e.g. "TAB-482913-RDR". */
     public static function makeCode(): string
     {
