@@ -70,6 +70,32 @@ class _KitchenOrderDetailScreenState
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _markOnTheWay() async {
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(kitchenActionsProvider(_token))
+          .markOnTheWay(widget.orderId);
+    } on KitchenException catch (e) {
+      _showFailure(e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _markDelivered() async {
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(kitchenActionsProvider(_token))
+          .markDelivered(widget.orderId);
+    } on KitchenException catch (e) {
+      _showFailure(e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _setEta(KitchenOrder order) async {
     final minutes = await showSetEtaDialog(context, order);
     if (minutes == null || !mounted) return;
@@ -233,6 +259,7 @@ class _KitchenOrderDetailScreenState
                           ),
                         ),
                         if (!order.items[i].voided) ...[
+                          const SizedBox(width: 12),
                           Text(
                             '₦${order.items[i].lineTotal}',
                             style: AppTypography.style(
@@ -376,10 +403,42 @@ class _KitchenOrderDetailScreenState
             )
           else if (order.boardColumn == 'preparing')
             MarkReadyButton(onTap: _busy ? () {} : () => _markReady(order))
+          else if (order.boardColumn == 'ready' &&
+              !order.isPos &&
+              order.status == 'ready')
+            Column(
+              children: [
+                _primaryButton(
+                  'On the Way to Room',
+                  Icons.delivery_dining_rounded,
+                  _busy ? null : _markOnTheWay,
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: _busy ? null : _markDelivered,
+                  child: Text(
+                    'Mark Delivered Directly',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (order.boardColumn == 'ready' &&
+              !order.isPos &&
+              order.status == 'on_way')
+            _primaryButton(
+              'Mark Delivered',
+              Icons.check_circle_rounded,
+              _busy ? null : _markDelivered,
+            )
           else
             Center(
               child: Text(
-                'Ready to Serve',
+                order.isPos ? 'Ready to Serve' : 'Delivered',
                 style: AppTypography.style(
                   color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 14,

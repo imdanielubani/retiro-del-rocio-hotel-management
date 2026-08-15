@@ -38,6 +38,7 @@ class _BarLiveOrdersScreenState extends ConsumerState<BarLiveOrdersScreen> {
           o.code.toLowerCase().contains(q) ||
           (o.tabCode?.toLowerCase().contains(q) ?? false) ||
           (o.tableLabel?.toLowerCase().contains(q) ?? false) ||
+          (o.roomLabel?.toLowerCase().contains(q) ?? false) ||
           (o.guestName?.toLowerCase().contains(q) ?? false);
       return matchesColumn && matchesSearch;
     }).toList();

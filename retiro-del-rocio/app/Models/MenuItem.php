@@ -92,10 +92,25 @@ class MenuItem extends Model
 
     public function imageUrl(): ?string
     {
-        return $this->resolve($this->image);
+        return self::resolveImagePath($this->image);
     }
 
-    protected function resolve(?string $path): ?string
+    /**
+     * Turn a raw stored image path (the `image` column's value, e.g.
+     * "menu-items/xyz.jpg") into an absolute, host-correct URL — resolved
+     * fresh against today's `APP_URL`/storage disk rather than trusted from
+     * anywhere it may have been cached or snapshotted, so it keeps working
+     * even if the app's base URL changes later (e.g. a dev machine's LAN IP,
+     * or a domain migration) {@see DiningOrderPricer::quote()}, which
+     * snapshots this raw path rather than a pre-resolved URL for exactly
+     * this reason.
+     */
+    public static function resolveImagePath(?string $path): ?string
+    {
+        return self::resolve($path);
+    }
+
+    protected static function resolve(?string $path): ?string
     {
         if (! $path) {
             return null;

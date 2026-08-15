@@ -161,6 +161,14 @@ class BarActions {
     return order;
   }
 
+  Future<BarOrder> markOnTheWay(int orderId) async {
+    final order = await _ref
+        .read(barRepositoryProvider)
+        .markOnTheWay(_token, orderId);
+    _refreshBoard(orderId);
+    return order;
+  }
+
   Future<BarOrder> verifyAge(int orderId) async {
     final order = await _ref
         .read(barRepositoryProvider)

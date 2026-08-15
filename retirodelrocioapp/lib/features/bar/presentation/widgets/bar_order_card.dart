@@ -31,7 +31,7 @@ class BarOrderCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      order.tableLabel ?? order.guestName ?? order.code,
+                      order.destinationLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.style(

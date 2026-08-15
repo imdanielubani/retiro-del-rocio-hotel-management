@@ -42,10 +42,12 @@
         </div>
         <div class="flex items-center justify-between gap-3 xl:shrink-0">
             <p class="whitespace-nowrap text-[13px] text-[#6b7280]"><span class="font-semibold text-[#1e1e1e]">{{ $users->count() }}</span> {{ Str::plural('user', $users->count()) }}</p>
-            <button type="button" wire:click="openCreate" class="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[#f38c00] px-5 text-[13px] font-bold text-white transition hover:bg-[#dd7f00]">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                Add User
-            </button>
+            @if ($canManageUsers)
+                <button type="button" wire:click="openCreate" class="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[#f38c00] px-5 text-[13px] font-bold text-white transition hover:bg-[#dd7f00]">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    Add User
+                </button>
+            @endif
         </div>
     </div>
 
@@ -53,7 +55,9 @@
     @if ($users->isEmpty())
         <div class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#d6d9d2] bg-white py-16 text-center">
             <p class="text-[15px] font-semibold text-[#1e1e1e]">No users found</p>
-            <button type="button" wire:click="openCreate" class="mt-1 rounded-xl bg-[#f38c00] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#dd7f00]">Add User</button>
+            @if ($canManageUsers)
+                <button type="button" wire:click="openCreate" class="mt-1 rounded-xl bg-[#f38c00] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#dd7f00]">Add User</button>
+            @endif
         </div>
     @else
         @php $initialsOf = fn ($name) => Str::of($name)->explode(' ')->take(2)->map(fn ($p) => Str::substr($p, 0, 1))->implode(''); @endphp
@@ -103,7 +107,7 @@
                             </td>
                             <td class="px-4 py-3.5 text-[12px] text-[#6b7280]">{{ $user->last_login_at?->diffForHumans() ?? '—' }}</td>
                             <td class="px-4 py-3.5">
-                                @include('admin.access.partials.user-actions', ['user' => $user])
+                                @include('admin.access.partials.user-actions', ['user' => $user, 'canManageUsers' => $canManageUsers])
                             </td>
                         </tr>
                     @endforeach
@@ -133,7 +137,7 @@
                                 @endforelse
                             </div>
                         </div>
-                        @include('admin.access.partials.user-actions', ['user' => $user])
+                        @include('admin.access.partials.user-actions', ['user' => $user, 'canManageUsers' => $canManageUsers])
                     </div>
                 @endforeach
             </div>
@@ -143,11 +147,16 @@
     {{-- ===== Add / edit modal ===== --}}
     @if ($showForm)
         <div class="fixed inset-0 z-[95] flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/50" wire:click="$set('showForm', false)"></div>
+            <div class="absolute inset-0 bg-black/50" wire:click="closeModals"></div>
+            @if ($savedCredentials)
+                <div class="relative z-10 my-auto w-full max-w-[420px] overflow-hidden rounded-2xl bg-white shadow-xl">
+                    @include('admin.access.partials.credentials-saved')
+                </div>
+            @else
             <form wire:submit="save" class="relative z-10 my-auto flex max-h-[88vh] w-full max-w-[560px] flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
                 <div class="flex items-center justify-between border-b border-[#e5e7eb] px-6 py-4">
                     <h3 class="text-[17px] font-bold text-[#1e1e1e]">{{ $editingId ? 'Edit User' : 'Add User' }}</h3>
-                    <button type="button" wire:click="$set('showForm', false)" class="flex size-9 items-center justify-center rounded-lg text-[#6b7280] transition hover:bg-[#f1f1ee]"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+                    <button type="button" wire:click="closeModals" class="flex size-9 items-center justify-center rounded-lg text-[#6b7280] transition hover:bg-[#f1f1ee]"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
                 </div>
                 <div class="flex-1 overflow-y-auto px-6 py-5">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -165,11 +174,16 @@
                             <label class="text-[12px] font-semibold text-[#374151]">Phone <span class="font-normal text-[#9ca3af]">(optional)</span></label>
                             <input type="text" wire:model="fPhone" placeholder="+234…" class="h-11 rounded-xl border border-[#e5e7eb] px-3.5 text-[14px] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
                         </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-[12px] font-semibold text-[#374151]">Password {{ $editingId ? '' : '' }}<span class="font-normal text-[#9ca3af]">{{ $editingId ? ' (leave blank to keep)' : '' }}</span></label>
-                            <input type="password" wire:model="fPassword" placeholder="At least 8 characters" class="h-11 rounded-xl border border-[#e5e7eb] px-3.5 text-[14px] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
-                            @error('fPassword') <span class="text-[11px] text-[#dc2626]">{{ $message }}</span> @enderror
-                        </div>
+                        @include('admin.access.partials.secret-field', [
+                            'model' => 'fPassword',
+                            'label' => 'Password'.($editingId ? ' (leave blank to keep)' : ''),
+                            'placeholder' => 'At least 8 characters',
+                        ])
+                        @include('admin.access.partials.secret-field', [
+                            'model' => 'fPin',
+                            'label' => 'PIN'.($editingId ? ' (leave blank to keep)' : ' (optional)'),
+                            'placeholder' => '4 digits',
+                        ])
                         <div class="flex flex-col gap-1.5">
                             <label class="text-[12px] font-semibold text-[#374151]">Status</label>
                             <select wire:model="fStatus" class="h-11 rounded-xl border border-[#e5e7eb] px-3 text-[14px] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
@@ -192,10 +206,52 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 border-t border-[#e5e7eb] px-6 py-4">
-                    <button type="button" wire:click="$set('showForm', false)" class="rounded-xl border border-[#e5e7eb] px-5 py-2.5 text-[14px] font-medium text-[#374151] transition hover:bg-[#f9fafb]">Cancel</button>
+                    <button type="button" wire:click="closeModals" class="rounded-xl border border-[#e5e7eb] px-5 py-2.5 text-[14px] font-medium text-[#374151] transition hover:bg-[#f9fafb]">Cancel</button>
                     <button type="submit" class="rounded-xl bg-[#f38c00] px-5 py-2.5 text-[14px] font-bold text-white transition hover:bg-[#dd7f00]">{{ $editingId ? 'Save changes' : 'Create user' }}</button>
                 </div>
             </form>
+            @endif
+        </div>
+    @endif
+
+    {{-- ===== Reset Credentials modal ===== --}}
+    @if ($showResetForm)
+        <div class="fixed inset-0 z-[95] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" wire:click="closeModals"></div>
+            @if ($savedCredentials)
+                <div class="relative z-10 my-auto w-full max-w-[420px] overflow-hidden rounded-2xl bg-white shadow-xl">
+                    @include('admin.access.partials.credentials-saved')
+                </div>
+            @else
+                <form wire:submit="saveReset" class="relative z-10 my-auto flex w-full max-w-[440px] flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+                    <div class="flex items-center justify-between border-b border-[#e5e7eb] px-6 py-4">
+                        <div>
+                            <h3 class="text-[17px] font-bold text-[#1e1e1e]">Reset Credentials</h3>
+                            <p class="text-[12px] text-[#6b7280]">{{ $resettingName }}</p>
+                        </div>
+                        <button type="button" wire:click="closeModals" class="flex size-9 items-center justify-center rounded-lg text-[#6b7280] transition hover:bg-[#f1f1ee]"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+                    </div>
+                    <div class="flex flex-col gap-4 px-6 py-5">
+                        <p class="text-[12px] text-[#9ca3af]">Set a new password, a new PIN, or both — leave a field blank to keep it unchanged.</p>
+                        @include('admin.access.partials.secret-field', [
+                            'model' => 'rPassword',
+                            'label' => 'New password',
+                            'placeholder' => 'At least 8 characters',
+                            'generate' => 'generatePassword',
+                        ])
+                        @include('admin.access.partials.secret-field', [
+                            'model' => 'rPin',
+                            'label' => 'New PIN',
+                            'placeholder' => '4 digits',
+                            'generate' => 'generatePin',
+                        ])
+                    </div>
+                    <div class="flex justify-end gap-2 border-t border-[#e5e7eb] px-6 py-4">
+                        <button type="button" wire:click="closeModals" class="rounded-xl border border-[#e5e7eb] px-5 py-2.5 text-[14px] font-medium text-[#374151] transition hover:bg-[#f9fafb]">Cancel</button>
+                        <button type="submit" class="rounded-xl bg-[#f38c00] px-5 py-2.5 text-[14px] font-bold text-white transition hover:bg-[#dd7f00]">Update credentials</button>
+                    </div>
+                </form>
+            @endif
         </div>
     @endif
 </div>

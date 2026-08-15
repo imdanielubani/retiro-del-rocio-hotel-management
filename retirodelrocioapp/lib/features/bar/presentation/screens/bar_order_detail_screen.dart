@@ -66,6 +66,17 @@ class _BarOrderDetailScreenState extends ConsumerState<BarOrderDetailScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _markOnTheWay() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(barActionsProvider(_token)).markOnTheWay(widget.orderId);
+    } on BarException catch (e) {
+      _showFailure(e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _voidItem(BarOrder order, int index) async {
     final reason = await showVoidItemDialog(context, order.items[index]);
     if (reason == null) return;
@@ -155,7 +166,7 @@ class _BarOrderDetailScreenState extends ConsumerState<BarOrderDetailScreen> {
             children: [
               Expanded(
                 child: Text(
-                  order.tableLabel ?? order.guestName ?? order.code,
+                  order.destinationLabel,
                   style: AppTypography.style(
                     color: Colors.white,
                     fontSize: 20,
@@ -373,6 +384,58 @@ class _BarOrderDetailScreenState extends ConsumerState<BarOrderDetailScreen> {
               'Start Preparing',
               Icons.local_fire_department_rounded,
               _busy ? null : _startPreparing,
+            )
+          else if (order.boardColumn == 'new' && !order.hasFood && !order.isPos)
+            Column(
+              children: [
+                _primaryButton(
+                  'On the Way to Room',
+                  Icons.delivery_dining_rounded,
+                  _busy ? null : _markOnTheWay,
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: _busy ? null : () => _serve(order),
+                  child: Text(
+                    'Serve Directly',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (order.boardColumn == 'ready' &&
+              order.hasFood &&
+              order.status == 'ready' &&
+              order.isPos)
+            // The kitchen has this dine-in ticket cooked and waiting at the
+            // pass — picking it up to walk it to the table tells the
+            // kitchen's own board it's been claimed, rather than it
+            // silently sitting there until served. A room-service ticket
+            // (no bar tab) stays Kitchen's own dispatch instead.
+            Column(
+              children: [
+                _primaryButton(
+                  'On the Way',
+                  Icons.delivery_dining_rounded,
+                  _busy ? null : _markOnTheWay,
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: _busy ? null : () => _serve(order),
+                  child: Text(
+                    'Serve Directly',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             )
           else if (order.boardColumn == 'new' ||
               order.boardColumn == 'preparing' ||

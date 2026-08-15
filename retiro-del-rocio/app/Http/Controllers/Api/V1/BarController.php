@@ -33,18 +33,19 @@ class BarController extends Controller
      */
     public function overview(Request $request): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
 
-        $orders = DiningOrder::forBarLounge()->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready', 'on_way'])->get();
+        $orders = DiningOrder::forBarLounge()->visibleToBarStaff($staff)
+            ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready', 'on_way'])->get();
 
         return response()->json(['data' => [
             'stats' => [
                 'new' => $orders->filter(fn (DiningOrder $o) => $o->barBoardColumn() === 'new')->count(),
                 'preparing' => $orders->filter(fn (DiningOrder $o) => $o->barBoardColumn() === 'preparing')->count(),
-                'served_today' => DiningOrder::forBarLounge()->where('status', 'delivered')
+                'served_today' => DiningOrder::forBarLounge()->visibleToBarStaff($staff)->where('status', 'delivered')
                     ->whereDate('updated_at', today())->count(),
-                'open_tabs' => BarTab::open()->count(),
-                'vip_tabs' => BarTab::open()->where('is_vip', true)->count(),
+                'open_tabs' => BarTab::open()->visibleToBarStaff($staff)->count(),
+                'vip_tabs' => BarTab::open()->visibleToBarStaff($staff)->where('is_vip', true)->count(),
             ],
         ]]);
     }
@@ -57,12 +58,13 @@ class BarController extends Controller
      */
     public function liveOrders(Request $request): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
 
         $status = $request->query('status');
 
         $orders = DiningOrder::forBarLounge()
-            ->with(['barTab', 'assignedBartender'])
+            ->visibleToBarStaff($staff)
+            ->with(['barTab', 'assignedBartender', 'booking.roomUnit'])
             ->when(
                 in_array($status, ['pending', 'confirmed', 'preparing', 'ready', 'on_way', 'delivered', 'cancelled'], true),
                 fn ($q) => $q->where('status', $status),
@@ -78,10 +80,10 @@ class BarController extends Controller
     /** GET /bar/orders/{order} */
     public function orderDetail(Request $request, DiningOrder $order): JsonResponse
     {
-        $this->bartender($request);
-        abort_unless($order->belongsToBarLounge(), 404);
+        $staff = $this->bartender($request);
+        abort_unless($order->belongsToBarLounge() && $order->isVisibleToBarStaff($staff), 404);
 
-        $order->load(['barTab', 'assignedBartender']);
+        $order->load(['barTab', 'assignedBartender', 'booking.roomUnit']);
 
         return response()->json(['data' => $order->toBarOrderArray()]);
     }
@@ -89,32 +91,64 @@ class BarController extends Controller
     /** POST /bar/orders/{order}/prepare */
     public function markPreparing(Request $request, DiningOrder $order): JsonResponse
     {
-        $this->bartender($request);
-        abort_unless($order->belongsToBarLounge(), 404);
+        $staff = $this->bartender($request);
+        abort_unless($order->belongsToBarLounge() && $order->isVisibleToBarStaff($staff), 404);
         abort_unless($order->has_food, 422, 'Drink-only orders move straight from New to Served — there is no preparing stage.');
 
         $order->markPreparing();
 
-        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender'])->toBarOrderArray()]);
+        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender', 'booking.roomUnit'])->toBarOrderArray()]);
     }
 
     /** POST /bar/orders/{order}/serve — the Mark Served dialog. */
     public function markServed(Request $request, DiningOrder $order): JsonResponse
     {
-        $this->bartender($request);
-        abort_unless($order->belongsToBarLounge(), 404);
+        $staff = $this->bartender($request);
+        abort_unless($order->belongsToBarLounge() && $order->isVisibleToBarStaff($staff), 404);
         abort_if($order->requiresAgeVerification() && ! $order->age_verified_at, 422, 'Verify the guest\'s age before serving this order.');
 
         $order->markServed();
 
-        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender'])->toBarOrderArray()]);
+        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender', 'booking.roomUnit'])->toBarOrderArray()]);
+    }
+
+    /**
+     * POST /bar/orders/{order}/on-way — the waiter dispatching an order for
+     * delivery:
+     *
+     * - A dine-in/POS food ticket the Kitchen has marked ready — the waiter
+     *   picking it up from the pass to walk it to the table. Kitchen's own
+     *   board reflects the "on the way" status immediately, so it can see
+     *   the ticket's been claimed rather than still waiting at the pass.
+     * - A pure drinks-only room-service order (no waiter/bar tab already
+     *   running it), same idea as the Kitchen Tablet's own `on-way` action
+     *   for food.
+     *
+     * Rejected for a room-service food order (that's Kitchen's own `on-way`
+     * action instead) and for a dine-in/POS drink (the waiter is already at
+     * the table — nothing to be "on the way" to, just serve it directly).
+     */
+    public function markOnTheWay(Request $request, DiningOrder $order): JsonResponse
+    {
+        $staff = $this->bartender($request);
+        abort_unless($order->belongsToBarLounge() && $order->isVisibleToBarStaff($staff), 404);
+
+        if ($order->has_food) {
+            abort_unless($order->bar_tab_id, 422, 'This room-service order is dispatched from the Kitchen Tablet.');
+        } else {
+            abort_if($order->bar_tab_id, 422, 'This order is being served at the table — mark it served directly.');
+        }
+
+        abort_unless($order->markOnTheWay(), 422, 'This order cannot be marked on the way right now.');
+
+        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender', 'booking.roomUnit'])->toBarOrderArray()]);
     }
 
     /** POST /bar/orders/{order}/void-item — the Void Item dialog. */
     public function voidItem(Request $request, DiningOrder $order): JsonResponse
     {
         $staff = $this->bartender($request);
-        abort_unless($order->belongsToBarLounge(), 404);
+        abort_unless($order->belongsToBarLounge() && $order->isVisibleToBarStaff($staff), 404);
 
         $data = $request->validate([
             'item_index' => ['required', 'integer', 'min:0'],
@@ -123,25 +157,25 @@ class BarController extends Controller
 
         abort_unless($order->voidItem($data['item_index'], $staff, $data['reason'] ?? null), 422, 'That item could not be voided.');
 
-        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender'])->toBarOrderArray()]);
+        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender', 'booking.roomUnit'])->toBarOrderArray()]);
     }
 
     /** POST /bar/orders/{order}/verify-age — the Age Verification dialog. */
     public function verifyAge(Request $request, DiningOrder $order): JsonResponse
     {
         $staff = $this->bartender($request);
-        abort_unless($order->belongsToBarLounge(), 404);
+        abort_unless($order->belongsToBarLounge() && $order->isVisibleToBarStaff($staff), 404);
 
         $order->verifyAge($staff);
 
-        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender'])->toBarOrderArray()]);
+        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender', 'booking.roomUnit'])->toBarOrderArray()]);
     }
 
     /** POST /bar/orders/{order}/assign — the Assign Bartender bottom sheet. */
     public function assignOrder(Request $request, DiningOrder $order): JsonResponse
     {
-        $this->bartender($request);
-        abort_unless($order->belongsToBarLounge(), 404);
+        $staff = $this->bartender($request);
+        abort_unless($order->belongsToBarLounge() && $order->isVisibleToBarStaff($staff), 404);
 
         $data = $request->validate(['bartender_id' => ['required', 'integer', 'exists:users,id']]);
 
@@ -150,7 +184,7 @@ class BarController extends Controller
 
         $order->assignTo($bartender);
 
-        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender'])->toBarOrderArray()]);
+        return response()->json(['data' => $order->fresh(['barTab', 'assignedBartender', 'booking.roomUnit'])->toBarOrderArray()]);
     }
 
     /** GET /bar/bartenders — the Assign Bartender bottom sheet's picker. */
@@ -223,11 +257,12 @@ class BarController extends Controller
     /** GET /bar/tabs — optional `?status=open|settled`, defaults to open. */
     public function tabs(Request $request): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
 
         $status = $request->query('status', 'open');
 
         $tabs = BarTab::with(['bartender', 'openedBy', 'orders'])
+            ->visibleToBarStaff($staff)
             ->when(in_array($status, BarTab::STATUSES, true), fn ($q) => $q->where('status', $status))
             ->latest('id')
             ->limit(150)
@@ -239,7 +274,8 @@ class BarController extends Controller
     /** GET /bar/tabs/{tab} — the Tab Detail screen. */
     public function tabDetail(Request $request, BarTab $tab): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
+        abort_unless($tab->isVisibleToBarStaff($staff), 404);
 
         $tab->load(['bartender', 'openedBy', 'orders']);
 
@@ -278,6 +314,7 @@ class BarController extends Controller
     public function addOrderToTab(Request $request, BarTab $tab): JsonResponse
     {
         $staff = $this->bartender($request);
+        abort_unless($tab->isVisibleToBarStaff($staff), 404);
         abort_unless($tab->status === 'open', 422, 'This tab is no longer open.');
 
         $data = $request->validate([
@@ -315,7 +352,8 @@ class BarController extends Controller
     /** POST /bar/tabs/{tab}/close — the Close Tab confirm → Settle Payment flow. */
     public function closeTab(Request $request, BarTab $tab): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
+        abort_unless($tab->isVisibleToBarStaff($staff), 404);
         abort_unless($tab->status === 'open', 422, 'This tab is already closed.');
 
         $data = $request->validate([
@@ -336,7 +374,8 @@ class BarController extends Controller
     /** POST /bar/tabs/{tab}/vip — the VIP flag toggle. */
     public function toggleVip(Request $request, BarTab $tab): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
+        abort_unless($tab->isVisibleToBarStaff($staff), 404);
 
         $tab->toggleVip();
 
@@ -409,11 +448,12 @@ class BarController extends Controller
      */
     public function history(Request $request): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
 
         $search = trim((string) $request->query('search', ''));
 
         $tabs = BarTab::with(['bartender', 'openedBy', 'orders'])
+            ->visibleToBarStaff($staff)
             ->where('status', 'settled')
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('code', 'like', "%{$search}%")
@@ -424,6 +464,8 @@ class BarController extends Controller
             ->get();
 
         $roomOrders = DiningOrder::forBarLounge()
+            ->visibleToBarStaff($staff)
+            ->with('booking.roomUnit')
             ->whereNull('bar_tab_id')
             ->whereIn('status', ['delivered', 'cancelled'])
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
@@ -441,12 +483,24 @@ class BarController extends Controller
 
     /* ---------------- Notifications ---------------- */
 
-    /** GET /bar/notifications — the new-order alert feed, newest first. */
+    /**
+     * GET /bar/notifications — the new-order alert feed, newest first. Same
+     * per-waiter visibility as the board and tabs: a new/unclaimed order's
+     * alert reaches every waiter (there's nothing to claim otherwise), but
+     * once it's claimed — including a kitchen status update fired at the
+     * waiter running it — only that waiter sees it.
+     */
     public function notifications(Request $request): JsonResponse
     {
-        $this->bartender($request);
+        $staff = $this->bartender($request);
 
-        $notifications = BarNotification::with('diningOrder')->latest()->limit(100)->get();
+        $notifications = BarNotification::with('diningOrder')
+            ->where(fn ($q) => $q
+                ->whereNull('dining_order_id')
+                ->orWhereHas('diningOrder', fn ($o) => $o->visibleToBarStaff($staff)))
+            ->latest()
+            ->limit(100)
+            ->get();
 
         return response()->json(['data' => $notifications->map->toBarArray()->values()]);
     }

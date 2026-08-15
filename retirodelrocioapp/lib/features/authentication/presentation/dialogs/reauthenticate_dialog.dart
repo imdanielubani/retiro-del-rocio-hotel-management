@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:retirodelrocioapp/core/theme/app_typography.dart';
 import 'package:retirodelrocioapp/features/authentication/presentation/widgets/reauth_panel.dart';
 
-/// "Stay signed in" — re-verify the password to extend the session (refresh JWT).
+/// "Stay signed in" — re-verify the PIN (or password) to extend the session (refresh JWT).
 Future<void> showReAuthenticateDialog(BuildContext context) {
   return showDialog<void>(
     context: context,
@@ -49,7 +49,7 @@ class _ReAuthenticateDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Confirm your password to extend your session',
+                  'Confirm your PIN to extend your session',
                   textAlign: TextAlign.center,
                   style: AppTypography.style(
                     color: Colors.white.withValues(alpha: 0.55),

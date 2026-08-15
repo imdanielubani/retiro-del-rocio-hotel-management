@@ -41,7 +41,9 @@ class SidebarVisibilityTest extends TestCase
         $response->assertDontSee('Housekeeping');
         $response->assertDontSee('Maintenance');
         $response->assertDontSee('Bar Inventory');
-        $response->assertDontSee('Users &amp; Staff', false);
+        // Manager sees Users & Staff for its own Reset Credentials permission
+        // (see RolesAndPermissionsSeeder) — full user management still isn't theirs.
+        $response->assertSee('Users &amp; Staff', false);
         $response->assertDontSee('Roles &amp; Permissions', false);
         $response->assertDontSee('Billing');
         $response->assertDontSee('Tablets');

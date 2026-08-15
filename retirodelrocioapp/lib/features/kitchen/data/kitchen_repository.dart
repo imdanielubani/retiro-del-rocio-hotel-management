@@ -95,6 +95,16 @@ class KitchenRepository {
   Future<KitchenOrder> markReady(String token, int id) =>
       _orderAct(token, id, 'serve');
 
+  /// Dispatch a pure room-service ticket (no waiter/bar tab running it) for
+  /// delivery to the guest's room. Rejected server-side for a dine-in/POS
+  /// order — that hand-off is the Bar Tablet's own action instead.
+  Future<KitchenOrder> markOnTheWay(String token, int id) =>
+      _orderAct(token, id, 'on-way');
+
+  /// Confirm a room-service ticket reached the guest.
+  Future<KitchenOrder> markDelivered(String token, int id) =>
+      _orderAct(token, id, 'deliver');
+
   /// Set or increase how long this ticket still needs.
   Future<KitchenOrder> setEta(String token, int id, int minutes) async {
     try {

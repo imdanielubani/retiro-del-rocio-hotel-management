@@ -47,6 +47,7 @@ class _BarHistoryScreenState extends ConsumerState<BarHistoryScreen> {
           (o) =>
               q.isEmpty ||
               o.code.toLowerCase().contains(q) ||
+              (o.roomLabel?.toLowerCase().contains(q) ?? false) ||
               (o.guestName?.toLowerCase().contains(q) ?? false),
         )
         .toList();

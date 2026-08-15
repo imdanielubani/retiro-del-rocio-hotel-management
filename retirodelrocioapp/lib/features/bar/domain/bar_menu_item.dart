@@ -18,6 +18,8 @@ class BarMenuItem {
     required this.isAlcoholic,
     required this.isActive,
     required this.imageUrl,
+    required this.prepMinutes,
+    required this.prepLabel,
   });
 
   final int id;
@@ -35,6 +37,10 @@ class BarMenuItem {
   final bool isActive;
   final String? imageUrl;
 
+  /// Kitchen prep time — only set for food items; a drink isn't cooked.
+  final int? prepMinutes;
+  final String? prepLabel;
+
   bool get isFood => department == 'food';
 
   factory BarMenuItem.fromJson(Map<String, dynamic> json) => BarMenuItem(
@@ -50,5 +56,7 @@ class BarMenuItem {
     isAlcoholic: json['is_alcoholic'] as bool? ?? false,
     isActive: json['is_active'] as bool? ?? true,
     imageUrl: json['image_url'] as String?,
+    prepMinutes: (json['prep_minutes'] as num?)?.toInt(),
+    prepLabel: json['prep_label'] as String?,
   );
 }

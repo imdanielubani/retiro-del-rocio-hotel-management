@@ -288,8 +288,8 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
                 )
               : GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 190,
-                    mainAxisExtent: 210,
+                    maxCrossAxisExtent: 230,
+                    mainAxisExtent: 189,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
                   ),
@@ -620,6 +620,24 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
+/// Shown while an item has no image, or its image fails to load — matches
+/// the guest tablet's Place Order "no photo yet" state.
+Widget _menuTilePlaceholder(BarMenuItem item) {
+  return Container(
+    color: Colors.white.withValues(alpha: 0.05),
+    alignment: Alignment.center,
+    child: Icon(
+      item.isFood
+          ? Icons.restaurant_menu_rounded
+          : item.isAlcoholic
+          ? Icons.local_bar_rounded
+          : Icons.local_drink_rounded,
+      size: 26,
+      color: Colors.white.withValues(alpha: 0.2),
+    ),
+  );
+}
+
 class _MenuTile extends StatelessWidget {
   const _MenuTile({
     required this.item,
@@ -635,13 +653,13 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: const Color(0xFF1A211A),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: AppColors.gold.withValues(alpha: 0.2),
               width: 0.8,
@@ -654,47 +672,57 @@ class _MenuTile extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(19),
+                      top: Radius.circular(23),
                     ),
                     child: SizedBox(
-                      height: 100,
+                      height: 126,
                       width: double.infinity,
                       child: item.imageUrl != null
-                          ? Image.network(item.imageUrl!, fit: BoxFit.cover)
-                          : Container(
-                              color: Colors.white.withValues(alpha: 0.05),
-                              alignment: Alignment.center,
-                              child: Icon(
-                                item.isFood
-                                    ? Icons.restaurant_menu_rounded
-                                    : item.isAlcoholic
-                                    ? Icons.local_bar_rounded
-                                    : Icons.local_drink_rounded,
-                                size: 26,
-                                color: Colors.white.withValues(alpha: 0.2),
-                              ),
-                            ),
+                          ? Image.network(
+                              item.imageUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) =>
+                                  progress == null
+                                  ? child
+                                  : Container(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.05,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.gold,
+                                        ),
+                                      ),
+                                    ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _menuTilePlaceholder(item),
+                            )
+                          : _menuTilePlaceholder(item),
                     ),
                   ),
                   Positioned(
-                    left: 8,
-                    top: 8,
+                    left: 12,
+                    top: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
+                        horizontal: 8,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.gold.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         item.categoryLabel,
                         style: AppTypography.style(
                           color: const Color(0xFF0A0F1E),
-                          fontSize: 8,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.72,
                         ),
                       ),
                     ),
@@ -724,7 +752,7 @@ class _MenuTile extends StatelessWidget {
                 ],
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -734,23 +762,31 @@ class _MenuTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.style(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
                           item.priceLabel,
                           style: AppTypography.style(
                             color: AppColors.gold,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const Spacer(),
-                        if (item.isAlcoholic)
+                        if (item.prepLabel != null)
+                          Text(
+                            item.prepLabel!,
+                            style: AppTypography.style(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 10,
+                            ),
+                          )
+                        else if (item.isAlcoholic)
                           Icon(
                             Icons.local_bar_rounded,
                             size: 12,
