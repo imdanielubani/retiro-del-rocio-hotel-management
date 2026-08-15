@@ -123,9 +123,10 @@ abstract final class GuestServices {
   );
 
   /// Row 1 · Row 2 · Row 3, exactly as the design orders them.
+  /// Hotel Information is hidden on the guest tablet dashboard.
   static const List<List<GuestService>> grid = [
     [dining, smartRoom, spa, cinema],
     [gym, visitorPass, bills, chat],
-    [intercom, myStay, hotelInfo, serviceRequest],
+    [intercom, myStay, serviceRequest],
   ];
 }
