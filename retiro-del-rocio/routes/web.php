@@ -1151,6 +1151,11 @@ $adminRoutes->group(function () {
         Route::view('/', 'admin.dashboard')->name('dashboard');
         Route::post('logout', LogoutController::class)->name('logout');
 
+        // Notifications — the full list behind the topbar bell
+        // (App\Livewire\Admin\Notifications\Bell), open to any authenticated
+        // admin (matches the bell itself: no `manage X` permission gate).
+        Route::get('notifications', App\Livewire\Admin\Notifications\Index::class)->name('notifications.index');
+
         // Apartments — Rooms (full-page Livewire components)
         Route::middleware('permission:manage rooms')->group(function () {
             Route::get('apartments/rooms', Index::class)->name('rooms.index');
