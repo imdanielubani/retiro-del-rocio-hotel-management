@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\SmartDeviceProviderInterface;
+use App\Services\IoT\Simulated\SimulatedProvider;
 use App\Services\IoT\Tuya\TuyaProvider;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
@@ -21,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     protected const SMART_DEVICE_PROVIDERS = [
         'tuya' => TuyaProvider::class,
+        // Dev/demo devices only — see SimulatedProvider's docblock.
+        'simulated' => SimulatedProvider::class,
     ];
 
     /**

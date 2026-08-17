@@ -30,8 +30,9 @@
         <a href="{{ route('admin.smart-room.sync') }}" wire:navigate class="ml-auto rounded-lg bg-[#f38c00] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#e07d00]">Sync from Tuya</a>
     </div>
 
-    {{-- ===== Table ===== --}}
-    <div class="overflow-x-auto rounded-2xl border border-[#e5e7eb] bg-white">
+    {{-- ===== Table + pagination (one card, matches Bookings) ===== --}}
+    <div class="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white">
+        <div class="overflow-x-auto">
         <table class="w-full text-left text-[13px]">
             <thead class="border-b border-[#e5e7eb] text-[11px] uppercase tracking-[0.5px] text-[#6b7280]">
                 <tr>
@@ -61,14 +62,7 @@
                         </td>
                         <td class="px-5 py-3">{{ $device->is_active ? 'Yes' : 'No' }}</td>
                         <td class="px-5 py-3 text-right">
-                            <div class="flex justify-end gap-2">
-                                <button wire:click="testConnection({{ $device->id }})" class="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-semibold text-[#374151] hover:bg-[#f9fafb]">Test</button>
-                                <button wire:click="edit({{ $device->id }})" class="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-semibold text-[#374151] hover:bg-[#f9fafb]">Edit</button>
-                                <button wire:click="toggleActive({{ $device->id }})" class="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-semibold text-[#374151] hover:bg-[#f9fafb]">{{ $device->is_active ? 'Disable' : 'Enable' }}</button>
-                                @if ($device->room_unit_id)
-                                    <button wire:click="unassign({{ $device->id }})" class="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-semibold text-[#dc2626] hover:bg-[#fee2e2]">Unassign</button>
-                                @endif
-                            </div>
+                            @include('admin.smart-room.partials.device-actions', ['device' => $device])
                         </td>
                     </tr>
                 @empty
@@ -78,49 +72,102 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
+
+        {{-- Footer / pagination (inside the same card, matches Bookings) --}}
+        <div class="flex flex-col gap-3 border-t border-[#e5e7eb] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-[12px] text-[#6b7280]">
+                Showing {{ $devices->firstItem() ?? 0 }}–{{ $devices->lastItem() ?? 0 }} of {{ number_format($devices->total()) }} devices
+            </p>
+            @if ($devices->hasPages())
+                @php
+                    $last = $devices->lastPage();
+                    $cur = $devices->currentPage();
+                    $start = max(1, min($cur - 1, $last - 2));
+                    $end = min($last, $start + 2);
+                @endphp
+                <div class="flex items-center gap-2">
+                    <button type="button" wire:click="previousPage" @disabled($devices->onFirstPage())
+                            class="flex size-8 items-center justify-center rounded-md border border-[#e5e7eb] bg-white text-[#6b7280] transition hover:bg-[#f9fafb] disabled:opacity-40">
+                        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    @for ($p = $start; $p <= $end; $p++)
+                        <button type="button" wire:click="gotoPage({{ $p }})"
+                                @class([
+                                    'flex size-8 items-center justify-center rounded-md border text-[12px] font-medium transition',
+                                    'border-[#f38c00] bg-[#fff7ed] text-[#f38c00]' => $p === $cur,
+                                    'border-[#e5e7eb] bg-white text-[#6b7280] hover:bg-[#f9fafb]' => $p !== $cur,
+                                ])>{{ $p }}</button>
+                    @endfor
+                    <button type="button" wire:click="nextPage" @disabled(! $devices->hasMorePages())
+                            class="flex size-8 items-center justify-center rounded-md border border-[#e5e7eb] bg-white text-[#6b7280] transition hover:bg-[#f9fafb] disabled:opacity-40">
+                        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                </div>
+            @endif
+        </div>
     </div>
 
-    <div>{{ $devices->links() }}</div>
+    {{-- ===================== Edit Device modal (matches New Booking modal) ===================== --}}
+    <div x-data="{ show: @entangle('showForm') }" x-show="show" x-cloak x-transition.opacity
+         class="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/50 p-4 sm:p-6"
+         @keydown.escape.window="show = false">
+        <div class="absolute inset-0" @click="show = false"></div>
+        <div class="relative z-10 my-auto w-full max-w-[680px] rounded-2xl bg-white p-6 shadow-xl sm:p-7" x-show="show"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-3" x-transition:enter-end="opacity-100 translate-y-0">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-[1px] text-[#f38c00]">Smart Room</p>
+                    <h2 class="text-[19px] font-bold text-[#1e1e1e]">Edit Device</h2>
+                    <p class="mt-0.5 text-[12px] text-[#6b7280]">Rename this device or assign it to a room.</p>
+                </div>
+                <button type="button" @click="show = false" class="flex size-8 items-center justify-center rounded-lg text-[#6b7280] transition hover:bg-[#f3f4f6]">
+                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
 
-    {{-- ===== Edit / Assign modal ===== --}}
-    @if ($showForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" wire:click.self="$set('showForm', false)">
-            <div class="w-full max-w-md rounded-2xl bg-white p-6">
-                <p class="mb-4 text-[16px] font-bold text-[#1e1e1e]">Edit Device</p>
-                <div class="flex flex-col gap-4">
-                    <div>
-                        <label class="mb-1 block text-[12px] font-medium text-[#374151]">Name</label>
-                        <input type="text" wire:model="fName" class="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-[13px]">
-                        @error('fName') <p class="mt-1 text-[12px] text-[#dc2626]">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-[12px] font-medium text-[#374151]">Suite</label>
-                        <select wire:model.live="fSuiteId" class="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-[13px]">
+            <form wire:submit="save" class="mt-5 flex flex-col gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#6b7280]">Name</label>
+                    <input type="text" wire:model="fName" placeholder="e.g. Main Light"
+                           class="h-11 rounded-xl border border-[#e5e7eb] bg-white px-3.5 text-[14px] text-[#1e1e1e] placeholder:text-[#9ca3af] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
+                    @error('fName') <span class="text-[11px] text-[#dc2626]">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#6b7280]">Suite</label>
+                        <select wire:model.live="fSuiteId"
+                                class="h-11 rounded-xl border border-[#e5e7eb] bg-white px-3.5 text-[14px] text-[#1e1e1e] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
                             <option value="">— None —</option>
                             @foreach ($suites as $suite)
                                 <option value="{{ $suite->id }}">{{ $suite->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="mb-1 block text-[12px] font-medium text-[#374151]">Room Number</label>
-                        <select wire:model="fRoomUnitId" class="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-[13px]">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#6b7280]">Room Number</label>
+                        <select wire:model="fRoomUnitId"
+                                class="h-11 rounded-xl border border-[#e5e7eb] bg-white px-3.5 text-[14px] text-[#1e1e1e] focus:border-[#f38c00] focus:outline-none focus:ring-2 focus:ring-[#f38c00]/15">
                             <option value="">— Unassigned —</option>
                             @foreach ($formRoomUnits as $unit)
                                 <option value="{{ $unit->id }}">{{ $unit->number }}</option>
                             @endforeach
                         </select>
-                        @error('fRoomUnitId') <p class="mt-1 text-[12px] text-[#dc2626]">{{ $message }}</p> @enderror
+                        @error('fRoomUnitId') <span class="text-[11px] text-[#dc2626]">{{ $message }}</span> @enderror
                     </div>
-                    <label class="flex items-center gap-2 text-[13px]">
-                        <input type="checkbox" wire:model="fIsActive"> Active
-                    </label>
                 </div>
-                <div class="mt-6 flex justify-end gap-3">
-                    <button wire:click="$set('showForm', false)" class="rounded-lg border border-[#e5e7eb] px-4 py-2 text-[13px] font-semibold text-[#374151]">Cancel</button>
-                    <button wire:click="save" class="rounded-lg bg-[#f38c00] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#e07d00]">Save</button>
+
+                <label class="flex items-center gap-2 text-[13px] text-[#374151]">
+                    <input type="checkbox" wire:model="fIsActive" class="size-4 rounded border-[#e5e7eb] text-[#f38c00] focus:ring-[#f38c00]/30">
+                    Active
+                </label>
+
+                <div class="mt-2 flex justify-end gap-3">
+                    <button type="button" @click="show = false" class="rounded-xl border border-[#e5e7eb] px-4 py-2.5 text-[13px] font-semibold text-[#374151] transition hover:bg-[#f9fafb]">Cancel</button>
+                    <button type="submit" class="rounded-xl bg-[#f38c00] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#e07d00]">Save</button>
                 </div>
-            </div>
+            </form>
         </div>
-    @endif
+    </div>
 </div>
