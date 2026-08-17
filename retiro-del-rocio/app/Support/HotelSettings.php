@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Http\Middleware\CheckSiteMaintenance;
 use App\Models\SiteContent;
 use Illuminate\Support\Carbon;
 
@@ -23,6 +24,12 @@ class HotelSettings
     public const CHECK_IN_KEY = 'hotel.check_in_time';
 
     public const CHECK_OUT_KEY = 'hotel.check_out_time';
+
+    public const MAINTENANCE_KEY = 'site.maintenance_mode';
+
+    public const MAINTENANCE_MESSAGE_KEY = 'site.maintenance_message';
+
+    public const DEFAULT_MAINTENANCE_MESSAGE = "We're currently performing scheduled maintenance. Please check back shortly.";
 
     /** Editable profile fields: key => config fallback. */
     public const PROFILE = [
@@ -119,6 +126,36 @@ class HotelSettings
     public static function departureFor(?Carbon $checkOutDate): ?Carbon
     {
         return self::at($checkOutDate, self::checkOutTime());
+    }
+
+    /**
+     * Whether the public website is currently showing the maintenance page.
+     * Deliberately independent of Laravel's own `php artisan down` — that
+     * would take the admin panel down along with the public site, and the
+     * whole point of a dashboard toggle is being able to turn it back off.
+     * See {@see CheckSiteMaintenance}.
+     */
+    public static function maintenanceMode(): bool
+    {
+        return SiteContent::get(self::MAINTENANCE_KEY, '0') === '1';
+    }
+
+    public static function setMaintenanceMode(bool $enabled): void
+    {
+        SiteContent::put(self::MAINTENANCE_KEY, $enabled ? '1' : '0');
+    }
+
+    /** The message shown to visitors on the maintenance page. */
+    public static function maintenanceMessage(): string
+    {
+        return SiteContent::get(self::MAINTENANCE_MESSAGE_KEY, self::DEFAULT_MAINTENANCE_MESSAGE)
+            ?: self::DEFAULT_MAINTENANCE_MESSAGE;
+    }
+
+    public static function setMaintenanceMessage(?string $message): void
+    {
+        $message = trim((string) $message);
+        SiteContent::put(self::MAINTENANCE_MESSAGE_KEY, $message !== '' ? $message : null);
     }
 
     /** Accept `15:00`, `15:00:00` or `9:5`; fall back when it is unusable. */

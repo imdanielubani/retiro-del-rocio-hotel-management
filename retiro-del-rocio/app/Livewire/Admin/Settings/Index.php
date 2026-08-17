@@ -2,13 +2,17 @@
 
 namespace App\Livewire\Admin\Settings;
 
+use App\Livewire\Admin\Auth\SetNewPassword;
 use App\Support\HotelSettings;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Settings (Figma 463:1544) — a tabbed panel. "Hotel Info" is live; the other
- * tabs are placeholders until their subsystems land.
+ * Settings (Figma 463:1544) — a tabbed panel. "Hotel Info", "Security"
+ * (change password) and "Website" (maintenance mode) are live. Payment
+ * Settings, Email Config and Notifications tabs were removed — not
+ * applicable to this deployment.
  *
  * Check-in / check-out saved here flow straight through to booking details and
  * the in-room tablets, which read them via {@see HotelSettings}.
@@ -17,10 +21,7 @@ class Index extends Component
 {
     public const TABS = [
         'hotel' => ['label' => 'Hotel Info', 'icon' => 'building'],
-        'notifications' => ['label' => 'Notifications', 'icon' => 'bell'],
         'security' => ['label' => 'Security', 'icon' => 'shield'],
-        'payments' => ['label' => 'Payment Settings', 'icon' => 'card'],
-        'email' => ['label' => 'Email Config', 'icon' => 'mail'],
         'website' => ['label' => 'Website', 'icon' => 'globe'],
     ];
 
@@ -49,6 +50,18 @@ class Index extends Component
 
     public string $checkOutTime = '11:00';
 
+    // ----- Security / Change Password form -----
+    public string $currentPassword = '';
+
+    public string $newPassword = '';
+
+    public string $newPassword_confirmation = '';
+
+    // ----- Website / Maintenance mode form -----
+    public bool $maintenanceMode = false;
+
+    public string $maintenanceMessage = '';
+
     public function mount(): void
     {
         $user = auth()->user();
@@ -71,6 +84,9 @@ class Index extends Component
         $this->description = (string) HotelSettings::get('hotel.description');
         $this->checkInTime = HotelSettings::checkInTime();
         $this->checkOutTime = HotelSettings::checkOutTime();
+
+        $this->maintenanceMode = HotelSettings::maintenanceMode();
+        $this->maintenanceMessage = HotelSettings::maintenanceMessage();
     }
 
     public function selectTab(string $tab): void
@@ -118,6 +134,65 @@ class Index extends Component
             type: 'success',
             message: 'Hotel information saved. Check-in '.HotelSettings::checkInLabel()
                 .' · check-out '.HotelSettings::checkOutLabel().'.'
+        );
+    }
+
+    /**
+     * Change the signed-in admin's own password. Same strength policy as the
+     * public password-reset flow ({@see SetNewPassword}).
+     */
+    public function changePassword(): void
+    {
+        $data = $this->validate([
+            'currentPassword' => ['required', 'current_password:web'],
+            'newPassword' => [
+                'required',
+                'string',
+                'confirmed',
+                'min:12',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/',
+            ],
+        ], [
+            'currentPassword.current_password' => 'That current password is incorrect.',
+            'newPassword.min' => 'New password must be at least 12 characters.',
+            'newPassword.confirmed' => 'The password confirmation does not match.',
+            'newPassword.regex' => 'New password must include an uppercase letter, a number and a special character.',
+        ], [
+            'currentPassword' => 'current password',
+            'newPassword' => 'new password',
+        ]);
+
+        auth()->user()->forceFill([
+            'password' => Hash::make($data['newPassword']),
+        ])->save();
+
+        $this->reset(['currentPassword', 'newPassword', 'newPassword_confirmation']);
+
+        $this->dispatch('toast', type: 'success', message: 'Password changed.');
+    }
+
+    /** Toggle the public-site maintenance page and save its message. */
+    public function saveWebsite(): void
+    {
+        $data = $this->validate([
+            'maintenanceMode' => ['boolean'],
+            'maintenanceMessage' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        HotelSettings::setMaintenanceMode($data['maintenanceMode']);
+        HotelSettings::setMaintenanceMessage($data['maintenanceMessage']);
+
+        // Re-read: the setter falls back to the default when cleared.
+        $this->maintenanceMessage = HotelSettings::maintenanceMessage();
+
+        $this->dispatch(
+            'toast',
+            type: $this->maintenanceMode ? 'info' : 'success',
+            message: $this->maintenanceMode
+                ? 'Maintenance mode is ON — the public site now shows the maintenance page.'
+                : 'Maintenance mode is off. The public site is live.'
         );
     }
 
