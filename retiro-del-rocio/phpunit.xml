@@ -18,6 +18,11 @@
         </include>
     </source>
     <php>
+        <!-- The growing routes/api.php closure table pushes the default 128M
+             CLI memory_limit right to its edge on some platforms; bump it for
+             test runs only (production is unaffected — this file isn't read
+             outside phpunit). -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

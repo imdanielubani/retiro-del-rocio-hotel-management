@@ -48,6 +48,10 @@ use App\Livewire\Admin\Rooms\Index;
 use App\Livewire\Admin\Security\Incidents;
 use App\Livewire\Admin\Security\VisitorAccessLog;
 use App\Livewire\Admin\Security\VisitorPasses;
+use App\Livewire\Admin\SmartRoom\Dashboard as SmartRoomDashboard;
+use App\Livewire\Admin\SmartRoom\ManagesSmartDevices;
+use App\Livewire\Admin\SmartRoom\Scenes as SmartRoomScenes;
+use App\Livewire\Admin\SmartRoom\SyncDevices;
 use App\Livewire\Admin\Spa\Services;
 use App\Livewire\Admin\Ttlock\Locks;
 use App\Livewire\Admin\Vehicles\Bookings;
@@ -1283,6 +1287,14 @@ $adminRoutes->group(function () {
         Route::get('devices/tablets', Tablets::class)->middleware('permission:device.view')->name('devices.tablets');
         Route::get('devices/smart-tvs', SmartTvs::class)->middleware('permission:tv.view')->name('devices.smart-tvs');
         Route::get('devices/{device}', App\Livewire\Admin\Devices\Show::class)->whereNumber('device')->middleware('permission:device.view')->name('devices.show');
+
+        // Smart Room — Tuya-connected in-room devices (lights, AC, curtains, TVs) + scenes
+        Route::middleware('permission:smart-room.view')->group(function () {
+            Route::get('smart-room', SmartRoomDashboard::class)->name('smart-room.dashboard');
+            Route::get('smart-room/devices', ManagesSmartDevices::class)->name('smart-room.devices');
+            Route::get('smart-room/sync', SyncDevices::class)->middleware('permission:smart-room.sync')->name('smart-room.sync');
+            Route::get('smart-room/scenes', SmartRoomScenes::class)->name('smart-room.scenes');
+        });
 
         // Security — SOS emergency register (management oversight of guest alerts),
         // visitor passes + the visitor access audit log.

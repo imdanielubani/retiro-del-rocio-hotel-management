@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\ReceptionChatController;
 use App\Http\Controllers\Api\V1\ReceptionController;
 use App\Http\Controllers\Api\V1\ReceptionIntercomCallController;
 use App\Http\Controllers\Api\V1\SecurityController;
+use App\Http\Controllers\Api\V1\SmartRoomController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\StaffChatController;
 use App\Http\Controllers\Api\V1\StaffIntercomCallController;
@@ -93,6 +94,17 @@ $api->group(function () {
 
         // The tablet's live room occupancy + checked-in guest (guest welcome).
         Route::get('tablets/room-status', [TabletController::class, 'roomStatus'])->name('api.v1.tablets.room-status');
+
+        // Smart Room (Tuya) — the guest tablet's in-room device controls.
+        // room_unit_id is always derived from the authenticated device token,
+        // never from client input. See docs/architecture/02-smart-room-architecture.md.
+        Route::get('guest/room/devices', [SmartRoomController::class, 'devices'])->name('api.v1.guest.room.devices');
+        Route::get('guest/room/devices/{smartDevice}', [SmartRoomController::class, 'deviceShow'])->name('api.v1.guest.room.devices.show');
+        Route::post('guest/room/devices/{smartDevice}/command', [SmartRoomController::class, 'command'])
+            ->middleware('throttle:60,1')->name('api.v1.guest.room.devices.command');
+        Route::get('guest/room/scenes', [SmartRoomController::class, 'scenes'])->name('api.v1.guest.room.scenes');
+        Route::post('guest/room/scenes/{scene}/activate', [SmartRoomController::class, 'activateScene'])
+            ->middleware('throttle:30,1')->name('api.v1.guest.room.scenes.activate');
 
         // The checked-in guest's My Stay screen + self-service stay extension.
         Route::get('tablets/my-stay', [TabletController::class, 'myStay'])->name('api.v1.tablets.my-stay');

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\DeviceType;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -21,6 +22,7 @@ class DeviceManagementSeeder extends Seeder
 
         $this->seedDeviceTypes();
         $this->seedPermissionsAndRoles();
+        $this->seedSmartRoomPermissions();
     }
 
     private function seedDeviceTypes(): void
@@ -34,7 +36,7 @@ class DeviceManagementSeeder extends Seeder
 
         foreach ($types as $i => $type) {
             DeviceType::firstOrCreate(
-                ['slug' => \Illuminate\Support\Str::slug($type['name'])],
+                ['slug' => Str::slug($type['name'])],
                 [
                     'name' => $type['name'],
                     'description' => $type['description'],
@@ -82,6 +84,38 @@ class DeviceManagementSeeder extends Seeder
                 'device.restart', 'device.lock', 'device.unlock', 'device.logs',
                 'tv.view', 'tv.edit',
             ]);
+        }
+    }
+
+    /**
+     * Smart Room (Tuya) admin permissions — the it-administrator role already
+     * manages hardware, so it gets full control; admin operates day-to-day,
+     * manager gets read-only oversight, mirroring the device.* pattern above.
+     */
+    private function seedSmartRoomPermissions(): void
+    {
+        $permissions = [
+            'smart-room.view', 'smart-room.manage', 'smart-room.sync',
+        ];
+
+        foreach ($permissions as $permission) {
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+        }
+
+        if ($itAdmin = Role::where('name', 'it-administrator')->first()) {
+            $itAdmin->givePermissionTo($permissions);
+        }
+
+        if ($superAdmin = Role::where('name', 'super-admin')->first()) {
+            $superAdmin->givePermissionTo($permissions);
+        }
+
+        if ($admin = Role::where('name', 'admin')->first()) {
+            $admin->givePermissionTo($permissions);
+        }
+
+        if ($manager = Role::where('name', 'manager')->first()) {
+            $manager->givePermissionTo(['smart-room.view']);
         }
     }
 }

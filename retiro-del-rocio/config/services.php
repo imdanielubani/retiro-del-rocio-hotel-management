@@ -90,4 +90,29 @@ return [
         'retries' => (int) env('TTLOCK_RETRIES', 2),
     ],
 
+    // Tuya Cloud — Smart Room (lights, AC, curtains, TVs). See
+    // docs/architecture/03-tuya-architecture.md. Credentials are server-only;
+    // never returned in any API response or serialized to Flutter.
+    'tuya' => [
+        // region-specific: https://openapi.tuyaus.com / tuyaeu.com / tuyacn.com / tuyain.com
+        'base_url' => env('TUYA_BASE_URL', 'https://openapi.tuyaeu.com'),
+        'client_id' => env('TUYA_CLIENT_ID'),
+        'client_secret' => env('TUYA_CLIENT_SECRET'),
+        'timeout' => (int) env('TUYA_TIMEOUT', 15),
+        'retries' => (int) env('TUYA_RETRIES', 2),
+        // UNCONFIRMED against the hotel's live Tuya project (Smart Home PaaS
+        // vs. Industry/Custom project changes which discovery endpoint
+        // applies — see docs/architecture/03-tuya-architecture.md §2/§9).
+        // Left empty until verified; TuyaDeviceService::discover() throws a
+        // clear TuyaException rather than guessing an endpoint.
+        'discovery_endpoint' => env('TUYA_DISCOVERY_ENDPOINT'),
+        'discovery_query' => [],
+        // Tuya's exact token-invalid/expired error code(s) are also
+        // unconfirmed against the live account (§7) — comma-separated in
+        // .env once known; empty means TuyaClient never attempts the
+        // transparent refresh-and-retry (it still refreshes proactively via
+        // TuyaAuthService's cached expiry).
+        'token_error_codes' => array_filter(explode(',', (string) env('TUYA_TOKEN_ERROR_CODES', ''))),
+    ],
+
 ];
