@@ -28,7 +28,7 @@ class DiningOrderPricer
      * database (never trusted from the client) and snapshotted onto the
      * order, plus VAT (7.5%, on the subtotal).
      *
-     * @param  array<int, array{menu_item_id:int, qty:int, note?:?string}>  $itemsInput
+     * @param  array<int, array{menu_item_id:int, qty:int, note?:?string, allergies?:?string}>  $itemsInput
      * @return array{lineItems: array, subtotal: int, vat: int, serviceFee: int, total: int, itemCount: int, hasFood: bool, hasDrinks: bool}
      */
     public static function quote(array $itemsInput): array
@@ -63,6 +63,10 @@ class DiningOrderPricer
                 'price' => (int) $menuItem->price,
                 'qty' => $qty,
                 'note' => $entry['note'] ?? null,
+                // Kept distinct from the free-text order note — the Kitchen
+                // and Bar Tablets surface this separately (a warning badge)
+                // since it's safety-relevant, not just a preference.
+                'allergies' => $entry['allergies'] ?? null,
                 // Snapshotted so the guest tablet's ETA estimate, My Orders
                 // thumbnail, and the Kitchen/Bar & Lounge admin/tablet queues
                 // all reflect what was true when the order was placed, not

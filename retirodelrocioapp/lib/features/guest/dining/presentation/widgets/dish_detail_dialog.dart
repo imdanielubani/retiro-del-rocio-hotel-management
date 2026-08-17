@@ -32,17 +32,24 @@ class _DishDetailDialogState extends State<_DishDetailDialog> {
   int _qty = 1;
   bool _expanded = false;
   final _noteController = TextEditingController();
+  final _allergiesController = TextEditingController();
 
   @override
   void dispose() {
     _noteController.dispose();
+    _allergiesController.dispose();
     super.dispose();
   }
 
   void _addToCart() {
-    Navigator.of(
-      context,
-    ).pop(CartLine(item: widget.item, qty: _qty, note: _noteController.text));
+    Navigator.of(context).pop(
+      CartLine(
+        item: widget.item,
+        qty: _qty,
+        note: _noteController.text,
+        allergies: _allergiesController.text,
+      ),
+    );
   }
 
   @override
@@ -265,6 +272,62 @@ class _DishDetailDialogState extends State<_DishDetailDialog> {
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(
                         color: AppColors.gold.withValues(alpha: 0.5),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 14,
+                      color: Colors.amber.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Allergies (Optional)',
+                      style: AppTypography.style(
+                        color: Colors.white,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _allergiesController,
+                  minLines: 2,
+                  maxLines: 3,
+                  style: AppTypography.style(color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Peanuts, shellfish, gluten…',
+                    hintStyle: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.37),
+                      fontSize: 12,
+                    ),
+                    filled: true,
+                    fillColor: Colors.amber.withValues(alpha: 0.05),
+                    contentPadding: const EdgeInsets.all(15),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.amber.withValues(alpha: 0.2),
+                        width: 0.8,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.amber.withValues(alpha: 0.2),
+                        width: 0.8,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.amber.withValues(alpha: 0.5),
                         width: 1,
                       ),
                     ),

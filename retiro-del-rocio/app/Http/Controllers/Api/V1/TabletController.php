@@ -1117,7 +1117,7 @@ class TabletController extends Controller
     }
 
     /**
-     * @return array{items: array<int, array{menu_item_id:int, qty:int, note:?string}>}
+     * @return array{items: array<int, array{menu_item_id:int, qty:int, note:?string, allergies:?string}>}
      */
     private function validateDiningOrder(Request $request): array
     {
@@ -1126,6 +1126,7 @@ class TabletController extends Controller
             'items.*.menu_item_id' => ['required', 'integer'],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:20'],
             'items.*.note' => ['nullable', 'string', 'max:255'],
+            'items.*.allergies' => ['nullable', 'string', 'max:255'],
         ]);
     }
 

@@ -50,6 +50,15 @@ class KitchenOrderCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.4),
                       ),
                     ),
+                  if (order.hasAllergyNotes)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        size: 14,
+                        color: Colors.amber.withValues(alpha: 0.85),
+                      ),
+                    ),
                   KitchenStatusPill(
                     label: order.boardColumnLabel,
                     color: accent,

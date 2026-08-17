@@ -118,6 +118,34 @@ class KitchenTabletTest extends TestCase
         $this->assertSame(1, DiningOrder::forKitchen()->count());
     }
 
+    public function test_a_guest_order_note_and_allergy_note_both_reach_the_kitchen(): void
+    {
+        $food = $this->food(['name' => 'Jollof Rice']);
+        [$guestToken] = $this->guestToken();
+        $chefToken = $this->chefToken();
+
+        $this->withToken($guestToken)->postJson('/api/v1/tablets/dining/book', [
+            'items' => [[
+                'menu_item_id' => $food->id,
+                'qty' => 1,
+                'note' => 'Extra spicy please',
+                'allergies' => 'Peanuts',
+            ]],
+        ])->assertCreated();
+
+        $order = DiningOrder::forKitchen()->firstOrFail();
+
+        $this->withToken($chefToken)
+            ->getJson('/api/v1/kitchen/orders')
+            ->assertJsonPath('data.0.items.0.note', 'Extra spicy please')
+            ->assertJsonPath('data.0.items.0.allergies', 'Peanuts');
+
+        $this->withToken($chefToken)
+            ->getJson("/api/v1/kitchen/orders/{$order->id}")
+            ->assertJsonPath('data.items.0.note', 'Extra spicy please')
+            ->assertJsonPath('data.items.0.allergies', 'Peanuts');
+    }
+
     public function test_kitchen_can_advance_a_ticket_from_new_to_preparing_to_ready_to_on_the_way_to_delivered(): void
     {
         $food = $this->food();
@@ -347,6 +375,41 @@ class KitchenTabletTest extends TestCase
             ->getJson('/api/v1/kitchen/history?search=Grace')
             ->json('data');
         $this->assertCount(1, $found);
+    }
+
+    /**
+     * A waiter can close out a bar tab's payment without ever tapping the
+     * ticket through its own status steps — the food order's `status` can
+     * stay stuck at "new"/"ready" forever even though the tab is settled
+     * and done. History has to catch these too, not just orders that
+     * individually reached delivered/cancelled.
+     */
+    public function test_a_food_ticket_on_a_settled_bar_tab_appears_in_history_even_if_never_individually_served(): void
+    {
+        Role::findOrCreate('bar', 'web');
+        $bartender = User::factory()->create(['status' => 'active']);
+        $bartender->assignRole('bar');
+        $barToken = app(JwtService::class)->issue(['sub' => $bartender->id])['token'];
+
+        $food = $this->food();
+        $kitchenToken = $this->chefToken();
+
+        $tab = $this->withToken($barToken)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($barToken)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [['menu_item_id' => $food->id, 'qty' => 1]],
+        ])->assertCreated();
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+        $statusBeforeClose = $order->status;
+        $this->assertNotContains($statusBeforeClose, ['delivered', 'cancelled']);
+
+        $this->withToken($barToken)
+            ->postJson("/api/v1/bar/tabs/{$tab['id']}/close", ['payment_method' => 'cash'])
+            ->assertOk();
+        $this->assertSame($statusBeforeClose, $order->fresh()->status);
+
+        $history = $this->withToken($kitchenToken)->getJson('/api/v1/kitchen/history')->json('data');
+        $this->assertCount(1, $history);
+        $this->assertSame($order->id, $history[0]['id']);
     }
 
     public function test_kitchen_can_set_an_eta_and_the_bar_tablet_sees_it(): void

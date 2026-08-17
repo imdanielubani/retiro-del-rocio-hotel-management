@@ -138,6 +138,9 @@ class _GuestDiningScreenState extends ConsumerState<GuestDiningScreen> {
         _cart[index] = _cart[index].copyWith(
           qty: _cart[index].qty + line.qty,
           note: (line.note ?? '').isNotEmpty ? line.note : _cart[index].note,
+          allergies: (line.allergies ?? '').isNotEmpty
+              ? line.allergies
+              : _cart[index].allergies,
         );
       }
     });

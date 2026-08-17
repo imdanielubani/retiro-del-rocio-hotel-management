@@ -10,6 +10,7 @@ class BarOrderItem {
     required this.price,
     required this.qty,
     required this.note,
+    required this.allergies,
     required this.isAlcoholic,
     required this.voided,
   });
@@ -19,6 +20,10 @@ class BarOrderItem {
   final int price;
   final int qty;
   final String? note;
+
+  /// Kept distinct from [note] — surfaced as its own warning on the order
+  /// since it's safety-relevant rather than just a preference.
+  final String? allergies;
   final bool isAlcoholic;
   final bool voided;
 
@@ -30,6 +35,7 @@ class BarOrderItem {
     price: (json['price'] as num?)?.toInt() ?? 0,
     qty: (json['qty'] as num?)?.toInt() ?? 1,
     note: json['note'] as String?,
+    allergies: json['allergies'] as String?,
     isAlcoholic: json['is_alcoholic'] as bool? ?? false,
     voided: json['voided'] as bool? ?? false,
   );

@@ -157,6 +157,38 @@ class BarTabletTest extends TestCase
         $this->assertDatabaseHas('dining_orders', ['bar_tab_id' => $open['id'], 'subtotal' => 7000, 'vat' => 525, 'total' => 7525]);
     }
 
+    public function test_a_pos_order_note_and_allergy_note_both_reach_the_bar_and_kitchen(): void
+    {
+        $food = $this->food(['name' => 'Suya Skewers']);
+        $token = $this->bartenderToken();
+
+        $tab = $this->withToken($token)->postJson('/api/v1/bar/tabs', [])->json('data');
+        $this->withToken($token)->postJson("/api/v1/bar/tabs/{$tab['id']}/orders", [
+            'items' => [[
+                'menu_item_id' => $food->id,
+                'qty' => 1,
+                'note' => 'Well done',
+                'allergies' => 'Shellfish',
+            ]],
+        ])->assertCreated();
+        $order = DiningOrder::where('bar_tab_id', $tab['id'])->firstOrFail();
+
+        $this->withToken($token)
+            ->getJson("/api/v1/bar/orders/{$order->id}")
+            ->assertJsonPath('data.items.0.note', 'Well done')
+            ->assertJsonPath('data.items.0.allergies', 'Shellfish');
+
+        Role::findOrCreate('kitchen', 'web');
+        $chef = User::factory()->create(['status' => 'active']);
+        $chef->assignRole('kitchen');
+        $chefToken = app(JwtService::class)->issue(['sub' => $chef->id])['token'];
+
+        $this->withToken($chefToken)
+            ->getJson("/api/v1/kitchen/orders/{$order->id}")
+            ->assertJsonPath('data.items.0.note', 'Well done')
+            ->assertJsonPath('data.items.0.allergies', 'Shellfish');
+    }
+
     public function test_voiding_an_item_recomputes_the_order_and_tab_totals(): void
     {
         $drinkA = $this->drink(['name' => 'Chapman', 'price' => 3500]);

@@ -232,8 +232,17 @@ class KitchenController extends Controller
     /* ---------------- History ---------------- */
 
     /**
-     * GET /kitchen/history — served/cancelled food tickets. Optional
+     * GET /kitchen/history — every finished food ticket. Optional
      * `?search=` (guest name, order reference).
+     *
+     * "Finished" means either the ticket itself reached delivered/cancelled
+     * (the Kitchen/room-service flow), or it rode along on a Bar Tablet POS
+     * tab that's since been settled — a waiter can close out a tab's
+     * payment without ever tapping through the ticket's own status steps,
+     * so relying on `status` alone silently dropped those tickets from
+     * history forever. This mirrors how the Bar Tablet's own history
+     * treats a settled tab as done regardless of its orders' individual
+     * status {@see BarController::history()}.
      */
     public function history(Request $request): JsonResponse
     {
@@ -243,7 +252,9 @@ class KitchenController extends Controller
 
         $orders = DiningOrder::forKitchen()
             ->with(['barTab', 'booking.roomUnit', 'assignedBartender'])
-            ->whereIn('status', ['delivered', 'cancelled'])
+            ->where(fn ($q) => $q
+                ->whereIn('status', ['delivered', 'cancelled'])
+                ->orWhereHas('barTab', fn ($t) => $t->where('status', 'settled')))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('reference', 'like', "%{$search}%")
                 ->orWhere('customer_name', 'like', "%{$search}%")))
