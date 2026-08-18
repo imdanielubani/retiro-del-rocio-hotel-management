@@ -46,6 +46,15 @@ class BarOrderCard extends StatelessWidget {
                       padding: EdgeInsets.only(right: 6),
                       child: VipBadge(),
                     ),
+                  if (order.hasAllergyNotes)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        size: 14,
+                        color: Colors.amber.withValues(alpha: 0.85),
+                      ),
+                    ),
                   BarStatusPill(label: order.boardColumnLabel, color: accent),
                 ],
               ),

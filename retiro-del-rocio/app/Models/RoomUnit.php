@@ -86,6 +86,12 @@ class RoomUnit extends Model
         return $this->hasMany(Device::class);
     }
 
+    /** In-room Tuya smart devices (lights/AC/curtains/TV) assigned to this room number. */
+    public function smartDevices()
+    {
+        return $this->hasMany(SmartDevice::class);
+    }
+
     public function scopeAvailable($q)
     {
         return $q->where('status', 'available');

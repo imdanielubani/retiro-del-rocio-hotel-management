@@ -3,7 +3,7 @@ import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_devic
 import 'package:retirodelrocioapp/features/guest/smart_room/presentation/widgets/smart_room_control_page.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
-/// Air Conditioning control page — blank shell, awaiting the Tuya integration.
+/// Air Conditioning control page — every `ac`-type device in this room.
 class AirConditioningScreen extends StatelessWidget {
   const AirConditioningScreen({
     super.key,
@@ -19,5 +19,6 @@ class AirConditioningScreen extends StatelessWidget {
     device: device,
     status: status,
     title: 'Air Conditioning',
+    deviceType: 'ac',
   );
 }

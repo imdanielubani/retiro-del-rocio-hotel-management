@@ -3,7 +3,7 @@ import 'package:retirodelrocioapp/features/device_setup/domain/provisioned_devic
 import 'package:retirodelrocioapp/features/guest/smart_room/presentation/widgets/smart_room_control_page.dart';
 import 'package:retirodelrocioapp/features/welcome/domain/room_status.dart';
 
-/// Lights control page — blank shell, awaiting the Tuya integration.
+/// Lights control page — every `light`-type device in this room.
 class LightsScreen extends StatelessWidget {
   const LightsScreen({super.key, required this.device, required this.status});
 
@@ -11,6 +11,10 @@ class LightsScreen extends StatelessWidget {
   final RoomStatus status;
 
   @override
-  Widget build(BuildContext context) =>
-      SmartRoomControlPage(device: device, status: status, title: 'Lights');
+  Widget build(BuildContext context) => SmartRoomControlPage(
+    device: device,
+    status: status,
+    title: 'Lights',
+    deviceType: 'light',
+  );
 }

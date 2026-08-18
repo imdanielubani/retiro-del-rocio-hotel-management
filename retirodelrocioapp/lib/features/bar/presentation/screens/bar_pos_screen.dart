@@ -18,6 +18,11 @@ class _CartLine {
   int qty = 1;
   String? note;
 
+  /// Kept distinct from [note] — the Kitchen and Bar Tablets surface this
+  /// separately as a warning, since it's safety-relevant rather than just
+  /// a preference.
+  String? allergies;
+
   int get lineTotal => item.price * qty;
 }
 
@@ -63,7 +68,10 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
   void _addToCart(BarMenuItem item) {
     setState(() {
       final existing = _cart.indexWhere(
-        (l) => l.item.id == item.id && (l.note == null || l.note!.isEmpty),
+        (l) =>
+            l.item.id == item.id &&
+            (l.note == null || l.note!.isEmpty) &&
+            (l.allergies == null || l.allergies!.isEmpty),
       );
       if (existing != -1) {
         _cart[existing].qty++;
@@ -91,6 +99,7 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
       } else {
         line.qty = result.qty;
         line.note = result.note;
+        line.allergies = result.allergies;
       }
     });
   }
@@ -112,6 +121,8 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
           'menu_item_id': l.item.id,
           'qty': l.qty,
           if (l.note != null && l.note!.isNotEmpty) 'note': l.note,
+          if (l.allergies != null && l.allergies!.isNotEmpty)
+            'allergies': l.allergies,
         },
       )
       .toList();
@@ -509,6 +520,33 @@ class _BarPosScreenState extends ConsumerState<BarPosScreen> {
                                           fontSize: 11,
                                         ),
                                       ),
+                                    if (line.allergies != null &&
+                                        line.allergies!.isNotEmpty)
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.warning_amber_rounded,
+                                            size: 10,
+                                            color: Colors.amber.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Expanded(
+                                            child: Text(
+                                              line.allergies!,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: AppTypography.style(
+                                                color: Colors.amber.withValues(
+                                                  alpha: 0.8,
+                                                ),
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                   ],
                                 ),
                               ),
@@ -809,11 +847,13 @@ class _LineEditResult {
   const _LineEditResult({
     required this.qty,
     required this.note,
+    this.allergies,
     this.remove = false,
   });
 
   final int qty;
   final String? note;
+  final String? allergies;
   final bool remove;
 }
 
@@ -831,10 +871,14 @@ class _CartLineEditorState extends State<_CartLineEditor> {
   late final TextEditingController _noteController = TextEditingController(
     text: widget.line.note,
   );
+  late final TextEditingController _allergiesController = TextEditingController(
+    text: widget.line.allergies,
+  );
 
   @override
   void dispose() {
     _noteController.dispose();
+    _allergiesController.dispose();
     super.dispose();
   }
 
@@ -932,6 +976,50 @@ class _CartLineEditorState extends State<_CartLineEditor> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 13,
+                    color: Colors.amber.withValues(alpha: 0.8),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Allergies',
+                    style: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    width: 0.8,
+                  ),
+                ),
+                child: TextField(
+                  controller: _allergiesController,
+                  maxLines: 2,
+                  style: AppTypography.style(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.all(12),
+                    border: InputBorder.none,
+                    hintText: 'e.g. Peanuts, shellfish, gluten…',
+                    hintStyle: AppTypography.style(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -977,6 +1065,7 @@ class _CartLineEditorState extends State<_CartLineEditor> {
                             _LineEditResult(
                               qty: _qty,
                               note: _noteController.text.trim(),
+                              allergies: _allergiesController.text.trim(),
                             ),
                           ),
                           child: Center(

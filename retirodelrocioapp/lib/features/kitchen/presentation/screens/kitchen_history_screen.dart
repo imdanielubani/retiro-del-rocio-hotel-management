@@ -29,6 +29,13 @@ class KitchenHistoryScreen extends ConsumerStatefulWidget {
 class _KitchenHistoryScreenState extends ConsumerState<KitchenHistoryScreen> {
   String _search = '';
 
+  /// '' | pos | room — mirrors the Bar Tablet's own History filter
+  /// (All / Settled Tabs / Room Orders): a ticket either rode along on a
+  /// Bar Tablet POS tab (settled once the tab is closed, regardless of the
+  /// ticket's own status — {@see KitchenController::history()}), or it was
+  /// a guest-tablet room-service order.
+  String _source = '';
+
   String get _token => widget.session.token;
 
   Future<void> _logout() async {
@@ -58,11 +65,12 @@ class _KitchenHistoryScreenState extends ConsumerState<KitchenHistoryScreen> {
     final filtered = orders
         .where(
           (o) =>
-              q.isEmpty ||
-              o.code.toLowerCase().contains(q) ||
-              (o.tableLabel?.toLowerCase().contains(q) ?? false) ||
-              (o.roomLabel?.toLowerCase().contains(q) ?? false) ||
-              (o.guestName?.toLowerCase().contains(q) ?? false),
+              (_source.isEmpty || (_source == 'pos') == o.isPos) &&
+              (q.isEmpty ||
+                  o.code.toLowerCase().contains(q) ||
+                  (o.tableLabel?.toLowerCase().contains(q) ?? false) ||
+                  (o.roomLabel?.toLowerCase().contains(q) ?? false) ||
+                  (o.guestName?.toLowerCase().contains(q) ?? false)),
         )
         .toList();
     final unreadNotifications = ref.watch(
@@ -87,6 +95,30 @@ class _KitchenHistoryScreenState extends ConsumerState<KitchenHistoryScreen> {
           KitchenSearchField(
             hintText: 'Search ticket, table, room or guest…',
             onChanged: (v) => setState(() => _search = v),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                KitchenFilterChip(
+                  label: 'All',
+                  selected: _source.isEmpty,
+                  onTap: () => setState(() => _source = ''),
+                ),
+                KitchenFilterChip(
+                  label: 'Settled',
+                  selected: _source == 'pos',
+                  onTap: () => setState(() => _source = 'pos'),
+                ),
+                KitchenFilterChip(
+                  label: 'Room Orders',
+                  selected: _source == 'room',
+                  onTap: () => setState(() => _source = 'room'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
           Expanded(

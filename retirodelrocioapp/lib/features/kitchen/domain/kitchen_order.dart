@@ -86,6 +86,12 @@ class KitchenOrder {
 
   bool get isPos => source == 'pos';
 
+  /// Whether any (non-voided) item on this ticket has an allergy note —
+  /// drives the warning badge on the board/card, same idea as
+  /// [hasDrinks]'s icon.
+  bool get hasAllergyNotes =>
+      items.any((i) => !i.voided && (i.allergies ?? '').isNotEmpty);
+
   /// Wherever this ticket is headed — the tab's table, or the guest's room.
   String get destinationLabel => tableLabel ?? roomLabel ?? guestName ?? code;
 

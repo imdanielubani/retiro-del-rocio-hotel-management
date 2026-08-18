@@ -240,6 +240,30 @@ class CartDrawer extends StatelessWidget {
                     ),
                   ),
                 ],
+                if ((line.allergies ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 11,
+                        color: Colors.amber.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          line.allergies!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.style(
+                            color: Colors.amber.withValues(alpha: 0.8),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 6),
                 _qtyStepper(line),
               ],

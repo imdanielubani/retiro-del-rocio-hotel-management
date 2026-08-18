@@ -100,19 +100,6 @@
                 ['label' => 'Staff', 'href' => route('admin.bar-lounge.staff'), 'active' => request()->routeIs('admin.bar-lounge.staff'), 'permission' => 'manage bar'],
             ]],
         ]],
-        ['label' => 'Inventory Management', 'items' => [
-            ['label' => 'Kitchen Inventory', 'icon' => 'box', 'href' => '#', 'permission' => null],
-            ['key' => 'bar-inventory', 'label' => 'Bar Inventory', 'icon' => 'box', 'children' => [
-                ['label' => 'Dashboard', 'href' => route('admin.bar-inventory.dashboard'), 'active' => request()->routeIs('admin.bar-inventory.dashboard'), 'permission' => 'manage bar inventory'],
-                ['label' => 'Inventory Items', 'href' => route('admin.bar-inventory.items'), 'active' => request()->routeIs('admin.bar-inventory.items'), 'permission' => 'manage bar inventory'],
-                ['label' => 'Stock In', 'href' => route('admin.bar-inventory.stock-in'), 'active' => request()->routeIs('admin.bar-inventory.stock-in'), 'permission' => 'manage bar inventory'],
-                ['label' => 'Stock Out', 'href' => route('admin.bar-inventory.stock-out'), 'active' => request()->routeIs('admin.bar-inventory.stock-out'), 'permission' => 'manage bar inventory'],
-                ['label' => 'Bottle Tracking', 'href' => route('admin.bar-inventory.bottle-tracking'), 'active' => request()->routeIs('admin.bar-inventory.bottle-tracking'), 'permission' => 'manage bar inventory'],
-                ['label' => 'Consumption Tracking', 'href' => route('admin.bar-inventory.consumption'), 'active' => request()->routeIs('admin.bar-inventory.consumption'), 'permission' => 'manage bar inventory'],
-                ['label' => 'Stock Adjustments', 'href' => route('admin.bar-inventory.adjustments'), 'active' => request()->routeIs('admin.bar-inventory.adjustments'), 'permission' => 'manage bar inventory'],
-                ['label' => 'Reorder Alerts', 'href' => route('admin.bar-inventory.reorder-alerts'), 'active' => request()->routeIs('admin.bar-inventory.reorder-alerts'), 'permission' => 'manage bar inventory'],
-            ]],
-        ]],
         ['label' => 'Facility Management', 'items' => [
             ['key' => 'spa', 'label' => 'Spa & Wellness', 'icon' => 'spa', 'children' => [
                 ['label' => 'Services', 'href' => route('admin.spa.services'), 'active' => request()->routeIs('admin.spa.services'), 'permission' => 'manage spa'],
@@ -158,6 +145,7 @@
         ['label' => 'Device Management', 'items' => [
             ['label' => 'Tablets', 'icon' => 'tablet', 'href' => route('admin.devices.tablets'), 'active' => request()->routeIs('admin.devices.tablets') || request()->routeIs('admin.devices.dashboard') || request()->routeIs('admin.devices.show'), 'permission' => 'device.view'],
             ['label' => 'Smart TVs', 'icon' => 'tv', 'href' => route('admin.devices.smart-tvs'), 'active' => request()->routeIs('admin.devices.smart-tvs'), 'permission' => 'tv.view'],
+            ['label' => 'Smart Room', 'icon' => 'lock', 'href' => route('admin.smart-room.dashboard'), 'active' => request()->routeIs('admin.smart-room.*'), 'permission' => 'smart-room.view'],
         ]],
         ['label' => 'Access Control', 'items' => [
             ['label' => 'Gate Pass', 'icon' => 'lock', 'href' => route('admin.ttlock.locks'), 'active' => request()->routeIs('admin.ttlock.*'), 'permission' => 'manage security'],
@@ -174,8 +162,7 @@
             ['label' => 'Chat', 'icon' => 'chat', 'href' => route('admin.chat.index'), 'active' => request()->routeIs('admin.chat.index'), 'permission' => 'manage staff'],
             ['label' => 'Messages', 'icon' => 'mail', 'href' => route('admin.messages.index'), 'active' => request()->routeIs('admin.messages.*'), 'permission' => 'manage cms'],
             ['label' => 'Intercom', 'icon' => 'phone', 'href' => '#', 'permission' => null],
-            ['label' => 'Notifications', 'icon' => 'requests', 'href' => '#', 'permission' => null],
-            ['label' => 'Templates', 'icon' => 'templates', 'href' => '#', 'permission' => null],
+            ['label' => 'Notifications', 'icon' => 'requests', 'href' => route('admin.notifications.index'), 'active' => request()->routeIs('admin.notifications.*'), 'permission' => null],
         ]],
         ['label' => 'Administration', 'items' => [
             ['key' => 'website-cms', 'label' => 'Website CMS', 'icon' => 'cms', 'children' => [

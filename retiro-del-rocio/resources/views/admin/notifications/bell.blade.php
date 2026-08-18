@@ -162,9 +162,9 @@
             @endif
         </div>
 
-        <a href="{{ route('admin.bookings.index') }}" wire:navigate @click="notifOpen = false"
+        <a href="{{ route('admin.notifications.index') }}" wire:navigate @click="notifOpen = false"
            class="block border-t border-[#f1f1ee] px-4 py-3 text-center text-[13px] font-semibold text-[#ba6d04] transition hover:bg-[#f9fafb]">
-            View all bookings
+            View all notifications
         </a>
     </div>
 </div>

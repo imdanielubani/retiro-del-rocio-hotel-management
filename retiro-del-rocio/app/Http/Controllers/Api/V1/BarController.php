@@ -322,6 +322,7 @@ class BarController extends Controller
             'items.*.menu_item_id' => ['required', 'integer', 'exists:menu_items,id'],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:20'],
             'items.*.note' => ['nullable', 'string', 'max:255'],
+            'items.*.allergies' => ['nullable', 'string', 'max:255'],
         ]);
 
         $quote = DiningOrderPricer::quote($data['items']);

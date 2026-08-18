@@ -255,6 +255,35 @@ class _KitchenOrderDetailScreenState
                                   fontSize: 12,
                                 ),
                               ),
+                              if (order.items[i].allergies != null &&
+                                  order.items[i].allergies!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 13,
+                                        color: Colors.amber.withValues(
+                                          alpha: 0.85,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          'Allergy: ${order.items[i].allergies}',
+                                          style: AppTypography.style(
+                                            color: Colors.amber.withValues(
+                                              alpha: 0.85,
+                                            ),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ),

@@ -86,21 +86,37 @@ class DiningMenu {
 /// Cinema keeps its snack selections local until the booking is placed.
 @immutable
 class CartLine {
-  const CartLine({required this.item, required this.qty, this.note});
+  const CartLine({
+    required this.item,
+    required this.qty,
+    this.note,
+    this.allergies,
+  });
 
   final MenuItem item;
   final int qty;
   final String? note;
 
+  /// Kept distinct from [note] — the Kitchen and Bar Tablets surface this
+  /// separately as a warning, since it's safety-relevant rather than just
+  /// a preference.
+  final String? allergies;
+
   int get lineTotal => item.price * qty;
 
-  CartLine copyWith({int? qty, String? note}) =>
-      CartLine(item: item, qty: qty ?? this.qty, note: note ?? this.note);
+  CartLine copyWith({int? qty, String? note, String? allergies}) => CartLine(
+    item: item,
+    qty: qty ?? this.qty,
+    note: note ?? this.note,
+    allergies: allergies ?? this.allergies,
+  );
 
   Map<String, dynamic> toJson() => {
     'menu_item_id': item.id,
     'qty': qty,
     if (note != null && note!.trim().isNotEmpty) 'note': note!.trim(),
+    if (allergies != null && allergies!.trim().isNotEmpty)
+      'allergies': allergies!.trim(),
   };
 }
 

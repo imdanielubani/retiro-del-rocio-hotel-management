@@ -96,6 +96,11 @@ class BarOrder {
 
   bool get needsAgeCheck => requiresAgeVerification && !ageVerified;
 
+  /// Whether any (non-voided) item on this order has an allergy note —
+  /// drives the warning badge on the board/card.
+  bool get hasAllergyNotes =>
+      items.any((i) => !i.voided && (i.allergies ?? '').isNotEmpty);
+
   /// Wherever this order is headed — the tab's table, or the guest's room —
   /// takes priority over the guest's name so a waiter can tell at a glance
   /// where to deliver without opening the order.
